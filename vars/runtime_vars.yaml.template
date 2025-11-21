@@ -22,6 +22,11 @@ switches: "cdr"
 # ROLLUP CONFIGURATION
 # ============================================================================
 
+# Git repository URL (optional override for private repos)
+# Default: "https://github.com/Sovereign-Labs/rollup-starter.git"
+# For private repos with SSH keys, use: "git@github.com:your-org/your-repo.git"
+# rollup_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
+
 # Git commit hash to deploy (HIGHLY RECOMMENDED to set explicitly)
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 

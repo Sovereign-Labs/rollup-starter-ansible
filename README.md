@@ -86,8 +86,8 @@ All configuration is organized in role-based defaults and secret files:
 **File:** [`roles/rollup/defaults/main.yaml`](roles/rollup/defaults/main.yaml)
 
 **Key Variables:**
-- `rollup_org_name` - GitHub org (default: "Sovereign-Labs")
-- `rollup_repo_name` - Repository name (default: "rollup-starter")
+- `rollup_repo` - Full git URL (default: "https://github.com/Sovereign-Labs/rollup-starter.git")
+  - Use HTTPS for public repos, `git@github.com:org/repo.git` for private repos with SSH keys
 - `rollup_commit_hash` - ⚠️ **Git commit to deploy** (update this!)
 - `zkvm_role` - zkVM implementation (default: "mock_zkvm", option: "risc0")
 - `debug` - Build in debug mode (default: true)

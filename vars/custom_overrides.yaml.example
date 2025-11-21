@@ -35,8 +35,8 @@
 # ============================================
 
 # GitHub repository details
-# rollup_org_name: "Sovereign-Labs"
-# rollup_repo_name: "rollup-starter"
+# Full git URL - use HTTPS for public repos, git@github.com:org/repo.git for private repos with SSH keys
+# rollup_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
 # rollup_repo_dir: "rollup-starter"
 
 # IMPORTANT: Git commit hash to deploy
