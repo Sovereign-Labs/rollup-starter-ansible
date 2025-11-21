@@ -33,7 +33,7 @@ rollup_http_port: 12346
 # TODO: Optional nginx
 nginx_port: 8081
 
-# Wipe data directory on deployment (use with caution)
+# Wipe rollup data directory on deployment (use with caution)
 wipe: false
 
 # Service configuration

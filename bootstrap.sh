@@ -5,9 +5,7 @@
 # Suitable for EC2 user-data or manual execution on fresh Ubuntu 24.04 instances
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/your-org/repo/main/bootstrap.sh | bash
-#   or
-#   bash bootstrap.sh
+#   curl -fsSL https://raw.githubusercontent.com/Sovereign-Labs/rollup-starter-ansible/main/bootstrap.sh | bash
 
 set -euo pipefail
 
@@ -107,7 +105,7 @@ log "1. Prepare your runtime_vars.yaml with configuration"
 log "2. Run ansible-pull to deploy the rollup"
 log ""
 log "Example ansible-pull command:"
-log "  ansible-pull -U https://github.com/your-org/sov-rollup-starter-ansible.git \\"
+log "  ansible-pull -U https://github.com/Sovereign-Labs/rollup-starter-ansible.git \\"
 log "    -C main \\"
 log "    -i inventory/localhost.ini \\"
 log "    -e @/path/to/runtime_vars.yaml \\"
