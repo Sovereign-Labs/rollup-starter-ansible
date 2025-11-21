@@ -1,0 +1,5 @@
+---
+# Mock DA configuration - uses local SQLite database
+
+- name: load Mock DA configuration variables
+  include_vars: "../defaults/main.yaml"

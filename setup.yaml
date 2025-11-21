@@ -1,0 +1,33 @@
+---
+- name: "Playbook Runner"
+  hosts: all
+  vars:
+    switches: "cdr"  # Default: run all roles (common, data-availability, rollup)
+    wipe: false
+    data_availability_role: "mock_da"  # Default DA role (overridden by inventory or -e)
+  pre_tasks:
+    - name: check if custom overrides file exists
+      stat:
+        path: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+      register: custom_overrides_stat
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+    - name: load custom overrides if present
+      include_vars:
+        file: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+      when: custom_overrides_stat.stat.exists
+    - name: check switches parameter is provided
+      assert:
+        that: switches | length > 0
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cdr). Valid values: 'c' (common), 'd' (data availability), 'r' (rollup)."
+    - name: import preconditions
+      import_tasks: preconditions.yaml
+  roles:
+    - role: "./roles/common"
+      when: "'c' in switches"
+    - role: "./roles/data-availability/{{ data_availability_role }}"
+      when: "'d' in switches"
+    - role: "./roles/rollup"
+      when: "'r' in switches"

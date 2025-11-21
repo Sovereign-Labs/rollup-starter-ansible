@@ -1,0 +1,56 @@
+- name: load telegraf secrets
+  include_vars:
+    file: vars/monitoring_secrets.yaml
+
+- name: create directory for keyring
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: download influxdata GPG key
+  ansible.builtin.get_url:
+    url: https://repos.influxdata.com/influxdata-archive_compat.key
+    dest: /etc/apt/keyrings/influxdata-archive_compat.key
+    mode: '0644'
+  become: true
+
+- name: add influxdata signing key to keyring
+  ansible.builtin.shell: |
+    cat /etc/apt/keyrings/influxdata-archive_compat.key | gpg --dearmor > /etc/apt/keyrings/influxdata-archive_compat.gpg
+  become: true
+
+- name: add influxdata repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/influxdata-archive_compat.gpg] https://repos.influxdata.com/ubuntu stable main"
+    state: present
+    filename: influxdata
+  become: true
+
+- name: update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
+
+- name: install telegraf package
+  ansible.builtin.apt:
+    name: telegraf
+    state: present
+  become: true
+
+- name: configure telegraf service
+  ansible.builtin.template:
+    src: telegraf.conf.j2
+    dest: /etc/telegraf/telegraf.conf
+    owner: telegraf
+    group: telegraf
+    mode: '0644'
+  become: true
+
+- name: start and enable telegraf service
+  systemd:
+    name: telegraf
+    state: started
+    enabled: yes
+  become: true

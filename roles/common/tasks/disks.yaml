@@ -1,0 +1,141 @@
+---
+# Dynamic disk discovery and setup
+# Finds unmounted block devices and assigns them based on size:
+# - Largest: rollup_storage_dir
+# - Second largest: logs
+# - Third largest: da_store (only if data_availability_role is mock_da)
+
+- name: discover unmounted block devices
+  shell: |
+    lsblk -ndo NAME,SIZE,MOUNTPOINT,TYPE | \
+    awk 'NF==3 && $3=="disk" {print $2,$1}' | \
+    sort -hr | \
+    awk '{print $2}'
+  register: unmounted_devices_raw
+  changed_when: false
+  become: true
+
+- name: parse unmounted devices list
+  set_fact:
+    unmounted_devices: "{{ unmounted_devices_raw.stdout_lines }}"
+
+- name: set disk assignments
+  set_fact:
+    largest_disk: "{{ unmounted_devices[0] | default('') }}"
+    second_largest_disk: "{{ unmounted_devices[1] | default('') }}"
+    third_largest_disk: "{{ unmounted_devices[2] | default('') }}"
+
+- name: print disk discovery results
+  debug:
+    msg:
+      - "Found {{ unmounted_devices | length }} unmounted block device(s)"
+      - "Largest disk: {{ largest_disk if largest_disk else 'None - rollup_storage_dir will use root volume' }}"
+      - "Second largest disk: {{ second_largest_disk if second_largest_disk else 'None - logs will use root volume' }}"
+      - "Third largest disk: {{ third_largest_disk if third_largest_disk else 'None - da_store will use root volume' }}"
+      - "DA setup: {{ 'Using third disk for local mock_da' if (third_largest_disk != '' and data_availability_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (data_availability_role == 'mock_da' and mock_da_external_url is defined) else 'Not using mock_da') }}"
+
+# Setup largest disk for rollup_storage_dir
+- name: format largest disk with ext4
+  filesystem:
+    fstype: ext4
+    dev: "/dev/{{ largest_disk }}"
+    force: yes
+  become: true
+  when: largest_disk != ''
+
+- name: get UUID of largest disk
+  command: blkid -s UUID -o value /dev/{{ largest_disk }}
+  register: largest_disk_uuid
+  changed_when: false
+  become: true
+  when: largest_disk != ''
+
+- name: ensure rollup_storage_dir is mounted
+  mount:
+    path: "{{ rollup_storage_dir }}"
+    src: "UUID={{ largest_disk_uuid.stdout }}"
+    fstype: ext4
+    opts: "noatime,nodiratime"
+    state: mounted
+  become: true
+  when: largest_disk != ''
+
+- name: set sovereign ownership on rollup_storage_dir
+  file:
+    path: "{{ rollup_storage_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+
+# Setup second largest disk for logs
+- name: format second largest disk with ext4
+  filesystem:
+    fstype: ext4
+    dev: "/dev/{{ second_largest_disk }}"
+    force: yes
+  become: true
+  when: second_largest_disk != ''
+
+- name: get UUID of second largest disk
+  command: blkid -s UUID -o value /dev/{{ second_largest_disk }}
+  register: second_largest_disk_uuid
+  changed_when: false
+  become: true
+  when: second_largest_disk != ''
+
+- name: ensure rollup_log_dir is mounted
+  mount:
+    path: "{{ rollup_log_dir }}"
+    src: "UUID={{ second_largest_disk_uuid.stdout }}"
+    fstype: ext4
+    opts: "noatime,nodiratime"
+    state: mounted
+  become: true
+  when: second_largest_disk != ''
+
+- name: set sovereign ownership on rollup_log_dir
+  file:
+    path: "{{ rollup_log_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+
+# Setup third largest disk for da_store (only if mock_da and not using external mock_da)
+- name: check if third disk should be used for da_store
+  set_fact:
+    use_third_disk_for_da: "{{ third_largest_disk != '' and data_availability_role == 'mock_da' and mock_da_external_url is not defined }}"
+
+- name: format third largest disk with ext4
+  filesystem:
+    fstype: ext4
+    dev: "/dev/{{ third_largest_disk }}"
+    force: yes
+  become: true
+  when: use_third_disk_for_da
+
+- name: get UUID of third largest disk
+  command: blkid -s UUID -o value /dev/{{ third_largest_disk }}
+  register: third_largest_disk_uuid
+  changed_when: false
+  become: true
+  when: use_third_disk_for_da
+
+- name: ensure da_store is mounted
+  mount:
+    path: "{{ da_store }}"
+    src: "UUID={{ third_largest_disk_uuid.stdout }}"
+    fstype: ext4
+    opts: "noatime,nodiratime"
+    state: mounted
+  become: true
+  when: use_third_disk_for_da
+
+- name: set sovereign ownership on da_store
+  file:
+    path: "{{ da_store }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true

@@ -1,0 +1,55 @@
+---
+# Ansible-pull entry point for Sovereign Rollup deployment
+# This playbook is designed to run on the target machine itself
+# Usage: ansible-pull -U <repo-url> -i inventory/localhost.ini local.yml -e @vars/runtime_vars.yaml
+
+- name: "Sovereign Rollup - ansible-pull deployment"
+  hosts: localhost
+  connection: local
+  become: yes
+  vars:
+    # Default switches - can be overridden via runtime_vars.yaml or command line
+    switches: "cdr"  # Default: run all roles (common, data-availability, rollup)
+    wipe: false
+
+  pre_tasks:
+    - name: Check if runtime variables file exists
+      stat:
+        path: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+      register: runtime_vars_stat
+
+    - name: Load runtime variables if present
+      include_vars:
+        file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+      when: runtime_vars_stat.stat.exists
+
+    - name: Check if custom overrides file exists
+      stat:
+        path: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+      register: custom_overrides_stat
+
+    - name: Load custom overrides if present
+      include_vars:
+        file: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+      when: custom_overrides_stat.stat.exists
+
+    - name: Check data_availability_role is defined
+      assert:
+        that: data_availability_role is defined
+        fail_msg: "Please specify 'data_availability_role' with the sub-role under data-availability (celestia, mock_da)."
+
+    - name: Check switches parameter is provided
+      assert:
+        that: switches | length > 0
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cdr). Valid values: 'c' (common), 'd' (data availability), 'r' (rollup)."
+
+    - name: Import preconditions
+      import_tasks: preconditions.yaml
+
+  roles:
+    - role: "./roles/common"
+      when: "'c' in switches"
+    - role: "./roles/data-availability/{{ data_availability_role }}"
+      when: "'d' in switches"
+    - role: "./roles/rollup"
+      when: "'r' in switches"

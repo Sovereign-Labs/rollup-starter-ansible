@@ -1,0 +1,53 @@
+# Ansible Inventory - INI Format
+# This is easier to generate programmatically than YAML
+# Copy to hosts.ini and update with your servers
+
+# ===========================================
+# Production Servers
+# ===========================================
+[production]
+rollup-prod-01 ansible_host=54.81.181.127
+rollup-prod-02 ansible_host=54.81.181.128
+
+[production:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/production-key.pem
+ansible_ssh_common_args=-o ForwardAgent=yes -o StrictHostKeyChecking=no
+data_availability_role=celestia
+zkvm_role=risc0
+debug=false
+rollup_commit_hash=main
+
+# ===========================================
+# Staging Servers
+# ===========================================
+# Host-specific variables override group vars
+# This allows mixed configurations in the same environment
+[staging]
+rollup-staging-01 ansible_host=54.81.181.200 is_rollup_replica=false data_availability_role=mock_da
+rollup-staging-02 ansible_host=54.81.181.201 is_rollup_replica=true data_availability_role=mock_da
+rollup-staging-03 ansible_host=54.81.181.202 is_rollup_replica=false data_availability_role=celestia
+rollup-staging-04 ansible_host=54.81.181.203 is_rollup_replica=true data_availability_role=celestia
+
+[staging:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/staging-key.pem
+ansible_ssh_common_args=-o ForwardAgent=yes -o StrictHostKeyChecking=no
+zkvm_role=mock_zkvm
+debug=true
+rollup_commit_hash=develop
+
+# ===========================================
+# Development Servers
+# ===========================================
+[development]
+rollup-dev-01 ansible_host=54.81.181.150
+
+[development:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/dev-key.pem
+ansible_ssh_common_args=-o ForwardAgent=yes -o StrictHostKeyChecking=no
+data_availability_role=mock_da
+zkvm_role=mock_zkvm
+debug=true
+setup_disks=false

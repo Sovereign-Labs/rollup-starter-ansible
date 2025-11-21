@@ -1,0 +1,30 @@
+---
+# Load configuration variables
+- include_vars: "../defaults/main.yaml"
+- include_vars: "../../data-availability/{{ data_availability_role }}/defaults/main.yaml"
+- include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
+
+- name: load Celestia secrets if using Celestia DA
+  include_vars: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  when: data_availability_role == 'celestia'
+
+- name: git update
+  import_tasks: git.yaml
+
+- name: genesis
+  import_tasks: genesis.yaml
+
+- name: rollup configuration setup
+  include_tasks: config.yaml
+
+- name: setup zkvm (if required)
+  include_tasks: "../../zkvm/{{ zkvm_role }}/tasks/main.yaml"
+
+- name: build rollup binary
+  include_tasks: build.yaml
+
+- name: rollup service
+  include_tasks: service.yaml
+
+- name: install and setup nginx
+  include_tasks: nginx.yaml

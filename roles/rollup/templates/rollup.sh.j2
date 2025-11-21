@@ -1,0 +1,6 @@
+#!/bin/bash
+# Define variable here, so it does not require `daemon-reload` to change that.
+export RUST_LOG="info,sov_modules_stf_blueprint::sequencer_mode::common=warn"
+/home/sovereign/{{ rollup_bin }} \
+  --rollup-config-path /home/sovereign/rollup_config.toml \
+  --genesis-path {{ genesis_folder }}/genesis.json

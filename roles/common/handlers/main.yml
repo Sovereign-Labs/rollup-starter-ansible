@@ -1,0 +1,4 @@
+---
+- name: update-initramfs
+  become: true
+  command: update-initramfs -u

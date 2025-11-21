@@ -1,0 +1,21 @@
+[Unit]
+Description=Rollup
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/home/sovereign/rollup.sh
+Restart=always
+RestartSec=3
+User=sovereign
+LimitNOFILE={{ max_open_files }}
+LogRateLimitIntervalSec=0
+StandardOutput=append:{{ rollup_log_dir }}/rollup.log
+StandardError=append:{{ rollup_log_dir }}/rollup.log
+Environment="PATH=/home/sovereign/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/snap/bin:/home/sovereign/.local/bin/:/home/sovereign/.local/bin/:/home/sovereign/.local/bin/"
+Environment=SOV_OTEL_ENABLED={% if grafana_telemetry_enabled %}1{% else %}0{% endif %}
+
+
+[Install]
+WantedBy=multi-user.target

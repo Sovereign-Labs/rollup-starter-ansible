@@ -1,0 +1,26 @@
+- name: sovereign storage
+  file:
+    path: "{{ rollup_storage_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+  become_user: root
+
+- name: data availability storage
+  file:
+    path: "{{ da_store }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+  become_user: root
+
+- name: sovereign logs
+  become: true
+  become_user: root
+  file:
+    path: "{{ rollup_log_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign

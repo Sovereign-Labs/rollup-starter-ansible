@@ -1,0 +1,86 @@
+# Based on https://github.com/Sovereign-Labs/sov-observability/blob/main/telegraf/telegraf.conf
+# All updates must be ported
+[global_tags]
+  environment = "sov-aws-dev"
+
+[agent]
+  interval = "30s"
+  round_interval = true
+  metric_batch_size = 5000
+  metric_buffer_limit = 50000
+  collection_jitter = "0s"
+  flush_interval = "30s"
+  flush_jitter = "0s"
+  precision = "0s"
+  hostname = "{{ effective_hostname }}"
+
+[[outputs.influxdb_v2]]
+  urls = ["{{ influxdb_remote_url }}"]
+  organization = "{{ influxdb_org }}"
+  bucket = "{{ influxdb_bucket }}"
+  token = "{{ influxdb_token }}"
+
+# Collectors
+[[inputs.socket_listener]]
+  service_address = "udp://:8094"
+  data_format = "influx"
+
+[[inputs.socket_listener]]
+  service_address = "tcp://:8094"
+  data_format = "influx"
+
+# Basic
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = falsecore_tags = false
+[[inputs.mem]]
+
+# Storage
+[[inputs.disk]]
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+# TODO: Disks
+  mount_points = ["/", ]
+[[inputs.diskio]]
+[[inputs.filecount]]
+  recursive = true
+  size = "100B"
+  directories = ["{{ rollup_storage_dir }}/**"]
+
+# System
+[[inputs.system]]
+[[inputs.swap]]
+[[inputs.kernel]]
+[[inputs.interrupts]]
+[[inputs.processes]]
+[[inputs.linux_sysctl_fs]]
+[[inputs.mdstat]]
+
+# Network
+[[inputs.net]]
+  interfaces = ["*"]
+  ignore_protocol_stats = true
+[[inputs.netstat]]
+
+# Misc
+[[inputs.procstat]]
+  pattern = "rollup"
+  pid_finder = "native"
+  # Collect all available metrics
+  fieldpass = ["*"]
+# Telegraf self-monitoring
+[[inputs.internal]]
+[[inputs.http_response]]
+  interval = "2s"
+  urls = ["http://127.0.0.1:12346/sequencer/ready"]
+
+#[[inputs.postgresql]]
+#  address = "host=localhost user=rollup password=hunter2 sslmode=disable"
+# Rollup, legacy
+#[[inputs.prometheus]]
+#  urls = ["http://127.0.0.1:9845/metrics"]
+#   metric_version = 1
+#   [inputs.prometheus.tags]
+#     source = "sov-rollup"
+# Alloy

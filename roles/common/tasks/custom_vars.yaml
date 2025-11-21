@@ -1,0 +1,3 @@
+- name: set effective hostname
+  set_fact:
+    effective_hostname: "{{ custom_host_label | default(inventory_hostname) }}"

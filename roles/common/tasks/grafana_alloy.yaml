@@ -1,0 +1,55 @@
+# Instructions copied from https://grafana.com/docs/alloy/latest/set-up/install/linux/
+
+# This is also done in telegraf.yaml but there's no harm in doing it again in case that file is removed
+- name: create directory for keyring
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: download and add grafana GPG key to keyring
+  ansible.builtin.shell: |
+    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/grafana.gpg > /dev/null
+  become: true
+
+- name: add grafana repository
+  ansible.builtin.shell: |
+    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+  become: true
+
+- name: update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
+
+- name: install grafana alloy package
+  ansible.builtin.apt:
+    name: alloy
+    state: present
+  become: true
+
+- name: configure alloy service
+  ansible.builtin.template:
+    src: alloy.conf.j2
+    dest: /etc/alloy/config.alloy
+    owner: alloy
+    group: alloy
+    mode: "0644"
+  become: true
+
+- name: configure alloy environment file
+  ansible.builtin.template:
+    src: alloy_env.j2
+    dest: /etc/default/alloy
+    owner: alloy
+    group: alloy
+    mode: "0644"
+  become: true
+
+- name: start and enable alloy service
+  systemd:
+    name: alloy
+    state: "{{ 'restarted' if wipe | bool else 'started' }}"
+    enabled: yes
+  become: true

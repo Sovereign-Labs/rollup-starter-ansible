@@ -1,0 +1,30 @@
+- name: render partial DA config into variable
+  set_fact:
+    rollup_da_config: "{{ lookup('template', data_availability_role + '/rollup_da_config.toml.j2') }}"
+
+- name: render rollup_config.toml
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "rollup_config.toml.j2"
+    dest: "/home/sovereign/rollup_config.toml"
+
+- name: update BATCH_NAMESPACE in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: 'BATCH_NAMESPACE = \{.*\}'
+    replace: 'BATCH_NAMESPACE = { byte_string = "{{ rollup_batch_namespace }}" }'
+    backup: no
+  when: data_availability_role == 'celestia'
+
+- name: update PROOF_NAMESPACE in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: 'PROOF_NAMESPACE = \{.*\}'
+    replace: 'PROOF_NAMESPACE = { byte_string = "{{ rollup_proof_namespace }}" }'
+    backup: no
+  when: data_availability_role == 'celestia'

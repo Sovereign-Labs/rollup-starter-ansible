@@ -1,0 +1,119 @@
+---
+# Runtime Variables Template for ansible-pull
+#
+# This file shows all variables that can be injected at runtime.
+# Copy this to runtime_vars.yaml and customize for your deployment.
+# CDK or cloud-init scripts should generate runtime_vars.yaml with these values.
+
+# ============================================================================
+# REQUIRED VARIABLES
+# ============================================================================
+
+# Data Availability role (REQUIRED)
+# Options: "celestia" or "mock_da"
+data_availability_role: "mock_da"
+
+# Deployment switches (REQUIRED)
+# c = common (infrastructure), d = data-availability, r = rollup
+# Common combinations: "cdr" (full), "dr" (skip infra), "r" (rollup only)
+switches: "cdr"
+
+# ============================================================================
+# ROLLUP CONFIGURATION
+# ============================================================================
+
+# Git commit hash to deploy (HIGHLY RECOMMENDED to set explicitly)
+rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
+
+# zkVM role
+# Options: "mock_zkvm" (fast, for development) or "risc0" (full proving)
+zkvm_role: "mock_zkvm"
+
+# Build mode
+# true = debug build (faster compile, larger binary, more logging)
+# false = release build (slower compile, optimized binary)
+debug: true
+
+# Wipe existing rollup data (DANGEROUS - use with caution)
+wipe: false
+
+# Rollup ports
+rollup_http_port: 12346
+nginx_port: 8081
+
+# Genesis addresses
+genesis_sequencer_rollup_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
+genesis_rollup_prover_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
+
+# ============================================================================
+# CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
+# ============================================================================
+
+# DA start height - get latest from https://mocha.celenium.io/ or https://celenium.io/
+da_start_height: 8877186
+
+# Celestia namespaces (MUST be exactly 10 characters each)
+rollup_batch_namespace: "sov-b-dev8"
+rollup_proof_namespace: "sov-p-dev8"
+
+# Celestia RPC endpoints
+celestia_rpc_url: "https://rpc-mocha.pops.one"
+celestia_grpc_url: "grpc-mocha.pops.one:443"
+
+# Celestia authentication (SENSITIVE - handle securely)
+celestia_grpc_auth_token: ""
+
+# DA rollup address (Celestia address for signing)
+da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
+
+# Signer private key (SENSITIVE - handle securely)
+signer_private_key: ""
+
+# ============================================================================
+# INFRASTRUCTURE CONFIGURATION (optional overrides)
+# ============================================================================
+
+# Disk configuration
+# Default for AWS c5ad.4xlarge: ["/dev/nvme1n1", "/dev/nvme2n1"]
+# Set to [] to skip disk setup, or customize for your instance type
+# raw_disk_list: ["/dev/nvme1n1", "/dev/nvme2n1"]
+
+# Enable/disable automatic disk setup
+# setup_disks: true
+
+# Storage directories
+# rollup_storage_dir: "/mnt/rollup"
+# rollup_log_dir: "/mnt/logs"
+# da_store: "/mnt/da"
+
+# ============================================================================
+# MONITORING CONFIGURATION (optional)
+# ============================================================================
+
+# Custom host label for monitoring (optional)
+# custom_host_label: "my-rollup-node-1"
+
+# Grafana telemetry toggle
+# grafana_telemetry_enabled: true
+
+# InfluxDB configuration (override if using custom monitoring)
+# influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
+# influxdb_org: "Sovereign Labs"
+# influxdb_bucket: "sov-dev"
+
+# Loki configuration
+# grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"
+# grafana_loki_username: "sov-logger"
+
+# Tempo configuration
+# grafana_tempo_endpoint: "tempo.sov-obs.xyz:443"
+# grafana_tempo_username: "sov-logger"
+
+# ============================================================================
+# SENSITIVE SECRETS (for monitoring)
+# ============================================================================
+# These should be injected via AWS Secrets Manager, SSM, or similar
+
+# influxdb_token: ""
+# grafana_loki_password: ""
+# grafana_tempo_password: ""

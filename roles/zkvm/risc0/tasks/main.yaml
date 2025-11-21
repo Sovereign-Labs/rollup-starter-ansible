@@ -1,0 +1,25 @@
+---
+# Risc0 zkVM Installation
+# Installs the Risc0 toolchain required for zkVM proving
+
+- name: install rzup (Risc0 installer)
+  become: true
+  become_user: ubuntu
+  shell: |
+    source /home/ubuntu/.profile && curl -L https://risczero.com/install | bash
+  args:
+    executable: /bin/bash
+
+- name: install specific version of cargo-risczero using rzup
+  become: true
+  become_user: ubuntu
+  shell: ~/.risc0/bin/rzup install cargo-risczero 1.2.0
+  args:
+    executable: /bin/bash
+
+- name: install risc0 toolchain
+  become: true
+  become_user: ubuntu
+  shell: /home/ubuntu/.cargo/bin/cargo risczero install --version r0.1.81.0
+  args:
+    executable: /bin/bash

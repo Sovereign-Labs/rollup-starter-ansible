@@ -1,0 +1,103 @@
+---
+# Custom Variable Overrides
+# Copy this file to custom_overrides.yaml and uncomment/modify variables you want to override
+# This file is loaded automatically if it exists and has higher precedence than role defaults
+
+# ============================================
+# Common Infrastructure Variables
+# ============================================
+
+# Disk setup (set to false to skip disk mounting/formatting)
+# setup_disks: true
+
+# Disk list for mounting
+# raw_disk_list:
+#   - /dev/nvme1n1
+#   - /dev/nvme2n1
+
+# Storage paths
+# rollup_storage_dir: "/mnt/rollup"
+# rollup_log_dir: "/mnt/logs"
+# Only for mock_da
+# da_store: "/mnt/da"
+
+# System limits
+# max_open_files: 1000000
+
+# Monitoring endpoints (InfluxDB, Loki, Tempo)
+# influxdb_url: "https://influx-prod-03-prod-us-central-0.grafana.net"
+# influxdb_bucket: "sovereign"
+# loki_url: "https://logs-prod-017.grafana.net/loki/api/v1/push"
+# tempo_url: "https://tempo-prod-10-prod-us-central-0.grafana.net:443"
+
+# ============================================
+# Rollup Configuration
+# ============================================
+
+# GitHub repository details
+# rollup_org_name: "Sovereign-Labs"
+# rollup_repo_name: "rollup-starter"
+# rollup_repo_dir: "rollup-starter"
+
+# IMPORTANT: Git commit hash to deploy
+# rollup_commit_hash: "main"
+
+# Binary name
+# rollup_bin: "rollup"
+
+# zkVM implementation: "mock_zkvm" or "risc0"
+# zkvm_role: "mock_zkvm"
+
+# Build mode: true for debug, false for release
+# debug: true
+
+# Rollup addresses
+# genesis_sequencer_rollup_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
+# genesis_rollup_prover_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
+
+# Ports
+# rollup_http_port: 12346
+# nginx_port: 8081
+
+# Wipe data on deployment (DANGEROUS!)
+# wipe: false
+
+# ============================================
+# Data Availability - Mock DA
+# ============================================
+
+# da_start_height: 1
+# da_rollup_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
+
+# ============================================
+# Data Availability - Celestia
+# ============================================
+
+# DA start height (set to recent height to reduce sync time)
+# da_start_height: 1
+
+# Rollup address for DA submissions. Should match signer key in `vars/celestia_secrets.yaml`
+# da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
+
+# Batch and proof namespaces (must be exactly 10 characters)
+# rollup_batch_namespace: "sov-batch1"
+# rollup_proof_namespace: "sov-proof1"
+
+# Note: Celestia RPC/gRPC URLs and secrets go in vars/celestia_secrets.yaml
+
+# ============================================
+# zkVM - Risc0
+# ============================================
+
+# risc0_cargo_version: "1.2.0"
+# risc0_toolchain_version: "r0.1.81.0"
+
+# ============================================
+# Example: Full override for production
+# ============================================
+
+# debug: false
+# rollup_commit_hash: "abc123def456"
+# zkvm_role: "risc0"
+# max_open_files: 2000000
+# da_start_height: 6739020

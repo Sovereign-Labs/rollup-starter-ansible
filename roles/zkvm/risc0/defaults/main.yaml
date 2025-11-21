@@ -1,0 +1,6 @@
+---
+# Risc0 zkVM Configuration
+
+# Risc0 versions
+risc0_cargo_version: "1.2.0"
+risc0_toolchain_version: "r0.1.81.0"

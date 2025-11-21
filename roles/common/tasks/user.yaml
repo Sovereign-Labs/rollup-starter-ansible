@@ -1,0 +1,62 @@
+- name: create sovereign group
+  become: true
+  become_user: root
+  group:
+    name: sovereign
+    state: present
+
+- name: create sovereign user
+  become: true
+  become_user: root
+  user:
+    name: sovereign
+    create_home: yes
+    groups: sovereign
+    shell: /bin/bash
+
+- name: add ubuntu user to sovereign group
+  become: true
+  ansible.builtin.user:
+    name: ubuntu
+    groups: sovereign
+    append: yes
+
+- name: ensure the /home/sovereign directory has sovereign group ownership
+  become: true
+  ansible.builtin.file:
+    path: /home/sovereign
+    owner: sovereign
+    group: sovereign
+    state: directory
+    recurse: yes
+
+- name: set file limits for users
+  become: true
+  become_user: root
+  template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.d/{{ item }}.conf
+    owner: root
+    group: root
+    mode: '0644'
+  vars:
+    username: "{{ item }}"
+    nofile_limit: "{{ max_open_files }}"
+  loop:
+    - sovereign
+    - ubuntu
+
+- name: ensure pam_limits.so is enabled in PAM configuration
+  become: true
+  become_user: root
+  lineinfile:
+    path: /etc/pam.d/common-session
+    line: "session required pam_limits.so"
+    state: present
+  register: pam_config
+
+- name: restart PAM if configuration changed
+  become: true
+  become_user: root
+  shell: systemctl restart systemd-logind
+  when: pam_config.changed

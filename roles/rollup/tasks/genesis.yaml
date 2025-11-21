@@ -1,0 +1,19 @@
+- name: create genesis folder
+  file:
+    path: /home/sovereign/genesis
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+  become_user: root
+
+
+- name: render rollup genesis.json
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "genesis.json.j2"
+    dest: "{{ genesis_folder }}/genesis.json"
+  vars:
+    genesis_attester_rollup_address: "{{ genesis_sequencer_rollup_address }}"
+    genesis_da_height: "{{ da_start_height }}"

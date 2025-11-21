@@ -1,0 +1,7 @@
+.idea/
+vars/monitoring_secrets.yaml
+vars/celestia_secrets.yaml
+vars/custom_overrides.yaml
+vars/runtime_vars.yaml
+inventory/*.ini
+!inventory/localhost.ini

@@ -1,0 +1,84 @@
+logging {
+  level  = "debug"
+  format = "logfmt"
+}
+
+// Receivers
+otelcol.receiver.otlp "otlp_receiver" {
+  grpc {
+    endpoint = "127.0.0.1:4317"
+  }
+  http {
+    endpoint = "127.0.0.1:4318"
+  }
+
+  output {
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    logs    = [otelcol.exporter.loki.default.input]
+    traces  = [otelcol.processor.attributes.custom_labels.input]
+  }
+}
+
+otelcol.processor.attributes "custom_labels" {
+  action {
+    key = "host"
+    action = "insert"
+    value = "{{ effective_hostname }}"
+  }
+  output {
+    traces = [otelcol.exporter.otlp.grafanacloud.input]
+  }
+}
+
+// Exporters
+
+// Tempo
+otelcol.exporter.otlp "grafanacloud" {
+  client {
+    endpoint = "{{ grafana_tempo_endpoint }}"
+    auth     = otelcol.auth.basic.grafanacloud.handler
+  }
+}
+
+// Tempo: auth
+otelcol.auth.basic "grafanacloud" {
+      username = "{{ grafana_tempo_username }}"
+      password = "{{ grafana_tempo_token }}"
+}
+
+// OTLP -> Loki
+otelcol.exporter.loki "default" {
+  forward_to = [
+    loki.process.add_hostname.receiver,
+  ]
+}
+
+loki.process "add_hostname" {
+  forward_to = [
+    loki.write.grafanacloud.receiver,
+  ]
+
+  stage.static_labels {
+    values = {
+      host = "{{ effective_hostname }}",
+    }
+  }
+}
+
+// Loki
+loki.write "grafanacloud" {
+  endpoint {
+    url = "{{ grafana_loki_url }}"
+
+    basic_auth {
+      username = "{{ grafana_loki_username }}"
+      password = "{{ grafana_loki_token }}"
+    }
+  }
+}

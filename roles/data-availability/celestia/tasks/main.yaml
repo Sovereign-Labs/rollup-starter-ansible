@@ -1,0 +1,25 @@
+---
+# Celestia DA configuration - connects to external Celestia RPC
+# No local node installation required
+
+- name: load Celestia configuration variables
+  include_vars: "../defaults/main.yaml"
+
+- name: load Celestia secrets
+  include_vars: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  when: data_availability_role == 'celestia'
+
+- name: validate Celestia configuration
+  assert:
+    that:
+      - signer_private_key is defined
+      - signer_private_key | length == 64
+      - celestia_rpc_url is defined
+      - celestia_rpc_url | length > 0
+      - celestia_grpc_url is defined
+      - celestia_grpc_url | length > 0
+    fail_msg: |
+      Celestia configuration is incomplete:
+      - 'signer_private_key' must be 64 characters (hex private key) in vars/celestia_secrets.yaml
+      - 'celestia_rpc_url' must be set in vars/celestia_secrets.yaml
+      - 'celestia_grpc_url' must be set in vars/celestia_secrets.yaml

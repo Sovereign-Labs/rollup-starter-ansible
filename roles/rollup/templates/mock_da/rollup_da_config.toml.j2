@@ -1,0 +1,11 @@
+[da]
+{% if mock_da_external_url is defined and mock_da_external_url|length > 0 %}
+url = "{{ mock_da_external_url }}"
+{% else %}
+connection_string = "sqlite://{{ da_store }}/mock_da.sqlite?mode=rwc"
+sender_address = "{{ da_rollup_address }}"
+finalization = {{ mock_da_finalization }}
+{% endif %}
+
+[da.block_producing.periodic]
+block_time_ms = {{ mock_da_block_time_ms }}

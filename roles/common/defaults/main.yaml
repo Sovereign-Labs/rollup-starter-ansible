@@ -1,0 +1,36 @@
+---
+# Set to false if you want to manually set up the disks before running the playbook
+# When true, disks are automatically discovered and assigned:
+# - Largest unmounted disk -> rollup_storage_dir
+# - Second largest unmounted disk -> rollup_log_dir
+# - Third largest unmounted disk -> da_store (only if data_availability_role is mock_da)
+setup_disks: true
+
+rollup_storage_dir: "/mnt/rollup"
+rollup_log_dir: "/mnt/logs"
+# Only applicable for mock_da data-availability option
+da_store: "/mnt/da"
+
+# File limits for users
+# These are high values suitable for services that need to handle many connections
+max_open_files: 1000000
+
+# Uncomment this if the custom host label is needed for monitoring.
+# Will be used in telegraf and grafana services
+# custom_host_label: "soak-benchmark-aws-2025-q1"
+
+# Telegraf configuration
+influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
+influxdb_org: "Sovereign Labs"
+influxdb_bucket: "sov-dev"
+
+# Loki configuration
+grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"
+grafana_loki_username: "sov-logger"
+
+# Tempo configuration
+grafana_tempo_endpoint: "tempo.sov-obs.xyz:443"
+grafana_tempo_username: "sov-logger"
+
+# Option for a rollup node to start exporting or not. But loki and tempo will always be setup.
+grafana_telemetry_enabled: true
