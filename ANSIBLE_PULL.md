@@ -71,6 +71,11 @@ zkvm_role: "mock_zkvm"
 debug: true
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 da_start_height: 1
+
+# Optional: Monitoring tokens (leave empty to skip monitoring setup)
+influxdb_token: ""
+grafana_loki_token: ""
+grafana_tempo_token: ""
 EOF
 ```
 
@@ -93,9 +98,14 @@ celestia_rpc_url: "https://rpc-mocha.pops.one"
 celestia_grpc_url: "grpc-mocha.pops.one:443"
 da_rollup_address: "celestia1..."
 
-# Secrets (handle securely!)
+# Celestia secrets (handle securely!)
 celestia_grpc_auth_token: "eyJ..."
 signer_private_key: "0x..."
+
+# Optional: Monitoring tokens (leave empty to skip monitoring setup)
+influxdb_token: ""
+grafana_loki_token: ""
+grafana_tempo_token: ""
 EOF
 
 # Secure the file since it contains secrets
