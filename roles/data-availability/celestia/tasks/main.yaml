@@ -2,9 +2,6 @@
 # Celestia DA configuration - connects to external Celestia RPC
 # No local node installation required
 
-- name: load Celestia configuration variables
-  include_vars: "../defaults/main.yaml"
-
 - name: load Celestia secrets
   include_vars: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
   when: data_availability_role == 'celestia'

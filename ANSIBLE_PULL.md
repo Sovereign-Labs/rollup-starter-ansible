@@ -38,7 +38,7 @@ Instead of pushing from a control machine via SSH, the target machine pulls the 
 
 ```bash
 # On the target machine (Ubuntu 24.04)
-curl -fsSL https://raw.githubusercontent.com/your-org/sov-rollup-starter-ansible/main/bootstrap.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Sovereign-Labs/rollup-starter-ansible/main/bootstrap.sh | sudo bash
 ```
 
 ### 2. Create Runtime Variables

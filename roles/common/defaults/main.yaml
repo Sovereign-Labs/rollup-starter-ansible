@@ -5,6 +5,8 @@
 # - Second largest unmounted disk -> rollup_log_dir
 # - Third largest unmounted disk -> da_store (only if data_availability_role is mock_da)
 setup_disks: true
+# Reformat existing disks. Use with caution
+reformat_disks: false
 
 rollup_storage_dir: "/mnt/rollup"
 rollup_log_dir: "/mnt/logs"

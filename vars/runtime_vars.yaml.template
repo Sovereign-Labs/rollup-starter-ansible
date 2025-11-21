@@ -42,8 +42,6 @@ rollup_http_port: 12346
 nginx_port: 8081
 
 # Genesis addresses
-genesis_sequencer_rollup_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
-genesis_rollup_prover_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
 
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
@@ -73,18 +71,12 @@ signer_private_key: ""
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================
 
-# Disk configuration
-# Default for AWS c5ad.4xlarge: ["/dev/nvme1n1", "/dev/nvme2n1"]
-# Set to [] to skip disk setup, or customize for your instance type
-# raw_disk_list: ["/dev/nvme1n1", "/dev/nvme2n1"]
-
 # Enable/disable automatic disk setup
 # setup_disks: true
 
 # Storage directories
 # rollup_storage_dir: "/mnt/rollup"
 # rollup_log_dir: "/mnt/logs"
-# da_store: "/mnt/da"
 
 # ============================================================================
 # MONITORING CONFIGURATION (optional)

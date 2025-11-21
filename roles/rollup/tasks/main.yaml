@@ -1,6 +1,5 @@
 ---
 # Load configuration variables
-- include_vars: "../defaults/main.yaml"
 - include_vars: "../../data-availability/{{ data_availability_role }}/defaults/main.yaml"
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
