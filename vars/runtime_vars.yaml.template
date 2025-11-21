@@ -107,5 +107,5 @@ signer_private_key: ""
 # These should be injected via AWS Secrets Manager, SSM, or similar
 
 # influxdb_token: ""
-# grafana_loki_password: ""
-# grafana_tempo_password: ""
+# grafana_loki_token: ""
+# grafana_tempo_token: ""
