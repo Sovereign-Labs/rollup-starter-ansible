@@ -36,31 +36,89 @@ Instead of pushing from a control machine via SSH, the target machine pulls the 
 
 ### 1. Bootstrap Prerequisites (one-time)
 
+On the target machine (Ubuntu 24.04):
+
 ```bash
-# On the target machine (Ubuntu 24.04)
 curl -fsSL https://raw.githubusercontent.com/Sovereign-Labs/rollup-starter-ansible/main/bootstrap.sh | sudo bash
 ```
 
+This installs ansible, git, python3, and creates the working directory `/var/lib/ansible-pull`.
+
 ### 2. Create Runtime Variables
 
+Since `ansible-pull` clones the repository during execution (not before), you need to create your `runtime_vars.yaml` file manually in a known location.
+
+**Option A: Download the template from GitHub**
+
 ```bash
-# Copy template
-cp vars/runtime_vars.yaml.template vars/runtime_vars.yaml
+# Download the template
+curl -fsSL https://raw.githubusercontent.com/Sovereign-Labs/rollup-starter-ansible/main/vars/runtime_vars.yaml.template -o /tmp/runtime_vars.yaml
 
 # Edit with your configuration
-vim vars/runtime_vars.yaml
+vim /tmp/runtime_vars.yaml
+```
+
+**Option B: Create minimal configuration manually**
+
+```bash
+# Create minimal runtime_vars.yaml for mock DA deployment
+cat > /tmp/runtime_vars.yaml << 'EOF'
+---
+# Minimal configuration for testing
+data_availability_role: "mock_da"
+switches: "cdr"
+zkvm_role: "mock_zkvm"
+debug: true
+rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
+da_start_height: 1
+EOF
+```
+
+For Celestia DA, you need additional configuration:
+
+```bash
+cat > /tmp/runtime_vars.yaml << 'EOF'
+---
+data_availability_role: "celestia"
+switches: "cdr"
+zkvm_role: "mock_zkvm"
+debug: true
+rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
+
+# Celestia configuration
+da_start_height: 8877186
+rollup_batch_namespace: "your-bat10"  # Exactly 10 chars
+rollup_proof_namespace: "your-pro10"  # Exactly 10 chars
+celestia_rpc_url: "https://rpc-mocha.pops.one"
+celestia_grpc_url: "grpc-mocha.pops.one:443"
+da_rollup_address: "celestia1..."
+
+# Secrets (handle securely!)
+celestia_grpc_auth_token: "eyJ..."
+signer_private_key: "0x..."
+EOF
+
+# Secure the file since it contains secrets
+chmod 600 /tmp/runtime_vars.yaml
 ```
 
 ### 3. Run ansible-pull
 
+Now run ansible-pull, which will:
+1. Clone the repository to a temporary location
+2. Read your runtime_vars.yaml
+3. Execute the deployment
+
 ```bash
 sudo ansible-pull \
-    -U https://github.com/your-org/sov-rollup-starter-ansible.git \
+    -U https://github.com/Sovereign-Labs/rollup-starter-ansible.git \
     -C main \
     -i inventory/localhost.ini \
-    -e @vars/runtime_vars.yaml \
+    -e @/tmp/runtime_vars.yaml \
     local.yml
 ```
+
+**Note:** The `-i inventory/localhost.ini` path is relative to the cloned repository, not your current directory. `ansible-pull` will find it automatically after cloning.
 
 ## How It Works
 
@@ -256,18 +314,22 @@ See `vars/runtime_vars.yaml.template` for all available variables with descripti
 
 ## Testing Locally
 
-### Test ansible-pull on a Local VM
+There are two ways to test the deployment locally:
+
+### Method 1: Test ansible-pull (Production-like)
+
+This simulates the production EC2 deployment workflow.
 
 1. **Spin up Ubuntu 24.04 VM** (Vagrant, Multipass, or EC2)
 
 2. **Bootstrap ansible**:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/your-org/sov-rollup-starter-ansible/main/bootstrap.sh | sudo bash
+   curl -fsSL https://raw.githubusercontent.com/Sovereign-Labs/rollup-starter-ansible/main/bootstrap.sh | sudo bash
    ```
 
 3. **Create test runtime_vars.yaml**:
    ```bash
-   cat > /tmp/runtime_vars.yaml << EOF
+   cat > /tmp/runtime_vars.yaml << 'EOF'
    ---
    data_availability_role: "mock_da"
    switches: "cdr"
@@ -281,7 +343,7 @@ See `vars/runtime_vars.yaml.template` for all available variables with descripti
 4. **Run ansible-pull**:
    ```bash
    sudo ansible-pull \
-       -U https://github.com/your-org/sov-rollup-starter-ansible.git \
+       -U https://github.com/Sovereign-Labs/rollup-starter-ansible.git \
        -C main \
        -i inventory/localhost.ini \
        -e @/tmp/runtime_vars.yaml \
@@ -300,23 +362,33 @@ See `vars/runtime_vars.yaml.template` for all available variables with descripti
    curl http://localhost:12346/health
    ```
 
-### Test Locally Without Git (Development)
+### Method 2: Test Locally Without Git (Development)
 
-If you're developing the playbooks locally:
+If you're developing the playbooks locally and want to test changes without committing:
 
-```bash
-# Clone the repo
-cd /path/to/sov-rollup-starter-ansible
+1. **Clone the repo locally**:
+   ```bash
+   git clone https://github.com/Sovereign-Labs/rollup-starter-ansible.git
+   cd rollup-starter-ansible
+   ```
 
-# Create runtime vars
-cp vars/runtime_vars.yaml.template vars/runtime_vars.yaml
-vim vars/runtime_vars.yaml
+2. **Create runtime vars from template**:
+   ```bash
+   cp vars/runtime_vars.yaml.template vars/runtime_vars.yaml
+   vim vars/runtime_vars.yaml
+   ```
 
-# Run with ansible-playbook in local mode (not ansible-pull)
-sudo ansible-playbook local.yml \
-    -i inventory/localhost.ini \
-    -e @vars/runtime_vars.yaml
-```
+3. **Run with ansible-playbook (not ansible-pull)**:
+   ```bash
+   sudo ansible-playbook local.yml \
+       -i inventory/localhost.ini \
+       -e @vars/runtime_vars.yaml
+   ```
+
+This method runs the playbook directly from your local checkout, which is useful for:
+- Testing playbook changes before committing
+- Debugging ansible tasks
+- Developing new roles
 
 ## Troubleshooting
 
