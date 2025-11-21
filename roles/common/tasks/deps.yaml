@@ -50,6 +50,8 @@
 
 - name: install rust/cargo
   when: cargo_exists.rc != 0
+  become: true
+  become_user: ubuntu
   shell: /tmp/sh.rustup.rs -y
   args:
     executable: /bin/bash
