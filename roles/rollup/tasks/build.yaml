@@ -10,6 +10,8 @@
     chdir: /home/ubuntu/{{ rollup_repo_dir }}
     executable: /bin/bash
   register: build_result
+  async: 3600  # Allow up to 1 hour for build
+  poll: 30     # Check status every 30 seconds
 
 - name: verify binary was built successfully
   stat:

@@ -39,9 +39,7 @@
 
 # Storage
 [[inputs.disk]]
-  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
-# TODO: Disks
-  mount_points = ["/", ]
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs", "nsfs", "efivarfs"]
 [[inputs.diskio]]
 [[inputs.filecount]]
   recursive = true
