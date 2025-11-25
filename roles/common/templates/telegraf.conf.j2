@@ -22,11 +22,11 @@
 
 # Collectors
 [[inputs.socket_listener]]
-  service_address = "udp://:8094"
+  service_address = "udp4://127.0.0.1:8094"
   data_format = "influx"
 
 [[inputs.socket_listener]]
-  service_address = "tcp://:8094"
+  service_address = "tcp4://127.0.0.1:8094"
   data_format = "influx"
 
 # Basic
