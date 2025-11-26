@@ -36,9 +36,7 @@ nginx_port: 8081
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
 
-# Service configuration
-max_open_files: 1000000
-grafana_telemetry_enabled: true
+# Note: max_open_files and grafana_telemetry_enabled are defined in common role defaults
 
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
