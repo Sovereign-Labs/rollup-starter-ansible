@@ -1,6 +1,7 @@
 ---
 # Celestia DA Configuration
 
+
 # Common variables, but with different values
 # Cargo feature name for building with Celestia DA
 da_feature: "celestia_da"
@@ -11,9 +12,15 @@ da_start_height: 8877186
 da_rollup_address: ""
 
 # Celestia specific variables
+# About 6
+celestia_request_timeout: 31
+# Can be Low, Medium, High. By default rely on Default value in CelestiaConfig
+celestia_tx_priority: ""
+
 # [NOTE: Length cannot change - must be exactly 10 characters]
 rollup_batch_namespace: "sov-b-dev8"
 rollup_proof_namespace: "sov-p-dev8"
+
 
 # These values are overridden from vars/celestia_secrets.yaml
 # Defaults are provided here but should be replaced with actual secrets

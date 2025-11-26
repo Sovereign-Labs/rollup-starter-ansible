@@ -3,8 +3,7 @@ rpc_url = "{{ celestia_rpc_url }}"
 grpc_url = "{{ celestia_grpc_url }}"
 grpc_auth_token = "{{ celestia_grpc_auth_token }}"
 signer_private_key = "{{ signer_private_key }}"
-# About 3 blocks.
-# Otherwise, rollup might go into recovery mode and never recover.
-request_timeout_secs = 18
-
-tx_priority = "High"
+request_timeout_secs = {{ celestia_request_timeout }}
+{% if celestia_tx_priority %}
+tx_priority = "{{ celestia_tx_priority }}"
+{% endif %}
