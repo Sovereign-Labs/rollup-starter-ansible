@@ -38,7 +38,7 @@ rollup_address = "{{ rollup_sequencer_address }}"
 blob_processing_timeout_secs = 60
 
 [sequencer.preferred]
-max_batch_size_bytes = {{ rollup_max_batch_size_bytes: }}
+max_batch_size_bytes = {{ rollup_max_batch_size_bytes }}
 max_concurrent_blobs = {{ rollup_max_concurrent_blobs }}
 max_allowed_node_distance_behind = {{ rollup_max_allowed_node_distance_behind }}
 disable_state_root_consistency_checks = true
