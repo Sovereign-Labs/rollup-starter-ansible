@@ -23,27 +23,7 @@
         file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
       when: runtime_vars_stat.stat.exists
 
-    - name: Check if custom overrides file exists
-      stat:
-        path: "{{ playbook_dir }}/vars/custom_overrides.yaml"
-      register: custom_overrides_stat
-
-    - name: Load custom overrides if present
-      include_vars:
-        file: "{{ playbook_dir }}/vars/custom_overrides.yaml"
-      when: custom_overrides_stat.stat.exists
-
-    - name: Check if Celestia secrets file exists
-      stat:
-        path: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
-      register: celestia_secrets_stat
-
-    - name: Load Celestia secrets from file (if not provided via runtime_vars)
-      include_vars:
-        file: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
-      when:
-        - celestia_secrets_stat.stat.exists
-        - signer_private_key is not defined
+    - import_tasks: load_vars.yaml
 
     - name: Check data_availability_role is defined
       assert:

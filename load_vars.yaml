@@ -1,0 +1,30 @@
+---
+# Shared variable loading tasks - included by both setup.yaml and local.yml
+
+- name: Check if custom overrides file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+  register: custom_overrides_stat
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Load custom overrides if present
+  include_vars:
+    file: "{{ playbook_dir }}/vars/custom_overrides.yaml"
+  when: custom_overrides_stat.stat.exists
+
+- name: Check if Celestia secrets file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  register: celestia_secrets_stat
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Load Celestia secrets from file (if not provided via extra vars)
+  include_vars:
+    file: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  when:
+    - celestia_secrets_stat.stat.exists
+    - signer_private_key is not defined
