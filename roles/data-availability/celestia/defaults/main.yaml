@@ -6,8 +6,9 @@
 da_feature: "celestia_da"
 # DA start height for the rollup
 da_start_height: 8877186
-# Should be derived from signer_private_key
-da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
+# Celestia address derived from signer_private_key
+# Must be provided via celestia_secrets.yaml or runtime_vars.yaml
+da_rollup_address: ""
 
 # Celestia specific variables
 # [NOTE: Length cannot change - must be exactly 10 characters]

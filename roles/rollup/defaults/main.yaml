@@ -6,13 +6,11 @@
 rollup_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
 rollup_repo_dir: "rollup-starter"
 
-# Git commit hash for the sovereign rollup repository
-# Update this to deploy a specific version
-# Main branch on 2025-11-13
-rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
-# TODO: branch
-# Commit takes higher prio
-rollup_branch: "master"
+# Git version for the sovereign rollup repository
+# Can specify either a commit hash or use the branch name
+# If rollup_commit_hash is set, it takes priority over rollup_branch
+rollup_commit_hash: ""
+rollup_branch: "main"
 
 # Build configuration
 rollup_bin: "rollup"
@@ -36,9 +34,7 @@ nginx_port: 8081
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
 
-# Service configuration
-max_open_files: 1000000
-grafana_telemetry_enabled: true
+# Note: max_open_files and grafana_telemetry_enabled are defined in common role defaults
 
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"

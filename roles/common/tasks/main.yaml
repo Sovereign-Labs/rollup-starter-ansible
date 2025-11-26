@@ -27,3 +27,7 @@
 
 - name: grafana alloy agent for exporting logs and traces
   include_tasks: grafana_alloy.yaml
+
+- name: setup local postgresql
+  include_tasks: postgres.yaml
+  when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0

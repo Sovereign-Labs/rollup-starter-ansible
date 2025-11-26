@@ -11,8 +11,12 @@
       - celestia_rpc_url | length > 0
       - celestia_grpc_url is defined
       - celestia_grpc_url | length > 0
+      - da_rollup_address is defined
+      - da_rollup_address | length > 0
+      - da_rollup_address is match('^celestia1')
     fail_msg: |
       Celestia configuration is incomplete:
       - 'signer_private_key' must be 64 characters (hex private key) in vars/celestia_secrets.yaml
       - 'celestia_rpc_url' must be set in vars/celestia_secrets.yaml
       - 'celestia_grpc_url' must be set in vars/celestia_secrets.yaml
+      - 'da_rollup_address' must be a valid Celestia address (starts with 'celestia1')

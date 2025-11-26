@@ -1,6 +1,6 @@
 ---
-# Load configuration variables
-- include_vars: "../../data-availability/{{ data_availability_role }}/defaults/main.yaml"
+# Load zkvm configuration variables
+# Note: DA defaults are loaded by preconditions.yaml in pre_tasks
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
 - name: git update
