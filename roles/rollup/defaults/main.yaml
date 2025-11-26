@@ -30,6 +30,10 @@ rollup_state_user_preallocate_ht: true
 # Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
 rollup_has_timing_oracle: false
+# 6MB
+rollup_max_batch_size_bytes: 6291456
+rollup_max_concurrent_blobs: 128
+rollup_max_allowed_node_distance_behind: 10
 
 # Network ports
 rollup_http_host: "127.0.0.1"
@@ -39,8 +43,6 @@ nginx_port: 8081
 
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
-
-# Note: max_open_files and grafana_telemetry_enabled are defined in common role defaults
 
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
