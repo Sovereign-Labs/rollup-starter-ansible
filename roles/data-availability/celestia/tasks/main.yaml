@@ -2,9 +2,18 @@
 # Celestia DA configuration - connects to external Celestia RPC
 # No local node installation required
 
-- name: load Celestia secrets
-  include_vars: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+- name: Check if Celestia secrets file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  register: celestia_secrets_stat
   when: data_availability_role == 'celestia'
+
+- name: load Celestia secrets from file (if not provided via runtime_vars)
+  include_vars: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
+  when:
+    - data_availability_role == 'celestia'
+    - celestia_secrets_stat.stat.exists | default(false)
+    - signer_private_key is not defined
 
 - name: validate Celestia configuration
   assert:
