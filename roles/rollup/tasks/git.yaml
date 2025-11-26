@@ -4,7 +4,7 @@
   git:
     repo: "{{ rollup_repo }}"
     dest: "/home/ubuntu/{{ rollup_repo_dir }}"
-    version: "{{ rollup_commit_hash }}"
+    version: "{{ rollup_commit_hash if (rollup_commit_hash is defined and rollup_commit_hash | length > 0) else rollup_branch }}"
     accept_hostkey: yes
     # TODO: Why force?
     force: yes
