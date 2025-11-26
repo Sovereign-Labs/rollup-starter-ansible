@@ -28,3 +28,11 @@
     replace: 'PROOF_NAMESPACE = { byte_string = "{{ rollup_proof_namespace }}" }'
     backup: no
   when: data_availability_role == 'celestia'
+
+- name: render evm_pinned_cache.json
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "evm_pinned_cache.json.j2"
+    dest: "/home/sovereign/evm_pinned_cache.json"
+  when: evm_pinned_addresses is defined and evm_pinned_addresses | length > 0
