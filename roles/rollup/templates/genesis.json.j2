@@ -25,10 +25,10 @@
           "{{ rollup_genesis_seq_init_balance }}"
         ]{%- if rollup_genesis_extra_addresses|length > 0 %},{% endif %}
         {% for extra_address in rollup_genesis_extra_addresses %}
-          [
+        [
           "{{ extra_address }}",
           "{{ rollup_genesis_extra_init_balance }}"
-          ]{% if not loop.last %},{% endif %}
+        ]{% if not loop.last %},{% endif %}
         {% endfor %}
       ],
       "admins": ["{{ rollup_sequencer_address }}"]
