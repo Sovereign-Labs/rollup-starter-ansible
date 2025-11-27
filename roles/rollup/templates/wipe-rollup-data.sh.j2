@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Wipe Rollup Data Script
+# This script removes all rollup state, logs, and resets the sequencer database.
+# Run this manually to fully reset the rollup node.
+#
+set -e
+
+echo "=== Rollup Data Wipe Script ==="
+echo ""
+
+# Stop the rollup service first
+echo "Stopping rollup service..."
+sudo systemctl stop rollup || true
+
+echo ""
+echo "Cleaning rollup storage directory..."
+rm -rf {{ rollup_storage_dir }}/*
+
+echo "Cleaning rollup logs..."
+sudo rm -f {{ rollup_log_dir }}/rollup.log
+
+{% if data_availability_role == 'mock_da' and mock_da_external_url is not defined %}
+echo "Cleaning local mock DA data..."
+rm -rf {{ da_store }}/*
+{% endif %}
+
+{% if rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0 %}
+echo ""
+echo "Cleaning sequencer PostgreSQL database (external)..."
+psql -v ON_ERROR_STOP=1 '{{ rollup_sequencer_postgres_connection_string }}' <<EOF
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+EOF
+{% else %}
+echo ""
+echo "Cleaning sequencer PostgreSQL database (local)..."
+psql -v ON_ERROR_STOP=1 'postgres://{{ postgres_db_user }}:{{ postgres_db_password }}@localhost/{{ postgres_db_name }}' <<EOF
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO {{ postgres_db_user }};
+GRANT ALL ON SCHEMA public TO public;
+EOF
+{% endif %}
+
+echo ""
+echo "=== Wipe complete ==="
+echo "You can now restart the rollup service with: sudo systemctl start rollup"
