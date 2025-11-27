@@ -5,4 +5,4 @@ rollup-dev-01 ansible_host=44.203.60.91
 ansible_user=ubuntu
 ansible_ssh_private_key_file=~/.ssh/YourKey.pem
 ansible_ssh_common_args=-o ForwardAgent=yes -o StrictHostKeyChecking=no
-da_role=mock_da
+data_availability_role=mock_da

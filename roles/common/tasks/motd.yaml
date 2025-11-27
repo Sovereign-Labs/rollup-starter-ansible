@@ -1,5 +1,6 @@
 ---
 - name: Deploy MOTD banner
+  become: true
   ansible.builtin.template:
     src: motd.sh.j2
     dest: /etc/profile.d/motd.sh

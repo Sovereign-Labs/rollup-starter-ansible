@@ -65,7 +65,7 @@ vim /tmp/runtime_vars.yaml
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
 # Minimal configuration for testing
-da_role: "mock_da"
+data_availability_role: "mock_da"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true
@@ -84,7 +84,7 @@ For Celestia DA, you need additional configuration:
 ```bash
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
-da_role: "celestia"
+data_availability_role: "celestia"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true
@@ -192,7 +192,7 @@ ansible-playbook setup.yaml \
     -i '54.81.181.127,' \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
-    -e da_role=celestia \
+    -e data_availability_role=celestia \
     -e switches=cdr
 ```
 
@@ -274,7 +274,7 @@ celestiaSecret.grantRead(instance);
 ### Minimal Required (always needed)
 
 ```yaml
-da_role: "celestia"  # or "mock_da"
+data_availability_role: "celestia"  # or "mock_da"
 switches: "cdr"                      # or "dr", "r"
 ```
 
@@ -287,7 +287,7 @@ debug: false              # true for development
 da_start_height: 8877186  # Celestia block height
 ```
 
-### Celestia DA (required if da_role=celestia)
+### Celestia DA (required if data_availability_role=celestia)
 
 ```yaml
 # Configuration
@@ -341,7 +341,7 @@ This simulates the production EC2 deployment workflow.
    ```bash
    cat > /tmp/runtime_vars.yaml << 'EOF'
    ---
-   da_role: "mock_da"
+   data_availability_role: "mock_da"
    switches: "cdr"
    zkvm_role: "mock_zkvm"
    debug: true
@@ -448,7 +448,7 @@ ansible-pull -U git@github.com:org/repo.git ...
 
 #### 3. Variables not defined
 
-**Symptom**: `da_role is undefined`
+**Symptom**: `data_availability_role is undefined`
 
 **Solution**: Ensure runtime_vars.yaml is correctly formatted and loaded:
 ```bash

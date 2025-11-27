@@ -11,7 +11,7 @@
 
 # Data Availability role (REQUIRED)
 # Options: "celestia" or "mock_da"
-da_role: "mock_da"
+data_availability_role: "mock_da"
 
 # Deployment switches (REQUIRED)
 # c = common (infrastructure), d = data-availability, r = rollup
@@ -49,7 +49,7 @@ nginx_port: 8081
 # Genesis addresses
 
 # ============================================================================
-# CELESTIA DA CONFIGURATION (required if da_role=celestia)
+# CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
 # ============================================================================
 
 # DA start height - get latest from https://mocha.celenium.io/ or https://celenium.io/

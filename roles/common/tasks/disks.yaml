@@ -3,7 +3,7 @@
 # Finds all non-root block devices and assigns them based on size:
 # - Largest: rollup_storage_dir
 # - Second largest: logs
-# - Third largest: da_store (only if da_role is mock_da)
+# - Third largest: da_store (only if data_availability_role is mock_da)
 
 - name: discover system disks (disks containing /, /boot, /boot/efi partitions)
   shell: |
@@ -62,7 +62,7 @@
       - "Second largest disk: {{ second_largest_disk if second_largest_disk else 'None - logs will use root volume' }}"
       - "Third largest disk: {{ third_largest_disk if third_largest_disk else 'None - da_store will use root volume' }}"
       - "Reformat disks: {{ reformat_disks | default(false) }}"
-      - "DA setup: {{ 'Using third disk for local mock_da' if ((available_devices | length >= 3) and da_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (da_role == 'mock_da' and mock_da_external_url is defined) else ('mock_da enabled but no third disk available' if (da_role == 'mock_da') else 'Not using mock_da')) }}"
+      - "DA setup: {{ 'Using third disk for local mock_da' if ((available_devices | length >= 3) and data_availability_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (data_availability_role == 'mock_da' and mock_da_external_url is defined) else ('mock_da enabled but no third disk available' if (data_availability_role == 'mock_da') else 'Not using mock_da')) }}"
 
 # Setup largest disk for rollup_storage_dir (requires at least 1 disk)
 - name: check if largest disk has filesystem
@@ -173,7 +173,7 @@
 # Setup third largest disk for da_store (only if mock_da, not using external mock_da, AND we have 3+ disks)
 - name: check if third disk should be used for da_store
   set_fact:
-    use_third_disk_for_da: "{{ (available_devices | length >= 3) and da_role == 'mock_da' and mock_da_external_url is not defined }}"
+    use_third_disk_for_da: "{{ (available_devices | length >= 3) and data_availability_role == 'mock_da' and mock_da_external_url is not defined }}"
 
 - name: check if third largest disk has filesystem
   shell: blkid -s TYPE -o value /dev/{{ third_largest_disk }} || echo "none"

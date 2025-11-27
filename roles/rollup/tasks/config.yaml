@@ -1,6 +1,6 @@
 - name: render partial DA config into variable
   set_fact:
-    rollup_da_config: "{{ lookup('template', da_role + '/rollup_da_config.toml.j2') }}"
+    rollup_da_config: "{{ lookup('template', data_availability_role + '/rollup_da_config.toml.j2') }}"
 
 - name: render rollup_config.toml
   become: true
@@ -17,7 +17,7 @@
     regexp: 'BATCH_NAMESPACE = \{.*\}'
     replace: 'BATCH_NAMESPACE = { byte_string = "{{ rollup_batch_namespace }}" }'
     backup: no
-  when: da_role == 'celestia'
+  when: data_availability_role == 'celestia'
 
 - name: update PROOF_NAMESPACE in constants.toml
   become: true
@@ -27,7 +27,7 @@
     regexp: 'PROOF_NAMESPACE = \{.*\}'
     replace: 'PROOF_NAMESPACE = { byte_string = "{{ rollup_proof_namespace }}" }'
     backup: no
-  when: da_role == 'celestia'
+  when: data_availability_role == 'celestia'
 
 - name: render evm_pinned_cache.json
   become: true

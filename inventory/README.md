@@ -29,7 +29,7 @@ server-02 ansible_host=5.6.7.8
 [production:vars]
 ansible_user=ubuntu
 ansible_ssh_private_key_file=~/.ssh/key.pem
-da_role=celestia
+data_availability_role=celestia
 zkvm_role=risc0
 debug=false
 ```
