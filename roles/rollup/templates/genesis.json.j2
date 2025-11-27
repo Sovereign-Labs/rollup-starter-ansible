@@ -22,32 +22,14 @@
       "address_and_balances": [
         [
           "{{ rollup_sequencer_address }}",
-          "10000000000000000"
-        ],
-        [
-          "0x23B6445f524daDee9fb576627740AaD23Afbe8b7",
-          "1000000000"
-        ],
-        [
-          "0x9b08ce57a93751aE790698A2C9ebc76A78F23E25",
-          "1000000000"
-        ],
-        [
-          "0xB14D211d69aff5190451b336bDe0975b57555D36",
-          "1000000000"
-        ],
-        [
-          "0xe78B5e6d2BfF36b462cc29772526Dd4EBF42E98b",
-          "1000000000"
-        ],
-        [
-          "0x0E0BcFa6A9D9C5694B754Aa3BF86360EE23eb52B",
-          "1000000000"
-        ],
-        [
-          "0x267d5F5Ba12AcD07Ce5D0831B17aB5927fEBCd48",
-          "1000000000"
-        ]
+          "{{ rollup_genesis_seq_init_balance }}"
+        ]{%- if rollup_genesis_extra_addresses|length > 0 %},{% endif %}
+        {% for extra_address in rollup_genesis_extra_addresses %}
+          [
+          "{{ extra_address }}",
+          "{{ rollup_genesis_extra_init_balance }}"
+          ]{% if not loop.last %},{% endif %}
+        {% endfor %}
       ],
       "admins": ["{{ rollup_sequencer_address }}"]
     },
@@ -90,7 +72,7 @@
     "sequencer_config": {
       "seq_rollup_address": "{{ rollup_sequencer_address }}",
       "seq_da_address": "{{ da_rollup_address }}",
-      "seq_bond": "100000000000",
+      "seq_bond": "{{ rollup_genesis_seq_bond }}",
       "is_preferred_sequencer": true
     }
   },
@@ -110,12 +92,12 @@
     "chain_spec": {
       "limit_contract_code_size": 524288,
       "coinbase": "0x0000000000000000000000000000000000000000",
-      "block_gas_limit": 30000000,
+      "block_gas_limit": {{ rollup_genesis_evm_block_gas_limit }},
       "base_fee_params": {
         "max_change_denominator": 8,
         "elasticity_multiplier": 2
       },
-      "hardforks": [[0, "SHANGHAI"]]
+      "hardforks": [[0, "CANCUN"]]
     }
   }
 }
