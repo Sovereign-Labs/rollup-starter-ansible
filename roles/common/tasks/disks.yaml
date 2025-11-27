@@ -3,21 +3,40 @@
 # Finds all non-root block devices and assigns them based on size:
 # - Largest: rollup_storage_dir
 # - Second largest: logs
-# - Third largest: da_store (only if data_availability_role is mock_da)
+# - Third largest: da_store (only if da_role is mock_da)
 
-- name: discover root device
+- name: discover system disks (disks containing /, /boot, /boot/efi partitions)
   shell: |
-    lsblk -ndo NAME,MOUNTPOINT,TYPE | \
-    awk '$2=="/" && $3=="disk" {print $1}'
-  register: root_device_raw
+    # Find all disks that contain system partitions
+    lsblk -nrpo NAME,MOUNTPOINT,TYPE | \
+    awk '$3=="part" && ($2=="/" || $2=="/boot" || $2=="/boot/efi" || $2=="/boot/grub") {
+      disk=$1
+      # Handle NVMe naming (nvme0n1p1 -> nvme0n1)
+      if (match(disk, /nvme[0-9]+n[0-9]+p[0-9]+$/)) {
+        sub(/p[0-9]+$/, "", disk)
+      }
+      # Handle standard naming (sda1 -> sda, xvda1 -> xvda)
+      else {
+        sub(/[0-9]+$/, "", disk)
+      }
+      # Remove /dev/ prefix for consistency
+      sub(/^\/dev\//, "", disk)
+      print disk
+    }' | sort -u
+  register: system_disks_raw
   changed_when: false
   become: true
 
-- name: discover all non-root block devices
+- name: discover all non-system block devices
   shell: |
-    root_dev="{{ root_device_raw.stdout }}"
+    # Get system disks as a pattern for exclusion
+    system_disks="{{ system_disks_raw.stdout_lines | join('|') }}"
+    if [ -z "$system_disks" ]; then
+      system_disks="^$"  # Match nothing if no system disks found
+    fi
+    # List all disks, exclude system disks, sort by size descending
     lsblk -ndo NAME,SIZE,TYPE | \
-    awk -v root="$root_dev" '$3=="disk" && $1!=root {print $2,$1}' | \
+    awk -v exclude="$system_disks" '$3=="disk" && $1 !~ exclude {print $2,$1}' | \
     sort -hr | \
     awk '{print $2}'
   register: available_devices_raw
@@ -37,20 +56,21 @@
 - name: print disk discovery results
   debug:
     msg:
-      - "Found {{ available_devices | length }} non-root block device(s)"
+      - "System disks (excluded): {{ system_disks_raw.stdout_lines | join(', ') if system_disks_raw.stdout_lines else 'None detected' }}"
+      - "Found {{ available_devices | length }} available data disk(s)"
       - "Largest disk: {{ largest_disk if largest_disk else 'None - rollup_storage_dir will use root volume' }}"
       - "Second largest disk: {{ second_largest_disk if second_largest_disk else 'None - logs will use root volume' }}"
       - "Third largest disk: {{ third_largest_disk if third_largest_disk else 'None - da_store will use root volume' }}"
       - "Reformat disks: {{ reformat_disks | default(false) }}"
-      - "DA setup: {{ 'Using third disk for local mock_da' if (third_largest_disk != '' and data_availability_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (data_availability_role == 'mock_da' and mock_da_external_url is defined) else 'Not using mock_da') }}"
+      - "DA setup: {{ 'Using third disk for local mock_da' if ((available_devices | length >= 3) and da_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (da_role == 'mock_da' and mock_da_external_url is defined) else ('mock_da enabled but no third disk available' if (da_role == 'mock_da') else 'Not using mock_da')) }}"
 
-# Setup largest disk for rollup_storage_dir
+# Setup largest disk for rollup_storage_dir (requires at least 1 disk)
 - name: check if largest disk has filesystem
   shell: blkid -s TYPE -o value /dev/{{ largest_disk }} || echo "none"
   register: largest_disk_fstype
   changed_when: false
   become: true
-  when: largest_disk != ''
+  when: available_devices | length >= 1
 
 - name: unmount largest disk if reformat requested
   mount:
@@ -58,7 +78,7 @@
     state: unmounted
   become: true
   when:
-    - largest_disk != ''
+    - available_devices | length >= 1
     - reformat_disks | default(false)
     - largest_disk_fstype.stdout != 'none'
 
@@ -69,7 +89,7 @@
     force: "{{ reformat_disks | default(false) }}"
   become: true
   when:
-    - largest_disk != ''
+    - available_devices | length >= 1
     - largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
 
 - name: get UUID of largest disk
@@ -77,7 +97,7 @@
   register: largest_disk_uuid
   changed_when: false
   become: true
-  when: largest_disk != ''
+  when: available_devices | length >= 1
 
 - name: ensure rollup_storage_dir is mounted
   mount:
@@ -87,7 +107,7 @@
     opts: "noatime,nodiratime"
     state: mounted
   become: true
-  when: largest_disk != ''
+  when: available_devices | length >= 1
 
 - name: set sovereign ownership on rollup_storage_dir
   file:
@@ -97,13 +117,13 @@
     group: sovereign
   become: true
 
-# Setup second largest disk for logs
+# Setup second largest disk for logs (requires at least 2 disks)
 - name: check if second largest disk has filesystem
   shell: blkid -s TYPE -o value /dev/{{ second_largest_disk }} || echo "none"
   register: second_largest_disk_fstype
   changed_when: false
   become: true
-  when: second_largest_disk != ''
+  when: available_devices | length >= 2
 
 - name: unmount second largest disk if reformat requested
   mount:
@@ -111,7 +131,7 @@
     state: unmounted
   become: true
   when:
-    - second_largest_disk != ''
+    - available_devices | length >= 2
     - reformat_disks | default(false)
     - second_largest_disk_fstype.stdout != 'none'
 
@@ -122,7 +142,7 @@
     force: "{{ reformat_disks | default(false) }}"
   become: true
   when:
-    - second_largest_disk != ''
+    - available_devices | length >= 2
     - second_largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
 
 - name: get UUID of second largest disk
@@ -130,7 +150,7 @@
   register: second_largest_disk_uuid
   changed_when: false
   become: true
-  when: second_largest_disk != ''
+  when: available_devices | length >= 2
 
 - name: ensure rollup_log_dir is mounted
   mount:
@@ -140,7 +160,7 @@
     opts: "noatime,nodiratime"
     state: mounted
   become: true
-  when: second_largest_disk != ''
+  when: available_devices | length >= 2
 
 - name: set sovereign ownership on rollup_log_dir
   file:
@@ -150,10 +170,10 @@
     group: sovereign
   become: true
 
-# Setup third largest disk for da_store (only if mock_da and not using external mock_da)
+# Setup third largest disk for da_store (only if mock_da, not using external mock_da, AND we have 3+ disks)
 - name: check if third disk should be used for da_store
   set_fact:
-    use_third_disk_for_da: "{{ third_largest_disk != '' and data_availability_role == 'mock_da' and mock_da_external_url is not defined }}"
+    use_third_disk_for_da: "{{ (available_devices | length >= 3) and da_role == 'mock_da' and mock_da_external_url is not defined }}"
 
 - name: check if third largest disk has filesystem
   shell: blkid -s TYPE -o value /dev/{{ third_largest_disk }} || echo "none"
@@ -181,14 +201,6 @@
   when:
     - use_third_disk_for_da
     - third_largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
-  register: third_disk_formatted
-
-- name: wait for udev to settle after formatting third disk
-  command: udevadm settle
-  become: true
-  when:
-    - use_third_disk_for_da
-    - third_disk_formatted is changed
 
 - name: get UUID of third largest disk
   command: blkid -s UUID -o value /dev/{{ third_largest_disk }}
@@ -214,3 +226,4 @@
     owner: sovereign
     group: sovereign
   become: true
+  when: use_third_disk_for_da

@@ -32,17 +32,25 @@
   community.postgresql.postgresql_user:
     name: "{{ postgres_db_user }}"
     password: "{{ postgres_db_password }}"
-    db: "{{ postgres_db_name }}"
-    priv: "ALL"
     state: present
 
 - name: Grant all privileges on database to user
   become: true
   become_user: postgres
   community.postgresql.postgresql_privs:
-    db: "{{ postgres_db_name }}"
+    database: "{{ postgres_db_name }}"
     privs: ALL
     type: database
+    role: "{{ postgres_db_user }}"
+
+- name: Grant all privileges on schema public to user
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    database: "{{ postgres_db_name }}"
+    privs: ALL
+    type: schema
+    objs: public
     role: "{{ postgres_db_user }}"
 
 - name: Set PostgreSQL connection string fact

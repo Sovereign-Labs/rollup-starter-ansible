@@ -221,7 +221,7 @@ export class RollupStack extends cdk.Stack {
       'mkdir -p /tmp/ansible-sovereign/vars',
       'cat > /tmp/ansible-sovereign/vars/runtime_vars.yaml << EOF',
       '---',
-      `data_availability_role: "${config.dataAvailabilityRole}"`,
+      `da_role: "${config.dataAvailabilityRole}"`,
       `switches: "${config.switches}"`,
       `zkvm_role: "${config.zkvmRole}"`,
       `debug: ${config.debugBuild}`,
@@ -422,7 +422,7 @@ sudo journalctl -u rollup -f
 
 | Variable | Required | Type | Description |
 |----------|----------|------|-------------|
-| `data_availability_role` | ✅ Yes | `'celestia' \| 'mock_da'` | DA backend |
+| `da_role` | ✅ Yes | `'celestia' \| 'mock_da'` | DA backend |
 | `switches` | ✅ Yes | `'cdr' \| 'dr' \| 'r'` | Roles to run |
 | `rollup_commit_hash` | ⚠️ Recommended | `string` | Git commit SHA |
 | `zkvm_role` | ⚠️ Recommended | `'risc0' \| 'mock_zkvm'` | zkVM backend |

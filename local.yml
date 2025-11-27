@@ -25,10 +25,10 @@
 
     - import_tasks: load_vars.yaml
 
-    - name: Check data_availability_role is defined
+    - name: Check da_role is defined
       assert:
-        that: data_availability_role is defined
-        fail_msg: "Please specify 'data_availability_role' with the sub-role under data-availability (celestia, mock_da)."
+        that: da_role is defined
+        fail_msg: "Please specify 'da_role' with the sub-role under data-availability (celestia, mock_da)."
 
     - name: Check switches parameter is provided
       assert:
@@ -41,7 +41,7 @@
   roles:
     - role: "./roles/common"
       when: "'c' in switches"
-    - role: "./roles/data-availability/{{ data_availability_role }}"
+    - role: "./roles/data-availability/{{ da_role }}"
       when: "'d' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"

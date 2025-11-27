@@ -16,7 +16,7 @@ rollup_branch: "main"
 rollup_bin: "rollup"
 # Can be `risc0` or `mock_zkvm`
 zkvm_role: "mock_zkvm"
-debug: true
+debug: false
 is_rollup_replica: false
 
 # Genesis configuration

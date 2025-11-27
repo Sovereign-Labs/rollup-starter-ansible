@@ -175,7 +175,7 @@ ansible-playbook setup.yaml \
     -i '1.2.3.4,' \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
-    -e data_availability_role=celestia \
+    -e da_role=celestia \
     -e zkvm_role=risc0 \
     -e rollup_commit_hash=abc123def \
     -e debug=false \
@@ -215,7 +215,7 @@ rollup-prod-02 ansible_host=54.81.181.128
 ansible_user=ubuntu
 ansible_ssh_private_key_file=~/.ssh/production-key.pem
 ansible_ssh_common_args=-o ForwardAgent=yes -o StrictHostKeyChecking=no
-data_availability_role=celestia
+da_role=celestia
 zkvm_role=risc0
 debug=false
 rollup_commit_hash=main
@@ -228,8 +228,8 @@ You can override group variables per host for mixed deployments:
 ```ini
 [staging]
 # Host-specific variables override group vars
-rollup-staging-01 ansible_host=54.81.181.200 data_availability_role=mock_da
-rollup-staging-02 ansible_host=54.81.181.201 data_availability_role=celestia
+rollup-staging-01 ansible_host=54.81.181.200 da_role=mock_da
+rollup-staging-02 ansible_host=54.81.181.201 da_role=celestia
 
 [staging:vars]
 zkvm_role=mock_zkvm    # Shared by all staging servers
@@ -271,7 +271,7 @@ ansible-playbook setup.yaml \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
     -e 'switches=cdr' \
-    -e 'data_availability_role=mock_da'
+    -e 'da_role=mock_da'
 ```
 
 **What this does:**
@@ -293,7 +293,7 @@ ansible-playbook setup.yaml \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
     -e 'switches=cdr' \
-    -e 'data_availability_role=celestia'
+    -e 'da_role=celestia'
 ```
 
 **What this does:**
@@ -311,7 +311,7 @@ ansible-playbook setup.yaml \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
     -e 'switches=cdr' \
-    -e 'data_availability_role=celestia' \
+    -e 'da_role=celestia' \
     -e 'zkvm_role=risc0'
 ```
 
@@ -329,7 +329,7 @@ ansible-playbook setup.yaml \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes"' \
     -e 'switches=r' \
-    -e 'data_availability_role=celestia'
+    -e 'da_role=celestia'
 ```
 
 **What this does:**
@@ -346,7 +346,7 @@ ansible-playbook setup.yaml \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
     -e 'switches=r' \
-    -e 'data_availability_role=celestia' \
+    -e 'da_role=celestia' \
     -e 'wipe=true'
 ```
 
@@ -446,7 +446,7 @@ tail -f /mnt/logs/rollup.log.*
 
 **2. Variable Not Found Error**
 - Check that all required variable files exist
-- Verify `data_availability_role` is set
+- Verify `da_role` is set
 - Check `vars/celestia_secrets.yaml` for Celestia deployments
 
 **3. Build Failures**

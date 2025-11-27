@@ -35,7 +35,7 @@ Test ansible-pull locally without Git:
 # 1. Create runtime variables
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
-data_availability_role: "mock_da"
+da_role: "mock_da"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true
@@ -66,7 +66,7 @@ Test the full ansible-pull flow:
 # 1. Prepare runtime vars
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
-data_availability_role: "mock_da"
+da_role: "mock_da"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true
@@ -98,7 +98,7 @@ Test with Celestia configuration:
 # 1. Create runtime vars with Celestia config
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
-data_availability_role: "celestia"
+da_role: "celestia"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true
@@ -142,7 +142,7 @@ Test rollup-only updates (skip infrastructure):
 # 1. Create minimal runtime vars
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
-data_availability_role: "mock_da"
+da_role: "mock_da"
 switches: "r"  # Rollup only!
 rollup_commit_hash: "new-commit-hash-here"
 EOF
@@ -171,7 +171,7 @@ ansible-playbook setup.yaml \
     -i 'your-server-ip,' \
     -u ubuntu \
     --private-key ~/.ssh/your-key.pem \
-    -e data_availability_role=mock_da \
+    -e da_role=mock_da \
     -e switches=cdr \
     -vv
 ```
@@ -318,7 +318,7 @@ command -v git >/dev/null || { echo "ERROR: git not found"; exit 1; }
 # Create test config
 cat > /tmp/test-runtime-vars.yaml << 'EOF'
 ---
-data_availability_role: "mock_da"
+da_role: "mock_da"
 switches: "cdr"
 zkvm_role: "mock_zkvm"
 debug: true

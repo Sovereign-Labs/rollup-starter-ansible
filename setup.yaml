@@ -4,7 +4,7 @@
   vars:
     switches: "cdr"  # Default: run all roles (common, data-availability, rollup)
     wipe: false
-    data_availability_role: "mock_da"  # Default DA role (overridden by inventory or -e)
+    da_role: "mock_da"  # Default DA role (overridden by inventory or -e)
   pre_tasks:
     - import_tasks: load_vars.yaml
 
@@ -17,7 +17,7 @@
   roles:
     - role: "./roles/common"
       when: "'c' in switches"
-    - role: "./roles/data-availability/{{ data_availability_role }}"
+    - role: "./roles/data-availability/{{ da_role }}"
       when: "'d' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"
