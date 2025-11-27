@@ -22,20 +22,10 @@
     state: stopped
   become: true
 
-- name: find files and directories in specified directory to wipe
-  ansible.builtin.find:
-    paths: "{{ rollup_storage_dir }}"
-    file_type: any
-  register: files_to_wipe
-  when: wipe | bool
-
-- name: remove all files and directories in specified directory
-  ansible.builtin.file:
-    path: "{{ item.path }}"
-    state: absent
-  loop: "{{ files_to_wipe.files }}"
-  when: wipe | bool and files_to_wipe.matched > 0
+- name: wipe rollup data using helper script
+  ansible.builtin.command: /home/ubuntu/wipe-rollup-data.sh
   become: true
+  when: wipe | bool
 
 - name: reload systemd to recognize rollup service
   ansible.builtin.systemd:
