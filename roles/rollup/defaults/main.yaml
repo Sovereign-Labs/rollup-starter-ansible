@@ -16,14 +16,41 @@ rollup_branch: "main"
 rollup_bin: "rollup"
 # Can be `risc0` or `mock_zkvm`
 zkvm_role: "mock_zkvm"
-debug: true
+debug: false
 is_rollup_replica: false
 
 # Genesis configuration
 genesis_folder: "/home/sovereign/genesis"
+rollup_genesis_seq_bond: 100000000000000000000000000000000
+rollup_genesis_seq_init_balance: 10000000000000000000000000000000000
+rollup_genesis_extra_init_balance: 10000000000000000000000000000
+rollup_genesis_extra_addresses:
+  - "0xe7d2b7610d1574610cbd903ea896c59d17470633"
+  - "0x23B6445f524daDee9fb576627740AaD23Afbe8b7"
+  - "0x9b08ce57a93751aE790698A2C9ebc76A78F23E25"
+  - "0xB14D211d69aff5190451b336bDe0975b57555D36"
+  - "0xe78B5e6d2BfF36b462cc29772526Dd4EBF42E98b"
+  - "0x0E0BcFa6A9D9C5694B754Aa3BF86360EE23eb52B"
+  - "0xc13b65f7c53Cd6db2EA205a4b574b4a0858720A6"
+  - "0xBaEb92889696217A3A6be2175E5a95dC4cFFC9f7"
+  - "0x2b9A8bdd2fe54C75116986f2fa892210A5f22915"
+  - "0x267d5F5Ba12AcD07Ce5D0831B17aB5927fEBCd48"
+  - "0xca7f2cF9b6d765334A4A9D5744e57563EA76C602"
+  - "0x74bb92E136628E7028e2290fF60A8EC83Eea904f"
+rollup_genesis_evm_block_gas_limit: 1000000000
+# 10GB, in bytes
+rollup_state_cache_size: 10000000000
+rollup_state_user_commit_concurrency: 6
+rollup_state_user_hashtable_buckets: 64_000_000
+rollup_state_user_preallocate_ht: true
 # This is for particular instance.
 # Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
+rollup_has_timing_oracle: false
+# 6MB
+rollup_max_batch_size_bytes: 6291456
+rollup_max_concurrent_blobs: 128
+rollup_max_allowed_node_distance_behind: 10
 
 # Network ports
 rollup_http_host: "127.0.0.1"
@@ -34,14 +61,11 @@ nginx_port: 8081
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
 
-# Note: max_open_files and grafana_telemetry_enabled are defined in common role defaults
-
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
 
-# Optional list of EVM addresses for RAM pinning (privileged deployers)
-# When defined, renders evm_pinned_cache.json to /home/sovereign/
+# Optional comma separated string of EVM addresses for RAM pinning (privileged deployers)
+evm_pinned_addresses: ""
+# When defined, renders evm_pinned_cache.json next to rollup_config.toml
 # Example:
-# evm_pinned_addresses:
-#   - "0x006e4eb63413050681079338404e07a1d72ab697"
-#   - "0xe7d2b7610d1574610cbd903ea896c59d17470633"
+# evm_pinned_addresses: "0x006e4eb63413050681079338404e07a1d72ab697,0xe7d2b7610d1574610cbd903ea896c59d17470633"

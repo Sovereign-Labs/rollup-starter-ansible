@@ -1,0 +1,5 @@
+{
+	"default_bucket_size_limit": 104857600,
+	"privileged_deployer_addresses": {{ evm_pinned_addresses.split(',') | select | list | to_json }},
+	"known_contracts_and_limits": {}
+}
