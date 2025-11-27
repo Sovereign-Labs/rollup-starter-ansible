@@ -181,6 +181,14 @@
   when:
     - use_third_disk_for_da
     - third_largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
+  register: third_disk_formatted
+
+- name: wait for udev to settle after formatting third disk
+  command: udevadm settle
+  become: true
+  when:
+    - use_third_disk_for_da
+    - third_disk_formatted is changed
 
 - name: get UUID of third largest disk
   command: blkid -s UUID -o value /dev/{{ third_largest_disk }}
