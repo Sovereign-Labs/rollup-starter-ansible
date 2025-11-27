@@ -1,0 +1,8 @@
+---
+- name: Deploy MOTD banner
+  ansible.builtin.template:
+    src: motd.sh.j2
+    dest: /etc/profile.d/motd.sh
+    owner: root
+    group: root
+    mode: '0755'
