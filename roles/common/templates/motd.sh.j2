@@ -8,6 +8,7 @@ ZKVM Role:               "{{ zkvm_role }}"
 Config:                   sudo vim {{ rollup_config_path }}
 Rollup executable script: /home/sovereign/rollup.sh
 Wiping rollup data:       /home/ubuntu/wipe-rollup-data.sh
+Make leader:              /home/ubuntu/make-leader.sh
 Restart rollup:           sudo systemctl restart rollup
 Logs:                     tail -f {{ rollup_log_dir }}/rollup.log
 Sequencer readiness:      curl http://127.0.0.1:{{ rollup_http_port }}/sequencer/ready
