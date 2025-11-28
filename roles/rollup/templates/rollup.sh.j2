@@ -10,5 +10,5 @@ export NO_COLOR=1
 export RUST_BACKTRACE=full
 
 /home/sovereign/{{ rollup_bin }} \
-  --rollup-config-path /home/sovereign/rollup_config.toml \
+  --rollup-config-path {{ rollup_config_path }} \
   --genesis-path {{ genesis_folder }}/genesis.json

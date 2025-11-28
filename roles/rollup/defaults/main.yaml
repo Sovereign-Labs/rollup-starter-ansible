@@ -19,6 +19,9 @@ zkvm_role: "mock_zkvm"
 debug: false
 is_rollup_replica: false
 
+# Paths
+rollup_config_path: "/home/sovereign/rollup_config.toml"
+
 # Genesis configuration
 genesis_folder: "/home/sovereign/genesis"
 rollup_genesis_seq_bond: 100000000000000000000000000000000
