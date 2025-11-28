@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Make Leader Script
+# Promotes this rollup node to leader by setting is_replica = false.
+#
+set -euo pipefail
+
+CONFIG_FILE="{{ rollup_config_path }}"
+
+echo "=== Make Leader Script ==="
+echo ""
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "ERROR: Config file not found: $CONFIG_FILE" >&2
+    exit 1
+fi
+
+# Check current state
+if grep -q '^is_replica = false' "$CONFIG_FILE"; then
+    echo "Node is already configured as leader (is_replica = false)"
+    exit 0
+fi
+
+echo "Updating $CONFIG_FILE..."
+sudo sed -i 's/^is_replica = true$/is_replica = false/' "$CONFIG_FILE"
+
+# Verify the change was made
+if ! grep -q '^is_replica = false' "$CONFIG_FILE"; then
+    echo "ERROR: Failed to update is_replica setting" >&2
+    exit 1
+fi
+
+echo "Successfully set is_replica = false"
+echo ""
+echo "Restarting rollup service..."
+sudo systemctl restart rollup
+
+echo ""
+echo "=== Done ==="
+echo "Node is now configured as leader."

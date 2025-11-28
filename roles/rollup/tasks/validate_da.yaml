@@ -1,8 +1,8 @@
 ---
-# Celestia DA configuration - connects to external Celestia RPC
-# No local node installation required
+# DA validation tasks - runs validation based on data_availability_role
 
-- name: validate Celestia configuration
+- name: Validate Celestia configuration
+  when: data_availability_role == 'celestia'
   assert:
     that:
       - signer_private_key is defined

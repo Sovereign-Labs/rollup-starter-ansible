@@ -1,6 +1,13 @@
 ---
+# Load DA configuration variables based on data_availability_role
+- name: Load DA-specific variables
+  include_vars: "{{ role_path }}/vars/{{ data_availability_role }}.yaml"
+
+# Validate DA configuration
+- name: Validate DA configuration
+  import_tasks: validate_da.yaml
+
 # Load zkvm configuration variables
-# Note: DA defaults are loaded by preconditions.yaml in pre_tasks
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
 - name: git update

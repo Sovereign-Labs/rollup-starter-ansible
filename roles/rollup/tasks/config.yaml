@@ -7,7 +7,7 @@
   become_user: sovereign
   ansible.builtin.template:
     src: "rollup_config.toml.j2"
-    dest: "/home/sovereign/rollup_config.toml"
+    dest: "{{ rollup_config_path }}"
 
 - name: update BATCH_NAMESPACE in constants.toml
   become: true
@@ -43,4 +43,12 @@
   ansible.builtin.template:
     src: "wipe-rollup-data.sh.j2"
     dest: "/home/ubuntu/wipe-rollup-data.sh"
+    mode: "0755"
+
+- name: render make-leader.sh helper script
+  become: true
+  become_user: ubuntu
+  ansible.builtin.template:
+    src: "make-leader.sh.j2"
+    dest: "/home/ubuntu/make-leader.sh"
     mode: "0755"

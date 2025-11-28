@@ -19,6 +19,9 @@ zkvm_role: "mock_zkvm"
 debug: false
 is_rollup_replica: false
 
+# Paths
+rollup_config_path: "/home/sovereign/rollup_config.toml"
+
 # Genesis configuration
 genesis_folder: "/home/sovereign/genesis"
 rollup_genesis_seq_bond: 100000000000000000000000000000000
@@ -57,6 +60,8 @@ rollup_http_host: "127.0.0.1"
 rollup_http_port: 12346
 # TODO: Optional nginx
 nginx_port: 8081
+
+custom_rust_log: ""
 
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false

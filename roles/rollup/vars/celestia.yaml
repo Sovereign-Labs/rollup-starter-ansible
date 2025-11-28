@@ -1,7 +1,6 @@
 ---
 # Celestia DA Configuration
 
-
 # Common variables, but with different values
 # Cargo feature name for building with Celestia DA
 da_feature: "celestia_da"
