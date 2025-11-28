@@ -3,9 +3,11 @@ cat << 'EOF'
 
 Welcome to Sovereign Rollup!
 
-Data Availability Role: "{{ data_availability_role }}"
-ZKVM Role: "{{ zkvm_role }}"
-Config: /home/sovereign/rollup_config.toml
+Data Availability Role:  "{{ data_availability_role }}"
+ZKVM Role:               "{{ zkvm_role }}"
+Config:                   sudo vim /home/sovereign/rollup_config.toml
 Rollup executable script: /home/sovereign/rollup.sh
-Wiping rollup data: /home/ubuntu/wipe-rollup-data.sh
+Wiping rollup data:       /home/ubuntu/wipe-rollup-data.sh
+Restart rollup:           sudo systemctl restart rollup
+Logs:                     tail -f {{ rollup_log_dir }}/rollup.log
 EOF

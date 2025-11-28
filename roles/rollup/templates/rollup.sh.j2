@@ -1,7 +1,13 @@
 #!/bin/bash
 # Define variable here, so it does not require `daemon-reload` to change that.
-export RUST_LOG="info,sov_modules_stf_blueprint::sequencer_mode::common=warn"
+{% if custom_rust_log %}
+export RUST_LOG="{{ custom_rust_log }}"
+{% else %}
+# Uncomment and change if you want to adjust logging
+# export RUST_LOG="info,sov_modules_stf_blueprint::sequencer_mode::common=warn"
+{% endif %}
 export NO_COLOR=1
+export RUST_BACKTRACE=full
 
 /home/sovereign/{{ rollup_bin }} \
   --rollup-config-path /home/sovereign/rollup_config.toml \
