@@ -98,7 +98,7 @@ All configuration is organized in role-based defaults and secret files:
 - `wipe` - Wipe data on deployment (default: false)
 
 #### 3. Data Availability - Celestia
-**File:** [`roles/data-availability/celestia/defaults/main.yaml`](roles/data-availability/celestia/defaults/main.yaml)
+**File:** [`roles/rollup/vars/celestia.yaml`](roles/rollup/vars/celestia.yaml)
 
 **Key Variables:**
 - `celestia_network` - Network ("mocha" or "celestia")
@@ -114,7 +114,7 @@ All configuration is organized in role-based defaults and secret files:
 - `signer_private_key`
 
 #### 4. Data Availability - Mock
-**File:** [`roles/data-availability/mock_da/defaults/main.yaml`](roles/data-availability/mock_da/defaults/main.yaml)
+**File:** [`roles/rollup/vars/mock_da.yaml`](roles/rollup/vars/mock_da.yaml)
 
 **Key Variables:**
 - `da_start_height` - Starting height (default: 1)
@@ -179,7 +179,7 @@ ansible-playbook setup.yaml \
     -e zkvm_role=risc0 \
     -e rollup_commit_hash=abc123def \
     -e debug=false \
-    -e switches=cdr
+    -e switches=cr
 ```
 
 ## Using Inventory Files (Recommended)
@@ -270,7 +270,7 @@ ansible-playbook setup.yaml \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
-    -e 'switches=cdr' \
+    -e 'switches=cr' \
     -e 'data_availability_role=mock_da'
 ```
 
@@ -284,7 +284,7 @@ ansible-playbook setup.yaml \
 
 **Prerequisites:**
 1. Update `vars/celestia_secrets.yaml` with your credentials
-2. Update `roles/data-availability/celestia/defaults/main.yaml` with your settings
+2. Update `roles/rollup/vars/celestia.yaml` with your settings
 
 ```bash
 ansible-playbook setup.yaml \
@@ -292,7 +292,7 @@ ansible-playbook setup.yaml \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
-    -e 'switches=cdr' \
+    -e 'switches=cr' \
     -e 'data_availability_role=celestia'
 ```
 
@@ -310,7 +310,7 @@ ansible-playbook setup.yaml \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
     -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
-    -e 'switches=cdr' \
+    -e 'switches=cr' \
     -e 'data_availability_role=celestia' \
     -e 'zkvm_role=risc0'
 ```
@@ -357,12 +357,10 @@ ansible-playbook setup.yaml \
 The `switches` variable controls which roles run:
 
 - `c` - **Common** - Infrastructure setup (disks, deps, users)
-- `d` - **Data Availability** - DA configuration
-- `r` - **Rollup** - Build and deploy rollup
+- `r` - **Rollup** - Build and deploy rollup (includes DA configuration)
 
 **Common Combinations:**
-- `cdr` - Full setup from scratch
-- `dr` - DA + Rollup (skip infrastructure)
+- `cr` - Full setup from scratch
 - `r` - Rollup only (update binary)
 
 ## SSH Setup
@@ -404,11 +402,8 @@ PLAY RECAP ****************************************************************
 - Sets up monitoring (Telegraf, Loki, Tempo)
 - Configures time sync (Chrony)
 
-**2. data-availability**
-- **Celestia:** Configures external RPC connection (no local node)
-- **Mock:** Sets up SQLite-based DA for testing
-
-**3. rollup**
+**2. rollup**
+- Configures Data Availability (Celestia or Mock DA)
 - Clones rollup repository
 - Checks out specific commit
 - Updates configuration files
@@ -519,7 +514,7 @@ curl http://localhost:8081/health   # Via nginx
 
 ### Custom Namespaces (Celestia)
 
-Edit `roles/data-availability/celestia/defaults/main.yaml`:
+Edit `roles/rollup/vars/celestia.yaml`:
 ```yaml
 rollup_batch_namespace: "my-batch1"  # Exactly 10 chars
 rollup_proof_namespace: "my-proof1"  # Exactly 10 chars

@@ -14,9 +14,9 @@
 data_availability_role: "mock_da"
 
 # Deployment switches (REQUIRED)
-# c = common (infrastructure), d = data-availability, r = rollup
-# Common combinations: "cdr" (full), "dr" (skip infra), "r" (rollup only)
-switches: "cdr"
+# c = common (infrastructure), r = rollup
+# Common combinations: "cr" (full), "r" (rollup only)
+switches: "cr"
 
 # ============================================================================
 # ROLLUP CONFIGURATION

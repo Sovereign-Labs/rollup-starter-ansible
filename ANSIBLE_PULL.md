@@ -66,7 +66,7 @@ cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
 # Minimal configuration for testing
 data_availability_role: "mock_da"
-switches: "cdr"
+switches: "cr"
 zkvm_role: "mock_zkvm"
 debug: true
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
@@ -85,7 +85,7 @@ For Celestia DA, you need additional configuration:
 cat > /tmp/runtime_vars.yaml << 'EOF'
 ---
 data_availability_role: "celestia"
-switches: "cdr"
+switches: "cr"
 zkvm_role: "mock_zkvm"
 debug: true
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
@@ -151,7 +151,7 @@ sudo ansible-pull \
 │  1. Clone Git repository to /tmp                            │
 │  2. Read local.yml playbook                                 │
 │  3. Execute against localhost (connection: local)           │
-│  4. Run roles: common → data-availability → rollup          │
+│  4. Run roles: common → rollup                              │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
@@ -193,7 +193,7 @@ ansible-playbook setup.yaml \
     -u ubuntu \
     --private-key ~/.ssh/YourKey.pem \
     -e data_availability_role=celestia \
-    -e switches=cdr
+    -e switches=cr
 ```
 
 ## CDK Integration
@@ -275,7 +275,7 @@ celestiaSecret.grantRead(instance);
 
 ```yaml
 data_availability_role: "celestia"  # or "mock_da"
-switches: "cdr"                      # or "dr", "r"
+switches: "cr"                       # or "r"
 ```
 
 ### Recommended for Production
@@ -342,7 +342,7 @@ This simulates the production EC2 deployment workflow.
    cat > /tmp/runtime_vars.yaml << 'EOF'
    ---
    data_availability_role: "mock_da"
-   switches: "cdr"
+   switches: "cr"
    zkvm_role: "mock_zkvm"
    debug: true
    rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
@@ -573,14 +573,14 @@ Grant EC2 instance role access to secrets:
 
 1. **Use release builds in development**: `debug: false` (faster runtime)
 2. **Skip unnecessary roles**: Use `switches=r` for rollup-only updates
-3. **Pre-bake AMI**: Create AMI after common role, use `switches=dr` for instances
+3. **Pre-bake AMI**: Create AMI after common role, use `switches=r` for instances
 4. **Use mock_zkvm in dev**: Switch to `risc0` only for production
 
 ### Pre-Baked AMI Workflow
 
 1. Deploy once with `switches=c` (common only)
 2. Create AMI from that instance
-3. Launch new instances from AMI with `switches=dr` (skip common)
+3. Launch new instances from AMI with `switches=r` (skip common)
 4. Reduces instance boot time from ~20min to ~5min
 
 ## Next Steps
