@@ -1,0 +1,15 @@
+---
+# Mock DA Configuration
+
+da_feature: "{{ 'mock_da_external' if mock_da_external_url is defined else 'mock_da' }}"
+# DA start height for the rollup
+da_start_height: 1
+# Mock DA rollup address (32-byte hex string)
+da_rollup_address: "0000000000000000000000000000000000000000000000000000000000000000"
+
+# MockDa specific. Ignored if `mock_da_external_url` is set
+mock_da_block_time_ms: 6000
+mock_da_finalization: 0
+
+# External MockDa server
+# mock_da_external_url: ""
