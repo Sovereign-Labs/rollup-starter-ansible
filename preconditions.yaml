@@ -1,9 +1,8 @@
 ---
-# Preconditions - Load DA configuration variables
-- include_vars: "roles/data-availability/{{ data_availability_role }}/defaults/main.yaml"
+# Preconditions - Display configuration info
+# Note: DA configuration variables are now loaded by the rollup role
 
-# Display configuration info
 - name: Display DA configuration
   debug:
-    msg: "Using {{ data_availability_role }} DA with start height: {{ da_start_height }}"
+    msg: "Using {{ data_availability_role }} DA"
   run_once: true

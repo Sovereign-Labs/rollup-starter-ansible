@@ -9,7 +9,7 @@
   become: yes
   vars:
     # Default switches - can be overridden via runtime_vars.yaml or command line
-    switches: "cdr"  # Default: run all roles (common, data-availability, rollup)
+    switches: "cr"  # Default: run all roles (common, rollup)
     wipe: false
 
   pre_tasks:
@@ -28,12 +28,12 @@
     - name: Check data_availability_role is defined
       assert:
         that: data_availability_role is defined
-        fail_msg: "Please specify 'data_availability_role' with the sub-role under data-availability (celestia, mock_da)."
+        fail_msg: "Please specify 'data_availability_role' (celestia or mock_da)."
 
     - name: Check switches parameter is provided
       assert:
         that: switches | length > 0
-        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cdr). Valid values: 'c' (common), 'd' (data availability), 'r' (rollup)."
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup)."
 
     - name: Import preconditions
       import_tasks: preconditions.yaml
@@ -41,7 +41,5 @@
   roles:
     - role: "./roles/common"
       when: "'c' in switches"
-    - role: "./roles/data-availability/{{ data_availability_role }}"
-      when: "'d' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"

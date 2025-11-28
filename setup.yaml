@@ -2,7 +2,7 @@
 - name: "Playbook Runner"
   hosts: all
   vars:
-    switches: "cdr"  # Default: run all roles (common, data-availability, rollup)
+    switches: "cr"  # Default: run all roles (common, rollup)
     wipe: false
     data_availability_role: "mock_da"  # Default DA role (overridden by inventory or -e)
   pre_tasks:
@@ -11,13 +11,11 @@
     - name: check switches parameter is provided
       assert:
         that: switches | length > 0
-        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cdr). Valid values: 'c' (common), 'd' (data availability), 'r' (rollup)."
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup)."
     - name: import preconditions
       import_tasks: preconditions.yaml
   roles:
     - role: "./roles/common"
       when: "'c' in switches"
-    - role: "./roles/data-availability/{{ data_availability_role }}"
-      when: "'d' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"
