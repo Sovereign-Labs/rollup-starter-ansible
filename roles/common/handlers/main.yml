@@ -2,3 +2,9 @@
 - name: update-initramfs
   become: true
   command: update-initramfs -u
+
+- name: restart journald
+  become: true
+  systemd:
+    name: systemd-journald
+    state: restarted

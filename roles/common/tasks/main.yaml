@@ -25,6 +25,9 @@
   include_tasks: disks.yaml
   when: setup_disks | bool
 
+- name: configure journald to use logs disk
+  include_tasks: journald.yaml
+
 - name: telegraf agent for monitoring metrics
   include_tasks: telegraf.yaml
 

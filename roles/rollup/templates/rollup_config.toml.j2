@@ -7,8 +7,7 @@ user_commit_concurrency = {{ rollup_state_user_commit_concurrency }}
 user_hashtable_buckets = {{ rollup_state_user_hashtable_buckets }}
 user_preallocate_ht = {{ rollup_state_user_preallocate_ht | lower }}
 kernel_commit_concurrency = 2
-kernel_hashtable_buckets = 256000
-pruner_versions_to_keep = 20
+pruner_versions_to_keep = 100
 
 [runner]
 da_polling_interval_ms = 2000
