@@ -104,7 +104,8 @@
     path: "{{ rollup_storage_dir }}"
     src: "UUID={{ largest_disk_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
   when: available_devices | length >= 1
@@ -157,7 +158,8 @@
     path: "{{ rollup_log_dir }}"
     src: "UUID={{ second_largest_disk_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
   when: available_devices | length >= 2
@@ -214,7 +216,8 @@
     path: "{{ da_store }}"
     src: "UUID={{ third_largest_disk_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
   when: use_third_disk_for_da
