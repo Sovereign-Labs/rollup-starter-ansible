@@ -1,3 +1,31 @@
 - name: set effective hostname
   set_fact:
     effective_hostname: "{{ custom_host_label | default(inventory_hostname) }}"
+
+# Load raw disk profile configuration
+- name: load disk profile
+  set_fact:
+    disk_profile_raw: "{{ disk_custom if disk_profile == 'custom' else disk_profiles[disk_profile] }}"
+
+# Run disk discovery if profile uses auto_discover
+- name: run disk discovery
+  include_tasks: disk_discovery.yaml
+  when: disk_profile_raw.auto_discover | default(false)
+
+# Resolve disk configuration from discovered disks (auto_discover mode)
+- name: resolve disk config from discovered disks
+  set_fact:
+    disk_config:
+      auto_discover: true
+      use_raid: "{{ disk_profile_raw.use_raid | default(false) }}"
+      raid_disks: "{{ discovered_instance_store_disks[:disk_profile_raw.raid_disk_count | default(0) | int] }}"
+      rollup_disk: ""
+      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none and discovered_instance_store_disks | length > disk_profile_raw.logs_disk_index | int else '' }}"
+      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none and discovered_instance_store_disks | length > disk_profile_raw.da_disk_index | int else '' }}"
+  when: disk_profile_raw.auto_discover | default(false)
+
+# Use profile directly (non-auto_discover mode)
+- name: set disk config from profile
+  set_fact:
+    disk_config: "{{ disk_profile_raw }}"
+  when: not (disk_profile_raw.auto_discover | default(false))

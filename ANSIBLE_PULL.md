@@ -311,7 +311,7 @@ setup_disks: true
 
 # Directories
 rollup_storage_dir: "/mnt/rollup"
-rollup_log_dir: "/mnt/logs"
+rollup_log_dir: "/mnt/logs"  # Only used when logs_disk is configured
 
 # Monitoring
 custom_host_label: "prod-rollup-01"

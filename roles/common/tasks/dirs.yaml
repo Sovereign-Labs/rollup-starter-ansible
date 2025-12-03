@@ -24,3 +24,4 @@
     state: directory
     owner: sovereign
     group: sovereign
+  when: disk_config.logs_disk | default('') | length > 0

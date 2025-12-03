@@ -77,7 +77,7 @@ All configuration is organized in role-based defaults and secret files:
 - `raw_disk_list` - Disks to mount (default: AWS c5ad.4xlarge)
 - `setup_disks` - Enable automatic disk setup (default: true)
 - `rollup_storage_dir` - Rollup data path (default: `/mnt/rollup`)
-- `rollup_log_dir` - Log path (default: `/mnt/logs`)
+- `rollup_log_dir` - Log path (default: `/mnt/logs`, only used when `logs_disk` is configured)
 - `da_store` - DA data path (default: `/mnt/da`)
 - `max_open_files` - File descriptor limit (default: 1000000)
 - Monitoring endpoints (InfluxDB, Loki, Tempo)

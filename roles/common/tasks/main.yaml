@@ -27,6 +27,7 @@
 
 - name: configure journald to use logs disk
   include_tasks: journald.yaml
+  when: disk_config.logs_disk | default('') | length > 0
 
 - name: telegraf agent for monitoring metrics
   include_tasks: telegraf.yaml

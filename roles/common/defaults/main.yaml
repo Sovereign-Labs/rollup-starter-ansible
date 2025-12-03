@@ -7,7 +7,8 @@
 # Set to "none" to skip disk setup entirely.
 #
 # Available profiles:
-#   - aws_raid: RAID-1 for rollup (2 disks), separate logs disk
+#   - aws_auto: Auto-discover instance store disks (recommended for AWS)
+#   - aws_raid: RAID-1 for rollup (2 disks), explicit paths
 #   - aws_simple: Single disk for rollup, separate logs disk
 #   - hetzner: Single disk for rollup, logs on root volume
 #   - none: Skip disk setup (use existing mounts or root volume)
@@ -17,12 +18,20 @@ disk_profile: "none"
 
 # Predefined disk profiles
 disk_profiles:
+  # Auto-discover AWS instance store disks by model name
+  # Disks are sorted alphabetically and assigned by index
+  aws_auto:
+    auto_discover: true
+    use_raid: true
+    raid_disk_count: 2        # Number of disks to use for RAID (first N discovered)
+    logs_disk_index: 2        # Index of disk for logs (0-based), null to skip
+    da_disk_index: null       # Index of disk for DA (0-based), null to skip
+
   aws_raid:
     use_raid: true
     raid_disks:
       - "/dev/nvme1n1"
       - "/dev/nvme2n1"
-
     logs_disk: ""
     da_disk: ""
 
@@ -57,7 +66,7 @@ reformat_disks: false
 
 # Mount points (typically no need to change these)
 rollup_storage_dir: "/mnt/rollup"
-rollup_log_dir: "/mnt/logs"
+rollup_log_dir: "/mnt/logs"  # Only used when logs_disk is configured; otherwise journald uses default location
 da_store: "/mnt/da"
 
 # File limits for users

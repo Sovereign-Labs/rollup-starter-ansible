@@ -4,11 +4,14 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_raid, aws_simple, hetzner, none, custom
+# Set disk_profile variable to select: aws_auto, aws_raid, aws_simple, hetzner, none, custom
 #
-# Profiles define:
+# For aws_auto profile, disk paths are resolved from discovered instance store disks.
+# For other profiles, disk paths are specified explicitly.
+#
+# Resolved disk_config contains:
 #   - use_raid: Whether to create RAID-1 for rollup storage
-#   - raid_disks: List of 2 disks for RAID-1 (when use_raid=true)
+#   - raid_disks: List of disks for RAID-1 (when use_raid=true)
 #   - rollup_disk: Single disk for rollup (when use_raid=false)
 #   - logs_disk: Disk for /mnt/logs (empty string = skip)
 #   - da_disk: Disk for /mnt/da (empty string = skip)
@@ -17,15 +20,11 @@
 # PHASE 1: Load and Validate Profile
 # =============================================================================
 
-- name: resolve disk configuration from profile
-  set_fact:
-    disk_config: "{{ disk_custom if disk_profile == 'custom' else disk_profiles[disk_profile] }}"
-
 - name: display selected disk profile
   debug:
     msg:
       - "===== Disk Configuration ====="
-      - "Profile: {{ disk_profile }}"
+      - "Profile: {{ disk_profile }}{{ ' (auto-discovered)' if disk_config.auto_discover | default(false) else '' }}"
       - "Use RAID: {{ disk_config.use_raid | default(false) }}"
       - "RAID disks: {{ disk_config.raid_disks | default([]) | join(', ') or 'N/A' }}"
       - "Rollup disk: {{ disk_config.rollup_disk | default('N/A') or 'N/A' }}"
