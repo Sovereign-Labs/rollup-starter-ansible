@@ -20,14 +20,14 @@ disk_profile: "none"
 disk_profiles:
   # Auto-discover AWS instance store disks by model name
   # Disks are sorted alphabetically and assigned by index
-  aws_auto:
+  aws_raid:
     auto_discover: true
     use_raid: true
     raid_disk_count: 2        # Number of disks to use for RAID (first N discovered)
     logs_disk_index: 2        # Index of disk for logs (0-based), null to skip
     da_disk_index: null       # Index of disk for DA (0-based), null to skip
 
-  aws_raid:
+  raid_manual:
     use_raid: true
     raid_disks:
       - "/dev/nvme1n1"

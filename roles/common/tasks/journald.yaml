@@ -1,0 +1,53 @@
+---
+# Configure systemd-journald to store logs on the dedicated logs disk
+# This moves journal storage from /var/log/journal to {{ rollup_log_dir }}/journal
+# Only runs when logs_disk is configured in the disk profile
+
+- name: create journal directory on logs disk
+  file:
+    path: "{{ rollup_log_dir }}/journal"
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: '2755'
+  become: true
+
+- name: check if /var/log/journal is already a symlink
+  stat:
+    path: /var/log/journal
+  register: var_log_journal_stat
+  become: true
+
+- name: remove existing /var/log/journal directory if not a symlink
+  file:
+    path: /var/log/journal
+    state: absent
+  become: true
+  when: var_log_journal_stat.stat.exists and not var_log_journal_stat.stat.islnk
+
+- name: create symlink from /var/log/journal to logs disk
+  file:
+    src: "{{ rollup_log_dir }}/journal"
+    dest: /var/log/journal
+    state: link
+    force: true
+  become: true
+
+- name: create journald config directory
+  file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: deploy journald configuration
+  template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/rollup.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: restart journald

@@ -1,0 +1,63 @@
+---
+# Auto-discover AWS EC2 NVMe instance store disks
+# This finds all disks with model "Amazon EC2 NVMe Instance Storage"
+# and creates a sorted list for use in disk configuration
+
+- name: check if nvme CLI is available
+  command: which nvme
+  register: nvme_cli_check
+  failed_when: false
+  changed_when: false
+
+- name: install nvme-cli if not present
+  apt:
+    name: nvme-cli
+    state: present
+    update_cache: true
+  become: true
+  when: nvme_cli_check.rc != 0
+
+- name: discover NVMe devices
+  shell: |
+    lsblk -d -o NAME,MODEL -n | grep "Amazon EC2 NVMe Instance Storage" | awk '{print "/dev/" $1}' | sort
+  register: nvme_discovery
+  changed_when: false
+
+- name: set discovered instance store disks
+  set_fact:
+    discovered_instance_store_disks: "{{ nvme_discovery.stdout_lines }}"
+
+- name: display discovered instance store disks
+  debug:
+    msg:
+      - "===== Disk Discovery ====="
+      - "Found {{ discovered_instance_store_disks | length }} instance store disk(s):"
+      - "{{ discovered_instance_store_disks }}"
+
+- name: validate sufficient disks for RAID
+  fail:
+    msg: >
+      Not enough instance store disks for RAID configuration.
+      Required: {{ disk_profile_raw.raid_disk_count }} disks for RAID.
+      Found: {{ discovered_instance_store_disks | length }} disk(s).
+  when:
+    - disk_profile_raw.use_raid | default(false)
+    - discovered_instance_store_disks | length < disk_profile_raw.raid_disk_count | int
+
+- name: validate logs disk index
+  fail:
+    msg: >
+      Logs disk index {{ disk_profile_raw.logs_disk_index }} is out of range.
+      Found {{ discovered_instance_store_disks | length }} disk(s) (indices 0-{{ discovered_instance_store_disks | length - 1 }}).
+  when:
+    - disk_profile_raw.logs_disk_index is not none
+    - discovered_instance_store_disks | length <= disk_profile_raw.logs_disk_index | int
+
+- name: validate da disk index
+  fail:
+    msg: >
+      DA disk index {{ disk_profile_raw.da_disk_index }} is out of range.
+      Found {{ discovered_instance_store_disks | length }} disk(s) (indices 0-{{ discovered_instance_store_disks | length - 1 }}).
+  when:
+    - disk_profile_raw.da_disk_index is not none
+    - discovered_instance_store_disks | length <= disk_profile_raw.da_disk_index | int
