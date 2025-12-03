@@ -17,8 +17,9 @@ echo ""
 echo "Cleaning rollup storage directory..."
 rm -rf {{ rollup_storage_dir }}/*
 
-echo "Cleaning rollup logs..."
-sudo rm -f {{ rollup_log_dir }}/rollup.log
+echo "Clearing rollup journal logs..."
+sudo journalctl --rotate
+sudo journalctl --vacuum-time=1s -u rollup
 
 {% if data_availability_role == 'mock_da' and mock_da_external_url is not defined %}
 echo "Cleaning local mock DA data..."

@@ -23,7 +23,7 @@
 
 - name: setup disks
   include_tasks: disks.yaml
-  when: setup_disks | bool
+  when: disk_profile != 'none'
 
 - name: configure journald to use logs disk
   include_tasks: journald.yaml

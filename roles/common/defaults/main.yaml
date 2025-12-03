@@ -1,16 +1,63 @@
 ---
-# Set to false if you want to manually set up the disks before running the playbook
-# When true, disks are automatically discovered and assigned:
-# - Largest unmounted disk -> rollup_storage_dir
-# - Second largest unmounted disk -> rollup_log_dir
-# - Third largest unmounted disk -> da_store (only if data_availability_role is mock_da)
-setup_disks: true
-# Reformat existing disks. Use with caution
+# =============================================================================
+# Disk Configuration
+# =============================================================================
+#
+# Select a predefined disk profile or use "custom" with disk_custom variable.
+# Set to "none" to skip disk setup entirely.
+#
+# Available profiles:
+#   - aws_raid: RAID-1 for rollup (2 disks), separate logs disk
+#   - aws_simple: Single disk for rollup, separate logs disk
+#   - hetzner: Single disk for rollup, logs on root volume
+#   - none: Skip disk setup (use existing mounts or root volume)
+#   - custom: User provides disk_custom variable with full config
+#
+disk_profile: "none"
+
+# Predefined disk profiles
+disk_profiles:
+  aws_raid:
+    use_raid: true
+    raid_disks:
+      - "/dev/nvme1n1"
+      - "/dev/nvme2n1"
+
+    logs_disk: ""
+    da_disk: ""
+
+  aws_simple:
+    use_raid: false
+    rollup_disk: "/dev/nvme1n1"
+    logs_disk: "/dev/nvme2n1"
+    da_disk: ""
+
+  hetzner:
+    use_raid: false
+    rollup_disk: "/dev/nvme1n1"
+    logs_disk: ""
+    da_disk: ""
+
+  none:
+    use_raid: false
+    rollup_disk: ""
+    logs_disk: ""
+    da_disk: ""
+
+# Custom disk configuration (used when disk_profile: "custom")
+# disk_custom:
+#   use_raid: true
+#   raid_disks: ["/dev/sda", "/dev/sdb"]
+#   logs_disk: "/dev/sdc"
+#   da_disk: "/dev/sdd"
+
+# Reformat existing disks. Use with caution - this will DESTROY all data!
+# When true: unmounts existing mounts, destroys RAID arrays, reformats disks
 reformat_disks: false
 
+# Mount points (typically no need to change these)
 rollup_storage_dir: "/mnt/rollup"
 rollup_log_dir: "/mnt/logs"
-# Only applicable for mock_da data-availability option
 da_store: "/mnt/da"
 
 # File limits for users
