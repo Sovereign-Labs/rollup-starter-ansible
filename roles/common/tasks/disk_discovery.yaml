@@ -1,37 +1,27 @@
 ---
-# Auto-discover AWS EC2 NVMe instance store disks
-# This finds all disks with model "Amazon EC2 NVMe Instance Storage"
-# and creates a sorted list for use in disk configuration
+# Auto-discover disks by model name pattern
+# Uses disk_profile_raw.disk_model to filter disks from lsblk output
 
-- name: check if nvme CLI is available
-  command: which nvme
-  register: nvme_cli_check
-  failed_when: false
-  changed_when: false
+- name: display disk model pattern
+  debug:
+    msg: "Searching for disks matching model: '{{ disk_profile_raw.disk_model }}'"
 
-- name: install nvme-cli if not present
-  apt:
-    name: nvme-cli
-    state: present
-    update_cache: true
-  become: true
-  when: nvme_cli_check.rc != 0
-
-- name: discover NVMe devices
+- name: discover disks by model
   shell: |
-    lsblk -d -o NAME,MODEL -n | grep "Amazon EC2 NVMe Instance Storage" | awk '{print "/dev/" $1}' | sort
-  register: nvme_discovery
+    lsblk -d -o NAME,MODEL -n | grep "{{ disk_profile_raw.disk_model }}" | awk '{print "/dev/" $1}' | sort
+  register: disk_discovery
   changed_when: false
 
-- name: set discovered instance store disks
+- name: set discovered disks
   set_fact:
-    discovered_instance_store_disks: "{{ nvme_discovery.stdout_lines }}"
+    discovered_instance_store_disks: "{{ disk_discovery.stdout_lines }}"
 
-- name: display discovered instance store disks
+- name: display discovered disks
   debug:
     msg:
       - "===== Disk Discovery ====="
-      - "Found {{ discovered_instance_store_disks | length }} instance store disk(s):"
+      - "Model pattern: '{{ disk_profile_raw.disk_model }}'"
+      - "Found {{ discovered_instance_store_disks | length }} disk(s):"
       - "{{ discovered_instance_store_disks }}"
 
 - name: validate sufficient disks for RAID
