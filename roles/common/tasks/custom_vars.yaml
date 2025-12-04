@@ -1,3 +1,46 @@
 - name: set effective hostname
   set_fact:
     effective_hostname: "{{ custom_host_label | default(inventory_hostname) }}"
+
+- name: load disk profile
+  set_fact:
+    disk_profile_raw: "{{ disk_custom if disk_profile == 'custom' else disk_profiles[disk_profile] }}"
+
+- name: run disk discovery
+  include_tasks: disk_discovery.yaml
+  when: disk_profile_raw.auto_discover | default(false)
+
+- name: resolve disk config from discovered disks (standard RAID)
+  set_fact:
+    disk_config:
+      auto_discover: true
+      use_raid: "{{ disk_profile_raw.use_raid }}"
+      raid_write_mostly: false
+      raid_disks: "{{ discovered_instance_store_disks[:disk_profile_raw.raid_disk_count | int] }}"
+      rollup_disk: ""
+      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
+  when:
+    - disk_profile_raw.auto_discover | default(false)
+    - not (disk_profile_raw.raid_write_mostly | default(false))
+
+- name: resolve disk config from discovered disks (write-mostly RAID with EBS)
+  set_fact:
+    disk_config:
+      auto_discover: true
+      use_raid: "{{ disk_profile_raw.use_raid }}"
+      raid_write_mostly: true
+      raid_disks:
+        - "{{ discovered_instance_store_disks[0] }}"
+        - "{{ discovered_ebs_disk }}"
+      rollup_disk: ""
+      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
+  when:
+    - disk_profile_raw.auto_discover | default(false)
+    - disk_profile_raw.raid_write_mostly | default(false)
+
+- name: set disk config from profile
+  set_fact:
+    disk_config: "{{ disk_profile_raw }}"
+  when: not (disk_profile_raw.auto_discover | default(false))

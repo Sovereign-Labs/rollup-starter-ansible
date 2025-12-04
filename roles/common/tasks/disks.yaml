@@ -1,229 +1,398 @@
 ---
-# Dynamic disk discovery and setup
-# Finds all non-root block devices and assigns them based on size:
-# - Largest: rollup_storage_dir
-# - Second largest: logs
-# - Third largest: da_store (only if data_availability_role is mock_da)
+# =============================================================================
+# Disk Setup (Profile-Based)
+# =============================================================================
+#
+# Uses predefined disk profiles from disk_profiles dictionary.
+# Set disk_profile variable to select: aws_raid, aws_simple, raid_manual, hetzner, none, custom
+#
+# For aws_raid profile, disk paths are resolved from discovered instance store disks.
+# For other profiles, disk paths are specified explicitly.
+#
+# Resolved disk_config contains:
+#   - use_raid: Whether to create RAID-1 for rollup storage
+#   - raid_disks: List of disks for RAID-1 (when use_raid=true)
+#   - rollup_disk: Single disk for rollup (when use_raid=false)
+#   - logs_disk: Disk for /mnt/logs (empty string = skip)
+#   - da_disk: Disk for /mnt/da (empty string = skip)
 
-- name: discover system disks (disks containing /, /boot, /boot/efi partitions)
-  shell: |
-    # Find all disks that contain system partitions
-    lsblk -nrpo NAME,MOUNTPOINT,TYPE | \
-    awk '$3=="part" && ($2=="/" || $2=="/boot" || $2=="/boot/efi" || $2=="/boot/grub") {
-      disk=$1
-      # Handle NVMe naming (nvme0n1p1 -> nvme0n1)
-      if (match(disk, /nvme[0-9]+n[0-9]+p[0-9]+$/)) {
-        sub(/p[0-9]+$/, "", disk)
-      }
-      # Handle standard naming (sda1 -> sda, xvda1 -> xvda)
-      else {
-        sub(/[0-9]+$/, "", disk)
-      }
-      # Remove /dev/ prefix for consistency
-      sub(/^\/dev\//, "", disk)
-      print disk
-    }' | sort -u
-  register: system_disks_raw
-  changed_when: false
-  become: true
+# =============================================================================
+# PHASE 1: Load and Validate Profile
+# =============================================================================
 
-- name: discover all non-system block devices
-  shell: |
-    # Get system disks as a pattern for exclusion
-    system_disks="{{ system_disks_raw.stdout_lines | join('|') }}"
-    if [ -z "$system_disks" ]; then
-      system_disks="^$"  # Match nothing if no system disks found
-    fi
-    # List all disks, exclude system disks, sort by size descending
-    lsblk -ndo NAME,SIZE,TYPE | \
-    awk -v exclude="$system_disks" '$3=="disk" && $1 !~ exclude {print $2,$1}' | \
-    sort -hr | \
-    awk '{print $2}'
-  register: available_devices_raw
-  changed_when: false
-  become: true
-
-- name: parse available devices list
-  set_fact:
-    available_devices: "{{ available_devices_raw.stdout_lines }}"
-
-- name: set disk assignments
-  set_fact:
-    largest_disk: "{{ available_devices[0] | default('') }}"
-    second_largest_disk: "{{ available_devices[1] | default('') }}"
-    third_largest_disk: "{{ available_devices[2] | default('') }}"
-
-- name: print disk discovery results
+- name: display selected disk profile
   debug:
     msg:
-      - "System disks (excluded): {{ system_disks_raw.stdout_lines | join(', ') if system_disks_raw.stdout_lines else 'None detected' }}"
-      - "Found {{ available_devices | length }} available data disk(s)"
-      - "Largest disk: {{ largest_disk if largest_disk else 'None - rollup_storage_dir will use root volume' }}"
-      - "Second largest disk: {{ second_largest_disk if second_largest_disk else 'None - logs will use root volume' }}"
-      - "Third largest disk: {{ third_largest_disk if third_largest_disk else 'None - da_store will use root volume' }}"
-      - "Reformat disks: {{ reformat_disks | default(false) }}"
-      - "DA setup: {{ 'Using third disk for local mock_da' if ((available_devices | length >= 3) and data_availability_role == 'mock_da' and mock_da_external_url is not defined) else ('Using external mock_da - no disk needed' if (data_availability_role == 'mock_da' and mock_da_external_url is defined) else ('mock_da enabled but no third disk available' if (data_availability_role == 'mock_da') else 'Not using mock_da')) }}"
+      - "===== Disk Configuration ====="
+      - "Profile: {{ disk_profile }}{{ ' (auto-discovered)' if disk_config.auto_discover | default(false) else '' }}"
+      - "Use RAID: {{ disk_config.use_raid | default(false) }}{{ ' (write-mostly)' if disk_config.raid_write_mostly | default(false) else '' }}"
+      - "RAID disks: {{ disk_config.raid_disks | default([]) | join(', ') or 'N/A' }}"
+      - "Rollup disk: {{ disk_config.rollup_disk | default('N/A') or 'N/A' }}"
+      - "Logs disk: {{ disk_config.logs_disk | default('') or 'N/A (root volume)' }}"
+      - "DA disk: {{ disk_config.da_disk | default('') or 'N/A (root volume)' }}"
+      - "Reformat: {{ reformat_disks | default(false) }}"
 
-# Setup largest disk for rollup_storage_dir (requires at least 1 disk)
-- name: check if largest disk has filesystem
-  shell: blkid -s TYPE -o value /dev/{{ largest_disk }} || echo "none"
-  register: largest_disk_fstype
+# =============================================================================
+# PHASE 2: Validate Disks Exist
+# =============================================================================
+
+- name: validate RAID disks exist
+  stat:
+    path: "{{ item }}"
+  register: raid_disk_check
+  loop: "{{ disk_config.raid_disks | default([]) }}"
+  when: disk_config.use_raid | default(false) | bool
+  failed_when: not raid_disk_check.stat.exists
+
+- name: validate rollup disk exists
+  stat:
+    path: "{{ disk_config.rollup_disk }}"
+  register: rollup_disk_check
+  when:
+    - not (disk_config.use_raid | default(false) | bool)
+    - disk_config.rollup_disk | default('') | length > 0
+  failed_when: not rollup_disk_check.stat.exists
+
+- name: validate logs disk exists
+  stat:
+    path: "{{ disk_config.logs_disk }}"
+  register: logs_disk_check
+  when: disk_config.logs_disk | default('') | length > 0
+  failed_when: not logs_disk_check.stat.exists
+
+- name: validate da disk exists
+  stat:
+    path: "{{ disk_config.da_disk }}"
+  register: da_disk_check
+  when: disk_config.da_disk | default('') | length > 0
+  failed_when: not da_disk_check.stat.exists
+
+# =============================================================================
+# PHASE 3: Check Current Mount State (for idempotency)
+# =============================================================================
+
+- name: check if rollup_storage_dir is already mounted
+  shell: mountpoint -q {{ rollup_storage_dir }} && echo "mounted" || echo "not_mounted"
+  register: rollup_mount_state
   changed_when: false
   become: true
-  when: available_devices | length >= 1
 
-- name: unmount largest disk if reformat requested
+- name: check if rollup_log_dir is already mounted
+  shell: mountpoint -q {{ rollup_log_dir }} && echo "mounted" || echo "not_mounted"
+  register: logs_mount_state
+  changed_when: false
+  become: true
+
+- name: check if da_store is already mounted
+  shell: mountpoint -q {{ da_store }} && echo "mounted" || echo "not_mounted"
+  register: da_mount_state
+  changed_when: false
+  become: true
+
+- name: check if RAID array exists
+  shell: |
+    if [ -e /dev/md/rollup ]; then
+      mdadm --detail /dev/md/rollup > /dev/null 2>&1 && echo "exists" || echo "broken"
+    else
+      echo "none"
+    fi
+  register: raid_state
+  changed_when: false
+  become: true
+
+- name: display current state
+  debug:
+    msg:
+      - "===== Current Mount State ====="
+      - "{{ rollup_storage_dir }}: {{ rollup_mount_state.stdout }}"
+      - "{{ rollup_log_dir }}: {{ logs_mount_state.stdout }}"
+      - "{{ da_store }}: {{ da_mount_state.stdout }}"
+      - "RAID array: {{ raid_state.stdout }}"
+
+# =============================================================================
+# PHASE 4: Setup Rollup Storage (RAID-1 or Single Disk)
+# =============================================================================
+
+- name: unmount rollup storage for reformat
   mount:
     path: "{{ rollup_storage_dir }}"
     state: unmounted
   become: true
   when:
-    - available_devices | length >= 1
-    - reformat_disks | default(false)
-    - largest_disk_fstype.stdout != 'none'
+    - reformat_disks | default(false) | bool
+    - rollup_mount_state.stdout == 'mounted'
 
-- name: format largest disk with ext4
+- name: stop existing RAID array for reformat
+  shell: mdadm --stop /dev/md/rollup || true
+  become: true
+  when:
+    - reformat_disks | default(false) | bool
+    - raid_state.stdout == 'exists'
+
+- name: clear RAID superblocks for reformat
+  shell: |
+    mdadm --zero-superblock {{ item }} || true
+    wipefs -a {{ item }} || true
+  become: true
+  loop: "{{ disk_config.raid_disks | default([]) }}"
+  when:
+    - reformat_disks | default(false) | bool
+    - disk_config.use_raid | default(false) | bool
+
+- name: create RAID-1 array (standard)
+  shell: |
+    mdadm --create /dev/md/rollup \
+      --level=1 \
+      --raid-devices={{ disk_config.raid_disks | length }} \
+      --name=rollup \
+      --metadata=1.2 \
+      --run \
+      {{ disk_config.raid_disks | join(' ') }}
+  become: true
+  when:
+    - disk_config.use_raid | default(false) | bool
+    - not (disk_config.raid_write_mostly | default(false) | bool)
+    - raid_state.stdout != 'exists'
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: create RAID-1 array (write-mostly for EBS persistence)
+  shell: |
+    mdadm --create /dev/md/rollup \
+      --level=1 \
+      --raid-devices={{ disk_config.raid_disks | length }} \
+      --name=rollup \
+      --metadata=1.2 \
+      --run \
+      {{ disk_config.raid_disks[0] }} \
+      --write-mostly {{ disk_config.raid_disks[1] }}
+  become: true
+  when:
+    - disk_config.use_raid | default(false) | bool
+    - disk_config.raid_write_mostly | default(false) | bool
+    - raid_state.stdout != 'exists'
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: wait for RAID device
+  wait_for:
+    path: /dev/md/rollup
+    state: present
+    timeout: 30
+  become: true
+  when:
+    - disk_config.use_raid | default(false) | bool
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: format RAID array
   filesystem:
     fstype: ext4
-    dev: "/dev/{{ largest_disk }}"
+    dev: /dev/md/rollup
     force: "{{ reformat_disks | default(false) }}"
   become: true
   when:
-    - available_devices | length >= 1
-    - largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
+    - disk_config.use_raid | default(false) | bool
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: get UUID of largest disk
-  command: blkid -s UUID -o value /dev/{{ largest_disk }}
-  register: largest_disk_uuid
+- name: get RAID UUID
+  command: blkid -s UUID -o value /dev/md/rollup
+  register: raid_uuid
   changed_when: false
   become: true
-  when: available_devices | length >= 1
+  when: disk_config.use_raid | default(false) | bool
 
-- name: ensure rollup_storage_dir is mounted
+- name: mount RAID array
   mount:
     path: "{{ rollup_storage_dir }}"
-    src: "UUID={{ largest_disk_uuid.stdout }}"
+    src: "UUID={{ raid_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
-  when: available_devices | length >= 1
+  when:
+    - disk_config.use_raid | default(false) | bool
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: set sovereign ownership on rollup_storage_dir
+- name: check if RAID in mdadm.conf
+  shell: grep -q "name=.*:rollup" /etc/mdadm/mdadm.conf && echo "exists" || echo "missing"
+  register: mdadm_conf_state
+  changed_when: false
+  become: true
+  when: disk_config.use_raid | default(false) | bool
+
+- name: add RAID to mdadm.conf
+  shell: mdadm --detail --scan >> /etc/mdadm/mdadm.conf
+  become: true
+  when:
+    - disk_config.use_raid | default(false) | bool
+    - mdadm_conf_state.stdout == 'missing'
+  notify: update-initramfs
+
+- name: format rollup disk
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk_config.rollup_disk }}"
+    force: "{{ reformat_disks | default(false) }}"
+  become: true
+  when:
+    - not (disk_config.use_raid | default(false) | bool)
+    - disk_config.rollup_disk | default('') | length > 0
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: get rollup disk UUID
+  command: blkid -s UUID -o value {{ disk_config.rollup_disk }}
+  register: rollup_disk_uuid
+  changed_when: false
+  become: true
+  when:
+    - not (disk_config.use_raid | default(false) | bool)
+    - disk_config.rollup_disk | default('') | length > 0
+
+- name: mount rollup disk
+  mount:
+    path: "{{ rollup_storage_dir }}"
+    src: "UUID={{ rollup_disk_uuid.stdout }}"
+    fstype: ext4
+    opts: "defaults,noatime"
+    passno: "2"
+    state: mounted
+  become: true
+  when:
+    - not (disk_config.use_raid | default(false) | bool)
+    - disk_config.rollup_disk | default('') | length > 0
+    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: set rollup storage ownership
   file:
     path: "{{ rollup_storage_dir }}"
     state: directory
     owner: sovereign
     group: sovereign
   become: true
+  when: disk_config.rollup_disk | default('') | length > 0 or (disk_config.use_raid | default(false) | bool)
 
-# Setup second largest disk for logs (requires at least 2 disks)
-- name: check if second largest disk has filesystem
-  shell: blkid -s TYPE -o value /dev/{{ second_largest_disk }} || echo "none"
-  register: second_largest_disk_fstype
-  changed_when: false
-  become: true
-  when: available_devices | length >= 2
+# =============================================================================
+# PHASE 5: Setup Logs Disk
+# =============================================================================
 
-- name: unmount second largest disk if reformat requested
+- name: unmount logs disk for reformat
   mount:
     path: "{{ rollup_log_dir }}"
     state: unmounted
   become: true
   when:
-    - available_devices | length >= 2
-    - reformat_disks | default(false)
-    - second_largest_disk_fstype.stdout != 'none'
+    - reformat_disks | default(false) | bool
+    - logs_mount_state.stdout == 'mounted'
+    - disk_config.logs_disk | default('') | length > 0
 
-- name: format second largest disk with ext4
+- name: format logs disk
   filesystem:
     fstype: ext4
-    dev: "/dev/{{ second_largest_disk }}"
+    dev: "{{ disk_config.logs_disk }}"
     force: "{{ reformat_disks | default(false) }}"
   become: true
   when:
-    - available_devices | length >= 2
-    - second_largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
+    - disk_config.logs_disk | default('') | length > 0
+    - logs_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: get UUID of second largest disk
-  command: blkid -s UUID -o value /dev/{{ second_largest_disk }}
-  register: second_largest_disk_uuid
+- name: get logs disk UUID
+  command: blkid -s UUID -o value {{ disk_config.logs_disk }}
+  register: logs_disk_uuid
   changed_when: false
   become: true
-  when: available_devices | length >= 2
+  when: disk_config.logs_disk | default('') | length > 0
 
-- name: ensure rollup_log_dir is mounted
+- name: mount logs disk
   mount:
     path: "{{ rollup_log_dir }}"
-    src: "UUID={{ second_largest_disk_uuid.stdout }}"
+    src: "UUID={{ logs_disk_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
-  when: available_devices | length >= 2
+  when:
+    - disk_config.logs_disk | default('') | length > 0
+    - logs_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: set sovereign ownership on rollup_log_dir
+- name: set logs directory ownership
   file:
     path: "{{ rollup_log_dir }}"
     state: directory
     owner: sovereign
     group: sovereign
   become: true
+  when: disk_config.logs_disk | default('') | length > 0
 
-# Setup third largest disk for da_store (only if mock_da, not using external mock_da, AND we have 3+ disks)
-- name: check if third disk should be used for da_store
-  set_fact:
-    use_third_disk_for_da: "{{ (available_devices | length >= 3) and data_availability_role == 'mock_da' and mock_da_external_url is not defined }}"
+# =============================================================================
+# PHASE 6: Setup DA Disk
+# =============================================================================
 
-- name: check if third largest disk has filesystem
-  shell: blkid -s TYPE -o value /dev/{{ third_largest_disk }} || echo "none"
-  register: third_largest_disk_fstype
-  changed_when: false
-  become: true
-  when: use_third_disk_for_da
-
-- name: unmount third largest disk if reformat requested
+- name: unmount da disk for reformat
   mount:
     path: "{{ da_store }}"
     state: unmounted
   become: true
   when:
-    - use_third_disk_for_da
-    - reformat_disks | default(false)
-    - third_largest_disk_fstype.stdout != 'none'
+    - reformat_disks | default(false) | bool
+    - da_mount_state.stdout == 'mounted'
+    - disk_config.da_disk | default('') | length > 0
 
-- name: format third largest disk with ext4
+- name: format da disk
   filesystem:
     fstype: ext4
-    dev: "/dev/{{ third_largest_disk }}"
+    dev: "{{ disk_config.da_disk }}"
     force: "{{ reformat_disks | default(false) }}"
   become: true
   when:
-    - use_third_disk_for_da
-    - third_largest_disk_fstype.stdout == 'none' or (reformat_disks | default(false))
+    - disk_config.da_disk | default('') | length > 0
+    - da_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: get UUID of third largest disk
-  command: blkid -s UUID -o value /dev/{{ third_largest_disk }}
-  register: third_largest_disk_uuid
+- name: get da disk UUID
+  command: blkid -s UUID -o value {{ disk_config.da_disk }}
+  register: da_disk_uuid
   changed_when: false
   become: true
-  when: use_third_disk_for_da
+  when: disk_config.da_disk | default('') | length > 0
 
-- name: ensure da_store is mounted
+- name: mount da disk
   mount:
     path: "{{ da_store }}"
-    src: "UUID={{ third_largest_disk_uuid.stdout }}"
+    src: "UUID={{ da_disk_uuid.stdout }}"
     fstype: ext4
-    opts: "noatime,nodiratime"
+    opts: "defaults,noatime"
+    passno: "2"
     state: mounted
   become: true
-  when: use_third_disk_for_da
+  when:
+    - disk_config.da_disk | default('') | length > 0
+    - da_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-- name: set sovereign ownership on da_store
+- name: set da directory ownership
   file:
     path: "{{ da_store }}"
     state: directory
     owner: sovereign
     group: sovereign
   become: true
-  when: use_third_disk_for_da
+  when: disk_config.da_disk | default('') | length > 0
+
+# =============================================================================
+# PHASE 7: Display RAID Status
+# =============================================================================
+
+- name: get RAID sync status
+  shell: cat /proc/mdstat 2>/dev/null || echo "No RAID arrays"
+  register: mdstat
+  changed_when: false
+  become: true
+  when: disk_config.use_raid | default(false) | bool
+
+- name: display RAID sync status
+  debug:
+    msg:
+      - "===== RAID Sync Status ====="
+      - "{{ mdstat.stdout_lines }}"
+      - ""
+      - "Note: RAID sync runs in background. Array is immediately usable."
+      - "Monitor: cat /proc/mdstat"
+  when: disk_config.use_raid | default(false) | bool

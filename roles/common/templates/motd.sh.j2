@@ -11,6 +11,7 @@ Wiping rollup data:       sudo /home/ubuntu/wipe-rollup-data.sh
 Make leader:              sudo /home/ubuntu/make-leader.sh
 Status:                   sudo systemctl status rollup
 Restart rollup:           sudo systemctl restart rollup
-Logs:                     tail -f {{ rollup_log_dir }}/rollup.log
+Logs (follow):            sudo journalctl -u rollup -f
+Logs (recent):            sudo journalctl -u rollup -n 100
 Sequencer readiness:      curl http://127.0.0.1:{{ rollup_http_port }}/sequencer/ready
 EOF

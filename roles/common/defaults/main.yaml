@@ -1,16 +1,88 @@
 ---
-# Set to false if you want to manually set up the disks before running the playbook
-# When true, disks are automatically discovered and assigned:
-# - Largest unmounted disk -> rollup_storage_dir
-# - Second largest unmounted disk -> rollup_log_dir
-# - Third largest unmounted disk -> da_store (only if data_availability_role is mock_da)
-setup_disks: true
-# Reformat existing disks. Use with caution
+# =============================================================================
+# Disk Configuration
+# =============================================================================
+#
+# Select a predefined disk profile or set to "none" to skip disk setup entirely.
+# Available profiles:
+#   - aws_raid: Auto-discover instance store disks (recommended for AWS)
+#   - aws_simple: Single disk for rollup, separate logs disk
+#   - raid_manual: RAID-1 for rollup (2 disks), explicit paths
+#   - hetzner: Single disk for rollup, logs on root volume
+#   - none: Skip disk setup (use existing mounts or root volume)
+#
+disk_profile: "none"
+
+# Predefined disk profiles
+#
+# Auto-discover profiles use disk_model to find disks by matching lsblk MODEL column.
+# Common disk_model patterns:
+#   - "Amazon EC2 NVMe Instance Storage"  - AWS instance store
+#   - "INTEL SSDPE"                       - Intel NVMe SSDs
+#   - "NVMe"                              - Generic NVMe (broad match)
+#   - "SAMSUNG"                           - Samsung SSDs
+#
+disk_profiles:
+  # AWS: Auto-discover instance store disks for RAID-1
+  aws_raid:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    use_raid: true
+    raid_disk_count: 2
+    logs_disk_index: 2
+    da_disk_index: null
+
+  # AWS: Hybrid RAID-1 with NVMe (fast) + EBS (persistent, write-mostly)
+  # NVMe serves reads, EBS provides persistence with write-behind buffer
+  aws_raid_ebs:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    ebs_serial_prefix: "vol"
+    use_raid: true
+    raid_write_mostly: true
+    logs_disk_index: 1
+    da_disk_index: null
+
+  aws_simple:
+    use_raid: false
+    rollup_disk: "/dev/nvme1n1"
+    logs_disk: "/dev/nvme2n1"
+    da_disk: ""
+
+  raid_manual:
+    use_raid: true
+    raid_disks:
+      - "/dev/nvme1n1"
+      - "/dev/nvme2n1"
+    logs_disk: ""
+    da_disk: ""
+
+  hetzner:
+    use_raid: false
+    rollup_disk: "/dev/nvme1n1"
+    logs_disk: ""
+    da_disk: ""
+
+  none:
+    use_raid: false
+    rollup_disk: ""
+    logs_disk: ""
+    da_disk: ""
+
+# Custom disk configuration (used when disk_profile: "custom")
+# disk_custom:
+#   use_raid: true
+#   raid_disks: ["/dev/sda", "/dev/sdb"]
+#   logs_disk: "/dev/sdc"
+#   da_disk: "/dev/sdd"
+
+# Reformat existing disks. Use with caution - this will DESTROY all data!
+# When true: unmounts existing mounts, destroys RAID arrays, reformats disks
 reformat_disks: false
 
+# Mount points (typically no need to change these)
 rollup_storage_dir: "/mnt/rollup"
-rollup_log_dir: "/mnt/logs"
-# Only applicable for mock_da data-availability option
+rollup_log_dir: "/mnt/logs"  # Only used when logs_disk is configured; otherwise journald uses default location
 da_store: "/mnt/da"
 
 # File limits for users
