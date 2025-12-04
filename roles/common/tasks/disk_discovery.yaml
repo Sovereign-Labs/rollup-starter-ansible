@@ -20,6 +20,10 @@
   set_fact:
     discovered_instance_store_disks: "{{ disk_discovery.stdout_lines | default([]) }}"
 
+- name: initialize discovered_ebs_disk
+  set_fact:
+    discovered_ebs_disk: ""
+
 - name: install nvme-cli for EBS detection
   apt:
     name: nvme-cli
