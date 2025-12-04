@@ -3,16 +3,13 @@
 # Disk Configuration
 # =============================================================================
 #
-# Select a predefined disk profile or use "custom" with disk_custom variable.
-# Set to "none" to skip disk setup entirely.
-#
+# Select a predefined disk profile or set to "none" to skip disk setup entirely.
 # Available profiles:
-#   - aws_auto: Auto-discover instance store disks (recommended for AWS)
-#   - aws_raid: RAID-1 for rollup (2 disks), explicit paths
+#   - aws_raid: Auto-discover instance store disks (recommended for AWS)
 #   - aws_simple: Single disk for rollup, separate logs disk
+#   - raid_manual: RAID-1 for rollup (2 disks), explicit paths
 #   - hetzner: Single disk for rollup, logs on root volume
 #   - none: Skip disk setup (use existing mounts or root volume)
-#   - custom: User provides disk_custom variable with full config
 #
 disk_profile: "none"
 
@@ -35,18 +32,18 @@ disk_profiles:
     logs_disk_index: 2        # Index of disk for logs (0-based), null to skip
     da_disk_index: null       # Index of disk for DA (0-based), null to skip
 
+  aws_simple:
+    use_raid: false
+    rollup_disk: "/dev/nvme1n1"
+    logs_disk: "/dev/nvme2n1"
+    da_disk: ""
+
   raid_manual:
     use_raid: true
     raid_disks:
       - "/dev/nvme1n1"
       - "/dev/nvme2n1"
     logs_disk: ""
-    da_disk: ""
-
-  aws_simple:
-    use_raid: false
-    rollup_disk: "/dev/nvme1n1"
-    logs_disk: "/dev/nvme2n1"
     da_disk: ""
 
   hetzner:

@@ -2,12 +2,10 @@
   set_fact:
     effective_hostname: "{{ custom_host_label | default(inventory_hostname) }}"
 
-# Load raw disk profile configuration
 - name: load disk profile
   set_fact:
     disk_profile_raw: "{{ disk_custom if disk_profile == 'custom' else disk_profiles[disk_profile] }}"
 
-# Run disk discovery if profile uses auto_discover
 - name: run disk discovery
   include_tasks: disk_discovery.yaml
   when: disk_profile_raw.auto_discover | default(false)
