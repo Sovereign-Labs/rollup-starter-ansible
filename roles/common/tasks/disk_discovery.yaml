@@ -1,30 +1,51 @@
 ---
-# Auto-discover disks by model name pattern
-# Uses disk_profile_raw.disk_model to filter disks from lsblk output
+# Auto-discover disks by model name pattern and/or EBS serial prefix
+# - disk_model: Matches lsblk MODEL column (e.g., "Amazon EC2 NVMe Instance Storage")
+# - ebs_serial_prefix: Matches NVMe serial number prefix (e.g., "vol" for EBS volumes)
 
-- name: display disk model pattern
+- name: display discovery parameters
   debug:
-    msg: "Searching for disks matching model: '{{ disk_profile_raw.disk_model }}'"
+    msg:
+      - "Disk model pattern: '{{ disk_profile_raw.disk_model | default('N/A') }}'"
+      - "EBS serial prefix: '{{ disk_profile_raw.ebs_serial_prefix | default('N/A') }}'"
 
-- name: discover disks by model
+- name: discover instance store disks by model
   shell: |
     lsblk -d -o NAME,MODEL -n | grep "{{ disk_profile_raw.disk_model }}" | awk '{print "/dev/" $1}' | sort
   register: disk_discovery
   changed_when: false
+  when: disk_profile_raw.disk_model is defined
 
-- name: set discovered disks
+- name: set discovered instance store disks
   set_fact:
-    discovered_instance_store_disks: "{{ disk_discovery.stdout_lines }}"
+    discovered_instance_store_disks: "{{ disk_discovery.stdout_lines | default([]) }}"
+
+- name: discover EBS disks by serial prefix
+  shell: |
+    for dev in $(lsblk -d -o NAME -n | grep '^nvme'); do
+      serial=$(nvme id-ctrl -v /dev/$dev 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
+      if [[ "$serial" == {{ disk_profile_raw.ebs_serial_prefix }}* ]]; then
+        echo "/dev/$dev"
+      fi
+    done | head -1
+  register: ebs_discovery
+  changed_when: false
+  become: true
+  when: disk_profile_raw.ebs_serial_prefix is defined
+
+- name: set discovered EBS disk
+  set_fact:
+    discovered_ebs_disk: "{{ ebs_discovery.stdout | default('') }}"
+  when: disk_profile_raw.ebs_serial_prefix is defined
 
 - name: display discovered disks
   debug:
     msg:
-      - "===== Disk Discovery ====="
-      - "Model pattern: '{{ disk_profile_raw.disk_model }}'"
-      - "Found {{ discovered_instance_store_disks | length }} disk(s):"
-      - "{{ discovered_instance_store_disks }}"
+      - "===== Disk Discovery Results ====="
+      - "Instance store disks ({{ discovered_instance_store_disks | length }}): {{ discovered_instance_store_disks | join(', ') or 'none' }}"
+      - "EBS disk: {{ discovered_ebs_disk | default('N/A') }}"
 
-- name: validate sufficient disks for RAID
+- name: validate sufficient disks for standard RAID
   fail:
     msg: >
       Not enough instance store disks for RAID configuration.
@@ -32,7 +53,17 @@
       Found: {{ discovered_instance_store_disks | length }} disk(s).
   when:
     - disk_profile_raw.use_raid | default(false)
+    - not (disk_profile_raw.raid_write_mostly | default(false))
     - discovered_instance_store_disks | length < disk_profile_raw.raid_disk_count | int
+
+- name: validate disks for write-mostly RAID (NVMe + EBS)
+  fail:
+    msg: >
+      Write-mostly RAID requires 1 NVMe instance store and 1 EBS volume.
+      Found: {{ discovered_instance_store_disks | length }} instance store disk(s), EBS: {{ discovered_ebs_disk | default('none') }}.
+  when:
+    - disk_profile_raw.raid_write_mostly | default(false)
+    - discovered_instance_store_disks | length < 1 or (discovered_ebs_disk | default('')) == ''
 
 - name: validate logs disk index
   fail:
@@ -40,6 +71,7 @@
       Logs disk index {{ disk_profile_raw.logs_disk_index }} is out of range.
       Found {{ discovered_instance_store_disks | length }} disk(s) (indices 0-{{ discovered_instance_store_disks | length - 1 }}).
   when:
+    - disk_profile_raw.logs_disk_index is defined
     - disk_profile_raw.logs_disk_index is not none
     - discovered_instance_store_disks | length <= disk_profile_raw.logs_disk_index | int
 
@@ -49,5 +81,6 @@
       DA disk index {{ disk_profile_raw.da_disk_index }} is out of range.
       Found {{ discovered_instance_store_disks | length }} disk(s) (indices 0-{{ discovered_instance_store_disks | length - 1 }}).
   when:
+    - disk_profile_raw.da_disk_index is defined
     - disk_profile_raw.da_disk_index is not none
     - discovered_instance_store_disks | length <= disk_profile_raw.da_disk_index | int

@@ -23,14 +23,24 @@ disk_profile: "none"
 #   - "SAMSUNG"                           - Samsung SSDs
 #
 disk_profiles:
-  # AWS: Auto-discover instance store disks
+  # AWS: Auto-discover instance store disks for RAID-1
   aws_raid:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
     use_raid: true
-    raid_disk_count: 2        # Number of disks to use for RAID (first N discovered)
-    logs_disk_index: 2        # Index of disk for logs (0-based), null to skip
-    da_disk_index: null       # Index of disk for DA (0-based), null to skip
+    raid_disk_count: 2
+    logs_disk_index: 2
+    da_disk_index: null
+
+  # AWS: Hybrid RAID-1 with NVMe (fast) + EBS (persistent, write-mostly)
+  # NVMe serves reads, EBS provides persistence with write-behind buffer
+  aws_raid_ebs:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    ebs_serial_prefix: "vol"
+    use_raid: true
+    raid_write_mostly: true
+    logs_disk_index: 1
 
   aws_simple:
     use_raid: false
