@@ -4,9 +4,9 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_auto, aws_raid, aws_simple, hetzner, none, custom
+# Set disk_profile variable to select: aws_raid, aws_simple, raid_manual, hetzner, none, custom
 #
-# For aws_auto profile, disk paths are resolved from discovered instance store disks.
+# For aws_raid profile, disk paths are resolved from discovered instance store disks.
 # For other profiles, disk paths are specified explicitly.
 #
 # Resolved disk_config contains:
@@ -113,7 +113,6 @@
 # PHASE 4: Setup Rollup Storage (RAID-1 or Single Disk)
 # =============================================================================
 
-# --- Reformat: Unmount and destroy existing setup ---
 - name: unmount rollup storage for reformat
   mount:
     path: "{{ rollup_storage_dir }}"
@@ -140,7 +139,6 @@
     - reformat_disks | default(false) | bool
     - disk_config.use_raid | default(false) | bool
 
-# --- RAID-1 Setup ---
 - name: create RAID-1 array
   shell: |
     mdadm --create /dev/md/rollup \
@@ -211,7 +209,6 @@
     - mdadm_conf_state.stdout == 'missing'
   notify: update-initramfs
 
-# --- Single Disk Setup ---
 - name: format rollup disk
   filesystem:
     fstype: ext4
@@ -246,7 +243,6 @@
     - disk_config.rollup_disk | default('') | length > 0
     - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 
-# --- Set ownership ---
 - name: set rollup storage ownership
   file:
     path: "{{ rollup_storage_dir }}"

@@ -10,7 +10,6 @@
   include_tasks: disk_discovery.yaml
   when: disk_profile_raw.auto_discover | default(false)
 
-# Resolve disk configuration from discovered disks (auto_discover mode)
 - name: resolve disk config from discovered disks
   set_fact:
     disk_config:
@@ -22,7 +21,6 @@
       da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none and discovered_instance_store_disks | length > disk_profile_raw.da_disk_index | int else '' }}"
   when: disk_profile_raw.auto_discover | default(false)
 
-# Use profile directly (non-auto_discover mode)
 - name: set disk config from profile
   set_fact:
     disk_config: "{{ disk_profile_raw }}"
