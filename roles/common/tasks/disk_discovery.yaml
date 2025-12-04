@@ -31,11 +31,18 @@
 - name: discover EBS disks by serial prefix
   shell: |
     for dev in $(lsblk -d -o NAME -n | grep '^nvme'); do
-      serial=$(nvme id-ctrl -v /dev/$dev 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
-      if [[ "$serial" == {{ disk_profile_raw.ebs_serial_prefix }}* ]]; then
-        echo "/dev/$dev"
+      # Skip disks with partitions (likely root volume)
+      if lsblk -n "/dev/$dev" | grep -q ' part '; then
+        continue
       fi
-    done | head -1
+      serial=$(nvme id-ctrl -v "/dev/$dev" 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
+      case "$serial" in
+        {{ disk_profile_raw.ebs_serial_prefix }}*)
+          echo "/dev/$dev"
+          exit 0
+          ;;
+      esac
+    done
   register: ebs_discovery
   changed_when: false
   become: true
