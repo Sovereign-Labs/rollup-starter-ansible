@@ -20,6 +20,14 @@
   set_fact:
     discovered_instance_store_disks: "{{ disk_discovery.stdout_lines | default([]) }}"
 
+- name: install nvme-cli for EBS detection
+  apt:
+    name: nvme-cli
+    state: present
+    update_cache: true
+  become: true
+  when: disk_profile_raw.ebs_serial_prefix is defined
+
 - name: discover EBS disks by serial prefix
   shell: |
     for dev in $(lsblk -d -o NAME -n | grep '^nvme'); do
