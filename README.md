@@ -2,6 +2,17 @@
 
 This repository contains Ansible playbooks to automate deploying the [rollup-starter](https://github.com/Sovereign-Labs/rollup-starter) on remote servers, primarily tested on AWS EC2 instances.
 
+For more information scroll below to Deployment modes
+
+## "I just want to change rollup_config.toml"
+
+Template is in [`roles/rollup/templates/rollup_config.toml.j2](./roles/rollup/templates/rollup_config.toml.j2)
+There are also 2 injected parts for each DA:
+ * MockDA: [`roles/rollup/templates/mock_da/rollup_da_config.toml.j2`](./roles/rollup/templates/mock_da/rollup_da_config.toml.j2)
+ * Celestia: [`roles/rollup/templates/celestia/rollup_da_config.toml.j2`](./roles/rollup/templates/celestia/rollup_da_config.toml.j2)
+
+All variables are defined in [`roles/rollup/defaults/main.yaml`](./roles/rollup/defaults/main.yaml) . Some of them dynamically calculated in tasks.
+
 ## Deployment Modes
 
 This repository supports **two deployment modes**:
@@ -20,7 +31,7 @@ Machines self-configure on first boot without SSH. Ideal for:
 - Cloud-init / user-data integration
 - Immutable infrastructure patterns
 
-**Quick start**: See [ANSIBLE_PULL.md](ANSIBLE_PULL.md) and [CDK_INTEGRATION.md](CDK_INTEGRATION.md)
+**Quick start**: See [ANSIBLE_PULL.md](ANSIBLE_PULL.md) 
 
 ## Overview
 
@@ -43,12 +54,7 @@ This setup supports multiple deployment configurations:
 ## Machine Requirements
 
 
-**Recommended AWS Instance:** [`c5ad.4xlarge`](https://aws.amazon.com/ec2/instance-types/c5/)
-- 16 CPU cores
-- 2 x NVME SSD
-- 32 GB RAM
-- Ubuntu 24.04 LTS
-- Root volume: ≥100GB gp3
+**Recommended AWS Instance:** [`c8gd.12xlarge`](https://aws.amazon.com/ec2/instance-types/c8/)
 
 **Setup Steps:**
 1. Launch EC2 instance with Ubuntu 24.04
@@ -73,15 +79,6 @@ All configuration is organized in role-based defaults and secret files:
 #### 1. Common Infrastructure
 **File:** [`roles/common/defaults/main.yaml`](roles/common/defaults/main.yaml)
 
-**Key Variables:**
-- `raw_disk_list` - Disks to mount (default: AWS c5ad.4xlarge)
-- `setup_disks` - Enable automatic disk setup (default: true)
-- `rollup_storage_dir` - Rollup data path (default: `/mnt/rollup`)
-- `rollup_log_dir` - Log path (default: `/mnt/logs`, only used when `logs_disk` is configured)
-- `da_store` - DA data path (default: `/mnt/da`)
-- `max_open_files` - File descriptor limit (default: 1000000)
-- Monitoring endpoints (InfluxDB, Loki, Tempo)
-
 #### 2. Rollup Configuration
 **File:** [`roles/rollup/defaults/main.yaml`](roles/rollup/defaults/main.yaml)
 
@@ -90,24 +87,9 @@ All configuration is organized in role-based defaults and secret files:
   - Use HTTPS for public repos, `git@github.com:org/repo.git` for private repos with SSH keys
 - `rollup_commit_hash` - ⚠️ **Git commit to deploy** (update this!)
 - `zkvm_role` - zkVM implementation (default: "mock_zkvm", option: "risc0")
-- `debug` - Build in debug mode (default: true)
-- `genesis_sequencer_rollup_address` - Sequencer address
-- `genesis_rollup_prover_address` - Prover address
+- `debug` - Build in debug mode (default: false) for faster iteration
 - `rollup_http_port` - API port (default: 12346)
-- `nginx_port` - Proxy port (default: 8081)
 - `wipe` - Wipe data on deployment (default: false)
-
-#### 3. Data Availability - Celestia
-**File:** [`roles/rollup/vars/celestia.yaml`](roles/rollup/vars/celestia.yaml)
-
-**Key Variables:**
-- `celestia_network` - Network ("mocha" or "celestia")
-- `celestia_rpc_url` - External RPC endpoint
-- `celestia_grpc_url` - External gRPC endpoint
-- `da_rollup_address` - Celestia address for signing
-- `da_start_height` - DA block height to start from
-- `rollup_batch_namespace` - Namespace for batches (10 chars)
-- `rollup_proof_namespace` - Namespace for proofs (10 chars)
 
 **Secrets (override in `vars/celestia_secrets.yaml`):**
 - `celestia_grpc_auth_token`
@@ -280,78 +262,6 @@ ansible-playbook setup.yaml \
 - ✅ Uses Mock zkVM (no installation required)
 - ✅ Builds and starts rollup
 
-### 2. Celestia DA with Mock zkVM
-
-**Prerequisites:**
-1. Update `vars/celestia_secrets.yaml` with your credentials
-2. Update `roles/rollup/vars/celestia.yaml` with your settings
-
-```bash
-ansible-playbook setup.yaml \
-    -i '54.81.181.127,' \
-    -u ubuntu \
-    --private-key ~/.ssh/YourKey.pem \
-    -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
-    -e 'switches=cr' \
-    -e 'data_availability_role=celestia'
-```
-
-**What this does:**
-- ✅ Connects to external Celestia RPC (no local node)
-- ✅ Uses your Celestia credentials for signing
-- ✅ Updates namespace in constants.toml
-- ✅ Uses Mock zkVM for fast iteration
-
-### 3. Celestia DA with Risc0 zkVM (Full Production Setup)
-
-```bash
-ansible-playbook setup.yaml \
-    -i '54.81.181.127,' \
-    -u ubuntu \
-    --private-key ~/.ssh/YourKey.pem \
-    -e 'ansible_ssh_common_args="-o ForwardAgent=yes -o StrictHostKeyChecking=no"' \
-    -e 'switches=cr' \
-    -e 'data_availability_role=celestia' \
-    -e 'zkvm_role=risc0'
-```
-
-**What this does:**
-- ✅ Installs Risc0 toolchain (rzup, cargo-risczero)
-- ✅ Builds with full zkVM proving capabilities
-- ⏱️ Takes longer to build (~10-15 minutes for first build)
-
-### 4. Update Rollup Only (No Infrastructure Changes)
-
-```bash
-ansible-playbook setup.yaml \
-    -i '54.81.181.127,' \
-    -u ubuntu \
-    --private-key ~/.ssh/YourKey.pem \
-    -e 'ansible_ssh_common_args="-o ForwardAgent=yes"' \
-    -e 'switches=r' \
-    -e 'data_availability_role=celestia'
-```
-
-**What this does:**
-- Stops rollup service
-- Updates git repository to latest `rollup_commit_hash`
-- Rebuilds binary
-- Restarts rollup service
-
-### 5. Update and Wipe Data
-
-```bash
-ansible-playbook setup.yaml \
-    -i '54.81.181.127,' \
-    -u ubuntu \
-    --private-key ~/.ssh/YourKey.pem \
-    -e 'switches=r' \
-    -e 'data_availability_role=celestia' \
-    -e 'wipe=true'
-```
-
-⚠️ **Warning:** This deletes all rollup state data!
-
 ## Switches Explained
 
 The `switches` variable controls which roles run:
@@ -426,9 +336,6 @@ sudo systemctl status rollup
 ```bash
 # Systemd journal
 journalctl -u rollup -f
-
-# Log file
-tail -f /mnt/logs/rollup.log.*
 ```
 
 ### Common Issues
@@ -469,45 +376,6 @@ df -h /mnt/rollup /mnt/logs
 ```bash
 curl http://localhost:12346/health  # Direct
 curl http://localhost:8081/health   # Via nginx
-```
-
-## Architecture Diagram
-
-```
-┌─────────────────┐
-│  Ansible Host   │
-│   (Your Mac)    │
-└────────┬────────┘
-         │ SSH
-         ▼
-┌─────────────────────────────────────┐
-│         Remote Server               │
-│  ┌──────────────────────────────┐  │
-│  │  Common Infrastructure       │  │
-│  │  - Disks, Users, Monitoring  │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │  Data Availability           │  │
-│  │  - Celestia RPC Connection   │  │
-│  │    OR                        │  │
-│  │  - Mock DA (SQLite)          │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │  zkVM                        │  │
-│  │  - Risc0 Toolchain           │  │
-│  │    OR                        │  │
-│  │  - Mock (built-in)           │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │  Rollup                      │  │
-│  │  - Build from source         │  │
-│  │  - Systemd service           │  │
-│  │  - Nginx proxy               │  │
-│  └──────────────────────────────┘  │
-└─────────────────────────────────────┘
 ```
 
 ## Advanced Usage
@@ -553,12 +421,6 @@ da_start_height: 6739020
   - EC2 user-data integration
   - Testing and troubleshooting
   - Security best practices
-
-- **[CDK_INTEGRATION.md](CDK_INTEGRATION.md)** - AWS CDK integration guide
-  - CDK stack examples
-  - Variable configuration
-  - Secrets management
-  - Deployment patterns
 
 ### Key Files for ansible-pull
 
