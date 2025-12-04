@@ -14,11 +14,11 @@
   set_fact:
     disk_config:
       auto_discover: true
-      use_raid: "{{ disk_profile_raw.use_raid | default(false) }}"
+      use_raid: "{{ disk_profile_raw.use_raid }}"
       raid_disks: "{{ discovered_instance_store_disks[:disk_profile_raw.raid_disk_count | default(0) | int] }}"
       rollup_disk: ""
-      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none and discovered_instance_store_disks | length > disk_profile_raw.logs_disk_index | int else '' }}"
-      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none and discovered_instance_store_disks | length > disk_profile_raw.da_disk_index | int else '' }}"
+      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
   when: disk_profile_raw.auto_discover | default(false)
 
 - name: set disk config from profile

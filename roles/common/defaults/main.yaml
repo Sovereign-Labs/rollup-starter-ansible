@@ -41,6 +41,7 @@ disk_profiles:
     use_raid: true
     raid_write_mostly: true
     logs_disk_index: 1
+    da_disk_index: null
 
   aws_simple:
     use_raid: false
