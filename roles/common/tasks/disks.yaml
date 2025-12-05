@@ -4,7 +4,7 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_raid, aws_simple, raid_manual, hetzner, none, custom
+# Set disk_profile variable to select: aws_raid, aws_raid_ebs, aws_simple, raid_manual, hetzner, none, custom
 #
 # For aws_raid profile, disk paths are resolved from discovered instance store disks.
 # For other profiles, disk paths are specified explicitly.
@@ -157,12 +157,14 @@
 
 - name: create RAID-1 array (write-mostly for EBS persistence)
   shell: |
-    mdadm --create /dev/md/rollup \
+    echo "y" | mdadm --create /dev/md/rollup \
       --level=1 \
-      --raid-devices={{ disk_config.raid_disks | length }} \
+      --raid-devices=2 \
       --name=rollup \
-      --metadata=1.2 \
-      --run \
+      --assume-clean \
+      --bitmap=internal \
+      --bitmap-chunk=8M \
+      --write-behind=16383 \
       {{ disk_config.raid_disks[0] }} \
       --write-mostly {{ disk_config.raid_disks[1] }}
   become: true

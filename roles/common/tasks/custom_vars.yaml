@@ -22,7 +22,22 @@
       da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
   when:
     - disk_profile_raw.auto_discover | default(false)
+    - disk_profile_raw.use_raid | default(false)
     - not (disk_profile_raw.raid_write_mostly | default(false))
+
+- name: resolve disk config from discovered disks (no RAID)
+  set_fact:
+    disk_config:
+      auto_discover: true
+      use_raid: false
+      raid_write_mostly: false
+      raid_disks: []
+      rollup_disk: "{{ discovered_instance_store_disks[disk_profile_raw.rollup_disk_index | int] if disk_profile_raw.rollup_disk_index is not none else '' }}"
+      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
+  when:
+    - disk_profile_raw.auto_discover | default(false)
+    - not (disk_profile_raw.use_raid | default(false))
 
 - name: resolve disk config from discovered disks (write-mostly RAID with EBS)
   set_fact:
