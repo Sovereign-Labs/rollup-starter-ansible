@@ -113,3 +113,32 @@
     - disk_profile_raw.da_disk_index is defined
     - disk_profile_raw.da_disk_index is not none
     - discovered_instance_store_disks | length <= disk_profile_raw.da_disk_index | int
+
+- name: validate EBS disk for snapshots
+  fail:
+    msg: >
+      Snapshots disk requires an EBS volume but none was found.
+      Ensure an EBS volume with serial prefix '{{ disk_profile_raw.ebs_serial_prefix }}' is attached.
+  when:
+    - disk_profile_raw.snapshots_disk_from_ebs | default(false)
+    - (discovered_ebs_disk | default('')) == ''
+
+- name: validate snapshots and write-mostly RAID are mutually exclusive
+  fail:
+    msg: >
+      Cannot use snapshots_disk_from_ebs with raid_write_mostly.
+      Both options require the EBS volume, but only one EBS disk is discovered.
+      Use either aws_ebs_backup_node (NVMe RAID + EBS snapshots) or aws_raid_ebs (NVMe+EBS RAID), not both.
+  when:
+    - disk_profile_raw.snapshots_disk_from_ebs | default(false)
+    - disk_profile_raw.raid_write_mostly | default(false)
+
+- name: validate snapshots requires standard sequencer
+  fail:
+    msg: >
+      Snapshots disk (snapshots_disk_from_ebs) requires a standard sequencer.
+      Current configuration: rollup_sequencer_kind={{ rollup_sequencer_kind | default('preferred') }}
+      Set rollup_sequencer_kind: "standard" to use the backup node profile.
+  when:
+    - disk_profile_raw.snapshots_disk_from_ebs | default(false)
+    - (rollup_sequencer_kind | default('preferred')) != 'standard'

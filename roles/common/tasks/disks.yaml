@@ -30,6 +30,7 @@
       - "Rollup disk: {{ disk_config.rollup_disk | default('N/A') or 'N/A' }}"
       - "Logs disk: {{ disk_config.logs_disk | default('') or 'N/A (root volume)' }}"
       - "DA disk: {{ disk_config.da_disk | default('') or 'N/A (root volume)' }}"
+      - "Snapshots disk: {{ disk_config.snapshots_disk | default('') or 'N/A' }}"
       - "Reformat: {{ reformat_disks | default(false) }}"
 
 # =============================================================================
@@ -67,6 +68,13 @@
   when: disk_config.da_disk | default('') | length > 0
   failed_when: not da_disk_check.stat.exists
 
+- name: validate snapshots disk exists
+  stat:
+    path: "{{ disk_config.snapshots_disk }}"
+  register: snapshots_disk_check
+  when: disk_config.snapshots_disk | default('') | length > 0
+  failed_when: not snapshots_disk_check.stat.exists
+
 # =============================================================================
 # PHASE 3: Check Current Mount State (for idempotency)
 # =============================================================================
@@ -89,6 +97,12 @@
   changed_when: false
   become: true
 
+- name: check if snapshots_dir is already mounted
+  shell: mountpoint -q {{ snapshots_dir }} && echo "mounted" || echo "not_mounted"
+  register: snapshots_mount_state
+  changed_when: false
+  become: true
+
 - name: check if RAID array exists
   shell: |
     if [ -e /dev/md/rollup ]; then
@@ -107,6 +121,7 @@
       - "{{ rollup_storage_dir }}: {{ rollup_mount_state.stdout }}"
       - "{{ rollup_log_dir }}: {{ logs_mount_state.stdout }}"
       - "{{ da_store }}: {{ da_mount_state.stdout }}"
+      - "{{ snapshots_dir }}: {{ snapshots_mount_state.stdout }}"
       - "RAID array: {{ raid_state.stdout }}"
 
 # =============================================================================
@@ -379,7 +394,60 @@
   when: disk_config.da_disk | default('') | length > 0
 
 # =============================================================================
-# PHASE 7: Display RAID Status
+# PHASE 7: Setup Snapshots Disk
+# =============================================================================
+
+- name: unmount snapshots disk for reformat
+  mount:
+    path: "{{ snapshots_dir }}"
+    state: unmounted
+  become: true
+  when:
+    - reformat_disks | default(false) | bool
+    - snapshots_mount_state.stdout == 'mounted'
+    - disk_config.snapshots_disk | default('') | length > 0
+
+- name: format snapshots disk
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk_config.snapshots_disk }}"
+    force: "{{ reformat_disks | default(false) }}"
+  become: true
+  when:
+    - disk_config.snapshots_disk | default('') | length > 0
+    - snapshots_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: get snapshots disk UUID
+  command: blkid -s UUID -o value {{ disk_config.snapshots_disk }}
+  register: snapshots_disk_uuid
+  changed_when: false
+  become: true
+  when: disk_config.snapshots_disk | default('') | length > 0
+
+- name: mount snapshots disk
+  mount:
+    path: "{{ snapshots_dir }}"
+    src: "UUID={{ snapshots_disk_uuid.stdout }}"
+    fstype: ext4
+    opts: "defaults,noatime"
+    passno: "2"
+    state: mounted
+  become: true
+  when:
+    - disk_config.snapshots_disk | default('') | length > 0
+    - snapshots_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+
+- name: set snapshots directory ownership
+  file:
+    path: "{{ snapshots_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  become: true
+  when: disk_config.snapshots_disk | default('') | length > 0
+
+# =============================================================================
+# PHASE 8: Display RAID Status
 # =============================================================================
 
 - name: get RAID sync status
