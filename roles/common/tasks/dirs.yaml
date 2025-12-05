@@ -25,3 +25,13 @@
     owner: sovereign
     group: sovereign
   when: disk_config.logs_disk | default('') | length > 0
+
+- name: snapshots directory
+  become: true
+  become_user: root
+  file:
+    path: "{{ snapshots_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  when: disk_config.snapshots_disk | default('') | length > 0
