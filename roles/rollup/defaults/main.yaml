@@ -16,6 +16,8 @@ rollup_branch: "main"
 rollup_bin: "rollup"
 # Can be `risc0` or `mock_zkvm`
 zkvm_role: "mock_zkvm"
+# Sequencer type: "preferred" or "standard"
+rollup_sequencer_kind: "preferred"
 debug: false
 is_rollup_replica: false
 # For replication testing. Should be set by the deployer

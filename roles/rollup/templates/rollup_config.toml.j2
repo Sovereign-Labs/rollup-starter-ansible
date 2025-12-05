@@ -36,6 +36,7 @@ max_allowed_node_distance_behind = {{ rollup_max_allowed_node_distance_behind }}
 rollup_address = "{{ rollup_sequencer_address }}"
 blob_processing_timeout_secs = 60
 
+{% if rollup_sequencer_kind == "preferred" %}
 [sequencer.preferred]
 disable_state_root_consistency_checks = true
 recovery_strategy = "TryToSave"
@@ -48,11 +49,14 @@ is_replica = {{ is_rollup_replica | lower }}
 postgres_connection_string = "{{ rollup_sequencer_postgres_connection_string }}"
 node_id = "{{ rollup_node_id }}"
 {% endif %}
+{% else %}
+[sequencer.standard]
+{% endif %}
 
 [sequencer.extension]
 max_log_limit = 20000
 
-{% if rollup_has_timing_oracle %}
+{% if rollup_sequencer_kind == "preferred" and rollup_has_timing_oracle %}
 [sequencer.preferred.timing_oracle]
 priority_fee_percentage = 0
 max_fee = 100_000_000
