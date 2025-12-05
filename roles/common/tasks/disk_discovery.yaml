@@ -84,6 +84,16 @@
     - disk_profile_raw.raid_write_mostly | default(false)
     - discovered_instance_store_disks | length < 1 or (discovered_ebs_disk | default('')) == ''
 
+- name: validate rollup disk index
+  fail:
+    msg: >
+      Rollup disk index {{ disk_profile_raw.rollup_disk_index }} is out of range.
+      Found {{ discovered_instance_store_disks | length }} disk(s) (indices 0-{{ discovered_instance_store_disks | length - 1 }}).
+  when:
+    - disk_profile_raw.rollup_disk_index is defined
+    - disk_profile_raw.rollup_disk_index is not none
+    - discovered_instance_store_disks | length <= disk_profile_raw.rollup_disk_index | int
+
 - name: validate logs disk index
   fail:
     msg: >
