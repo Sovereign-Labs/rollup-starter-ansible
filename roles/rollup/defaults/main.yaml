@@ -18,6 +18,8 @@ rollup_bin: "rollup"
 zkvm_role: "mock_zkvm"
 debug: false
 is_rollup_replica: false
+# For replication testing. Should be set by the
+rollup_node_id: "node1"
 
 # Paths
 rollup_config_path: "/home/sovereign/rollup_config.toml"

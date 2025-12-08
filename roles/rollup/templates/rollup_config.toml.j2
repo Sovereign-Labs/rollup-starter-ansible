@@ -44,7 +44,9 @@ ideal_lag_behind_finalized_slot = 1
 num_cache_warmup_workers = 0
 is_replica = {{ is_rollup_replica | lower }}
 {% if rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0 %}
+[sequencer.preferred.postgres_config]
 postgres_connection_string = "{{ rollup_sequencer_postgres_connection_string }}"
+node_id = "{{ rollup_node_id }}"
 {% endif %}
 
 [sequencer.extension]
