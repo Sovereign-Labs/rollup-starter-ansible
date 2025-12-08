@@ -52,3 +52,29 @@
     src: "make-leader.sh.j2"
     dest: "/home/ubuntu/make-leader.sh"
     mode: "0755"
+
+- name: render snapshot-rollup-data.sh script
+  become: true
+  become_user: ubuntu
+  ansible.builtin.template:
+    src: "snapshot-rollup-data.sh.j2"
+    dest: "/home/ubuntu/snapshot-rollup-data.sh"
+    mode: "0755"
+  when: disk_profile == "aws_ebs_backup_node"
+
+- name: setup hourly cron for rollup snapshots
+  become: true
+  ansible.builtin.cron:
+    name: "rollup snapshot to EBS"
+    minute: "0"
+    job: "/home/ubuntu/snapshot-rollup-data.sh"
+    user: "ubuntu"
+  when: disk_profile == "aws_ebs_backup_node"
+
+- name: remove snapshot cron if not backup node
+  become: true
+  ansible.builtin.cron:
+    name: "rollup snapshot to EBS"
+    state: absent
+    user: "ubuntu"
+  when: disk_profile != "aws_ebs_backup_node"
