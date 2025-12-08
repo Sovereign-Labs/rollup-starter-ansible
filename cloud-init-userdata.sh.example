@@ -124,7 +124,7 @@ da_start_height: $DA_START_HEIGHT
 
 # Monitoring
 custom_host_label: "$CUSTOM_HOST_LABEL"
-grafana_telemetry_enabled: true
+grafana_telemetry_mode: "logs"
 EOF
 
 # Add Celestia-specific configuration if needed
