@@ -43,15 +43,15 @@ disk_profiles:
     logs_disk_index: 1
     da_disk_index: null
 
-  # AWS: Backup node with NVMe RAID + EBS for snapshots
-  # Uses 2 NVMe for RAID-1, 3rd NVMe for logs, EBS mounted at /mnt/snapshots
+  # AWS: Backup node with NVMe for rollup/logs + EBS for snapshots
+  # 1st NVMe → rollup, 2nd NVMe → logs, EBS → /mnt/snapshots
   aws_ebs_backup_node:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
     ebs_serial_prefix: "vol"
-    use_raid: true
-    raid_disk_count: 2
-    logs_disk_index: 2
+    use_raid: false
+    rollup_disk_index: 0
+    logs_disk_index: 1
     da_disk_index: null
     snapshots_disk_from_ebs: true
 
