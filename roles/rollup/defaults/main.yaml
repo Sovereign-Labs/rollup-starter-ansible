@@ -18,7 +18,7 @@ rollup_bin: "rollup"
 zkvm_role: "mock_zkvm"
 debug: false
 is_rollup_replica: false
-# For replication testing. Should be set by the
+# For replication testing. Should be set by the deployer
 rollup_node_id: "node1"
 
 # Paths
