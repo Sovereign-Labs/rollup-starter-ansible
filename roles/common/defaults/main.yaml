@@ -110,8 +110,11 @@ grafana_loki_username: "sov-logger"
 grafana_tempo_endpoint: "tempo.sov-obs.xyz:443"
 grafana_tempo_username: "sov-logger"
 
-# Option for a rollup node to start exporting or not. But loki and tempo will always be setup.
-grafana_telemetry_enabled: true
+# Telemetry mode: "off", "logs", or "full"
+# - off: No telemetry
+# - logs: Only logs via OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+# - full: Full telemetry via SOV_OTEL_ENABLED
+grafana_telemetry_mode: "logs"
 
 # PostgreSQL configuration
 # Local PostgreSQL is automatically installed if rollup_sequencer_postgres_connection_string is not provided

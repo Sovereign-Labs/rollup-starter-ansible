@@ -90,8 +90,8 @@ signer_private_key: ""
 # Custom host label for monitoring (optional)
 # custom_host_label: "my-rollup-node-1"
 
-# Grafana telemetry toggle
-# grafana_telemetry_enabled: true
+# Grafana telemetry mode: "off", "logs", or "full"
+# grafana_telemetry_mode: "logs"
 
 # InfluxDB configuration (override if using custom monitoring)
 # influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
