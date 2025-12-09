@@ -441,8 +441,8 @@
   file:
     path: "{{ snapshots_dir }}"
     state: directory
-    owner: sovereign
-    group: sovereign
+    owner: ubuntu
+    group: ubuntu
   become: true
   when: disk_config.snapshots_disk | default('') | length > 0
 

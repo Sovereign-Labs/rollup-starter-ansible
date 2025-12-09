@@ -53,6 +53,14 @@
     dest: "/home/ubuntu/make-leader.sh"
     mode: "0755"
 
+- name: render restore-from-snapshot.sh helper script
+  become: true
+  become_user: ubuntu
+  ansible.builtin.template:
+    src: "restore-from-snapshot.sh.j2"
+    dest: "/home/ubuntu/restore-from-snapshot.sh"
+    mode: "0755"
+
 - name: render snapshot-rollup-data.sh script
   become: true
   become_user: ubuntu
