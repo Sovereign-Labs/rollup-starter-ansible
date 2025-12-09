@@ -7,3 +7,10 @@
     owner: root
     group: root
     mode: '0755'
+
+- name: Source MOTD in bashrc for non-login shells (SSM)
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/bash.bashrc
+    line: '[ -f /etc/profile.d/motd.sh ] && . /etc/profile.d/motd.sh'
+    insertafter: EOF
