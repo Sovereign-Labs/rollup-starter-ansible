@@ -1,7 +1,14 @@
 # Based on https://github.com/Sovereign-Labs/sov-observability/blob/main/telegraf/telegraf.conf
 # All updates must be ported
 [global_tags]
+{% if custom_environment %}
+  environment = "{{ custom_environment }}"
+{% else %}
   environment = "sov-aws-dev"
+{% endif %}
+{% if deployment_name %}
+  deployment_name = "{{ deployment_name }}"
+{% endif %}
 
 [agent]
   interval = "30s"
