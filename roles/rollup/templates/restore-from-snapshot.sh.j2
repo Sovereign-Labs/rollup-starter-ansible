@@ -184,6 +184,9 @@ if [ "$SOURCE_TYPE" = "snapshot" ]; then
         --availability-zone "$AVAILABILITY_ZONE" \
         --snapshot-id "$SNAPSHOT_ID" \
         --volume-type gp3 \
+        --iops 80000 \
+        --throughput 2000 \
+        --volume-initialization-rate 300 \
         --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=restore-temp-$INSTANCE_ID},{Key=Purpose,Value=restore-temp},{Key=SourceSnapshot,Value=$SNAPSHOT_ID}]" \
         --query 'VolumeId' \
         --output text)
