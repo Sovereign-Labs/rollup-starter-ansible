@@ -9,7 +9,7 @@ set -e
 ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
 TEMP_MOUNT="/mnt/restore-temp"
 TEMP_DEVICE_NAME="/dev/sdr"  # Unlikely to conflict with existing devices
-LOGFILE="/var/log/rollup-restore.log"
+LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-restore.log"
 
 # Track whether we created the volume (and should delete it) or it was provided
 CREATED_VOLUME=false

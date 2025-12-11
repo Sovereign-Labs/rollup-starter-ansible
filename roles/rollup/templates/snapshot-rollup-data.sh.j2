@@ -10,7 +10,7 @@ set -e
 SNAPSHOT_DIR="{{ snapshots_dir }}"
 ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
 SNAPSHOTS_DEVICE="{{ disk_config.snapshots_disk }}"
-LOGFILE="/var/log/rollup-snapshot.log"
+LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | sudo tee -a "$LOGFILE"

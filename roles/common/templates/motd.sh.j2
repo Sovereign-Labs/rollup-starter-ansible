@@ -14,4 +14,6 @@ Restart rollup:           sudo systemctl restart rollup
 Logs (follow):            sudo journalctl -u rollup -f
 Logs (recent):            sudo journalctl -u rollup -n 100
 Sequencer readiness:      curl http://127.0.0.1:{{ rollup_http_port }}/sequencer/ready
+
+If you need to restore this node to a previous snapshot, run `/home/ubuntu/restore-from-snapshot.sh <snapshot-id|volume-id>`, passing an EBS snapshot or volume ID. A standard CDK deployment will save hourly snapshots using a backup node, which can be used for this. This will **wipe all rollup state** on this node.
 EOF
