@@ -1,0 +1,308 @@
+#!/bin/bash
+#
+# Restore Rollup Data from EBS Snapshot or Volume
+# This script restores rollup data from an EBS snapshot or pre-created volume to local NVMe storage.
+# Usage: ./restore-from-snapshot.sh <snapshot-id|volume-id> [--force]
+#
+set -e
+
+ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
+TEMP_MOUNT="/mnt/restore-temp"
+TEMP_DEVICE_NAME="/dev/sdr"  # Unlikely to conflict with existing devices
+LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-restore.log"
+
+# Track whether we created the volume (and should delete it) or it was provided
+CREATED_VOLUME=false
+VOLUME_ID=""
+AWS_REGION=""
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | sudo tee -a "$LOGFILE"
+}
+
+error_exit() {
+    log "ERROR: $1"
+    exit 1
+}
+
+cleanup() {
+    log "Cleaning up..."
+    # Unmount if mounted
+    if mountpoint -q "$TEMP_MOUNT" 2>/dev/null; then
+        sudo umount "$TEMP_MOUNT" || true
+    fi
+    # Detach and optionally delete volume
+    if [ -n "$VOLUME_ID" ] && [ -n "$AWS_REGION" ]; then
+        aws ec2 detach-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID" --force 2>/dev/null || true
+        # Wait for detachment
+        for i in {1..30}; do
+            STATE=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].State' --output text 2>/dev/null || echo "deleted")
+            if [ "$STATE" = "available" ] || [ "$STATE" = "deleted" ]; then
+                break
+            fi
+            sleep 2
+        done
+        # Only delete if we created it
+        if [ "$CREATED_VOLUME" = "true" ]; then
+            aws ec2 delete-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID" 2>/dev/null || true
+            log "Temporary volume $VOLUME_ID deleted"
+        else
+            log "Volume $VOLUME_ID detached (preserved for reuse)"
+        fi
+    fi
+    # Remove temp mount point
+    sudo rmdir "$TEMP_MOUNT" 2>/dev/null || true
+}
+
+# Set up trap to clean up on exit
+trap cleanup EXIT
+
+# Parse arguments
+SOURCE_ID=""
+SOURCE_TYPE=""
+FORCE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force)
+            FORCE=true
+            shift
+            ;;
+        snap-*)
+            SOURCE_ID="$1"
+            SOURCE_TYPE="snapshot"
+            shift
+            ;;
+        vol-*)
+            SOURCE_ID="$1"
+            SOURCE_TYPE="volume"
+            shift
+            ;;
+        *)
+            echo "Usage: $0 <snapshot-id|volume-id> [--force]"
+            echo ""
+            echo "Arguments:"
+            echo "  snapshot-id    EBS snapshot ID (e.g., snap-0abc123) - creates temporary volume"
+            echo "  volume-id      EBS volume ID (e.g., vol-0abc123) - uses existing volume"
+            echo "  --force        Skip confirmation prompt"
+            echo ""
+            echo "Examples:"
+            echo "  $0 snap-0abc123def456789           # Create volume from snapshot (slow)"
+            echo "  $0 vol-0abc123def456789            # Use pre-created volume (fast)"
+            echo "  $0 vol-0abc123def456789 --force    # Skip confirmation"
+            echo ""
+            echo "Tip: For faster restores, pre-create a volume from your snapshot:"
+            echo "  aws ec2 create-volume --snapshot-id snap-XXX --availability-zone \\"
+            echo "    \$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone) \\"
+            echo "    --volume-type gp3"
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$SOURCE_ID" ]; then
+    echo "Error: Snapshot ID or Volume ID is required"
+    echo "Usage: $0 <snapshot-id|volume-id> [--force]"
+    exit 1
+fi
+
+log "=== Starting restore from $SOURCE_TYPE $SOURCE_ID ==="
+
+# Get AWS metadata using IMDSv2
+IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
+AVAILABILITY_ZONE=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+
+log "Instance: $INSTANCE_ID in $AVAILABILITY_ZONE"
+
+# Handle snapshot vs volume source
+if [ "$SOURCE_TYPE" = "snapshot" ]; then
+    SNAPSHOT_ID="$SOURCE_ID"
+
+    # Verify snapshot exists and get its size
+    SNAPSHOT_INFO=$(aws ec2 describe-snapshots --region "$AWS_REGION" --snapshot-ids "$SNAPSHOT_ID" --query 'Snapshots[0].[State,VolumeSize,Description]' --output text 2>/dev/null) || error_exit "Snapshot $SNAPSHOT_ID not found or not accessible"
+
+    SNAPSHOT_STATE=$(echo "$SNAPSHOT_INFO" | awk '{print $1}')
+    SNAPSHOT_SIZE=$(echo "$SNAPSHOT_INFO" | awk '{print $2}')
+    SNAPSHOT_DESC=$(echo "$SNAPSHOT_INFO" | cut -f3-)
+
+    if [ "$SNAPSHOT_STATE" != "completed" ]; then
+        error_exit "Snapshot $SNAPSHOT_ID is not ready (state: $SNAPSHOT_STATE)"
+    fi
+
+    log "Snapshot: $SNAPSHOT_ID (${SNAPSHOT_SIZE}GB) - $SNAPSHOT_DESC"
+    SOURCE_DESC="snapshot $SNAPSHOT_ID"
+else
+    # Volume mode - verify volume exists and is in the right AZ
+    VOLUME_ID="$SOURCE_ID"
+
+    VOLUME_INFO=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].[State,AvailabilityZone,Size]' --output text 2>/dev/null) || error_exit "Volume $VOLUME_ID not found or not accessible"
+
+    VOLUME_STATE=$(echo "$VOLUME_INFO" | awk '{print $1}')
+    VOLUME_AZ=$(echo "$VOLUME_INFO" | awk '{print $2}')
+    VOLUME_SIZE=$(echo "$VOLUME_INFO" | awk '{print $3}')
+
+    if [ "$VOLUME_STATE" != "available" ]; then
+        error_exit "Volume $VOLUME_ID is not available (state: $VOLUME_STATE). It may be attached to another instance."
+    fi
+
+    if [ "$VOLUME_AZ" != "$AVAILABILITY_ZONE" ]; then
+        error_exit "Volume $VOLUME_ID is in $VOLUME_AZ but this instance is in $AVAILABILITY_ZONE. Volumes must be in the same AZ."
+    fi
+
+    log "Volume: $VOLUME_ID (${VOLUME_SIZE}GB) in $VOLUME_AZ - ready to use"
+    SOURCE_DESC="volume $VOLUME_ID"
+    CREATED_VOLUME=false
+fi
+
+# Confirmation prompt
+if [ "$FORCE" != "true" ]; then
+    echo ""
+    echo "WARNING: This will:"
+    echo "  1. Stop the rollup service"
+    echo "  2. DELETE all data in $ROLLUP_DATA_DIR"
+    echo "  3. Restore data from $SOURCE_DESC"
+    echo "  4. Restart the rollup service"
+    echo ""
+    read -p "Are you sure you want to proceed? (type 'yes' to confirm): " CONFIRM
+    if [ "$CONFIRM" != "yes" ]; then
+        echo "Aborted."
+        exit 0
+    fi
+fi
+
+# Stop the rollup service
+log "Stopping rollup service..."
+sudo systemctl stop rollup || true
+
+# Create volume from snapshot if needed
+if [ "$SOURCE_TYPE" = "snapshot" ]; then
+    log "Creating temporary volume from snapshot (this may take a while for large snapshots)..."
+    VOLUME_ID=$(aws ec2 create-volume \
+        --region "$AWS_REGION" \
+        --availability-zone "$AVAILABILITY_ZONE" \
+        --snapshot-id "$SNAPSHOT_ID" \
+        --volume-type gp3 \
+        --iops 80000 \
+        --throughput 2000 \
+        --volume-initialization-rate 300 \
+        --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=restore-temp-$INSTANCE_ID},{Key=Purpose,Value=restore-temp},{Key=SourceSnapshot,Value=$SNAPSHOT_ID}]" \
+        --query 'VolumeId' \
+        --output text)
+
+    log "Created temporary volume: $VOLUME_ID"
+    CREATED_VOLUME=true
+
+    # Wait for volume to be available
+    log "Waiting for volume to be available..."
+    for i in {1..360}; do
+        STATE=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].State' --output text)
+        if [ "$STATE" = "available" ]; then
+            log "Volume is available"
+            break
+        fi
+        if [ $i -eq 360 ]; then
+            error_exit "Timeout waiting for volume to become available (30 minutes). Consider pre-creating the volume."
+        fi
+        if [ $((i % 12)) -eq 0 ]; then
+            log "Still waiting for volume... ($((i * 5)) seconds elapsed)"
+        fi
+        sleep 5
+    done
+fi
+
+# Attach the volume
+log "Attaching volume to instance..."
+aws ec2 attach-volume \
+    --region "$AWS_REGION" \
+    --volume-id "$VOLUME_ID" \
+    --instance-id "$INSTANCE_ID" \
+    --device "$TEMP_DEVICE_NAME"
+
+# Wait for attachment and find the actual device
+log "Waiting for volume attachment..."
+ACTUAL_DEVICE=""
+for i in {1..60}; do
+    ATTACH_STATE=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].Attachments[0].State' --output text)
+    if [ "$ATTACH_STATE" = "attached" ]; then
+        # Find the actual NVMe device by volume ID
+        sleep 2  # Give the kernel a moment to recognize the device
+        for dev in /dev/nvme*n1; do
+            if [ -b "$dev" ]; then
+                SERIAL=$(sudo nvme id-ctrl -v "$dev" 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
+                VOL_ID_FROM_SERIAL="vol-${SERIAL:3}"
+                if [ "$VOL_ID_FROM_SERIAL" = "$VOLUME_ID" ]; then
+                    ACTUAL_DEVICE="$dev"
+                    break
+                fi
+            fi
+        done
+        if [ -n "$ACTUAL_DEVICE" ]; then
+            log "Volume attached as $ACTUAL_DEVICE"
+            break
+        fi
+    fi
+    if [ $i -eq 60 ]; then
+        error_exit "Timeout waiting for volume attachment"
+    fi
+    sleep 2
+done
+
+# Create mount point and mount the volume
+sudo mkdir -p "$TEMP_MOUNT"
+log "Mounting volume..."
+sudo mount -o ro "$ACTUAL_DEVICE" "$TEMP_MOUNT" || error_exit "Failed to mount volume"
+
+# Verify the restore source exists
+if [ ! -d "$TEMP_MOUNT/rollup" ]; then
+    error_exit "Volume does not contain expected rollup data at /rollup"
+fi
+
+# Clear existing data and restore
+log "Clearing existing data in $ROLLUP_DATA_DIR..."
+sudo rm -rf "${ROLLUP_DATA_DIR:?}"/*
+
+log "Restoring data (this may take a while for large datasets)..."
+sudo rsync -ah --info=progress2 "$TEMP_MOUNT/rollup/" "$ROLLUP_DATA_DIR/"
+
+# Fix ownership
+log "Fixing ownership..."
+sudo chown -R sovereign:sovereign "$ROLLUP_DATA_DIR"
+
+log "Data restore complete."
+
+# Unmount
+sudo umount "$TEMP_MOUNT"
+
+# Detach volume
+log "Detaching volume..."
+aws ec2 detach-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID"
+
+# Wait for detachment
+for i in {1..30}; do
+    STATE=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].State' --output text 2>/dev/null || echo "deleted")
+    if [ "$STATE" = "available" ]; then
+        break
+    fi
+    sleep 2
+done
+
+# Delete volume only if we created it
+if [ "$CREATED_VOLUME" = "true" ]; then
+    log "Deleting temporary volume..."
+    aws ec2 delete-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID"
+else
+    log "Preserving volume $VOLUME_ID for future use"
+fi
+VOLUME_ID=""  # Clear so cleanup trap doesn't try again
+
+# Restart the rollup
+log "Starting rollup service..."
+sudo systemctl start rollup
+
+log "=== Restore complete ==="
+echo ""
+echo "Rollup has been restored from $SOURCE_DESC"
+echo "Check service status: sudo systemctl status rollup"
+echo "View logs: sudo journalctl -u rollup -f"

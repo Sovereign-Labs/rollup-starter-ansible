@@ -33,6 +33,7 @@
       - httpie
       - postgresql-client
       - mdadm
+      - nvme-cli
 
 - name: check if cargo is installed
   shell: test -f /home/ubuntu/.cargo/env && source /home/ubuntu/.cargo/env && command -v cargo

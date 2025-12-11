@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# Snapshot Rollup Data Script
+# This script stops the rollup, rsyncs the data to the snapshots disk, restarts,
+# and then triggers an EBS snapshot of the snapshots disk.
+# Intended to run hourly via cron on backup nodes.
+#
+set -e
+
+SNAPSHOT_DIR="{{ snapshots_dir }}"
+ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
+SNAPSHOTS_DEVICE="{{ disk_config.snapshots_disk }}"
+LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | sudo tee -a "$LOGFILE"
+}
+
+log "=== Starting rollup snapshot ==="
+
+# Stop the rollup service
+log "Stopping rollup service..."
+sudo systemctl stop rollup
+
+# Rsync rollup data to snapshots disk
+log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_DIR..."
+rsync -a --delete "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"
+
+log "Sync complete."
+
+# Restart the rollup service
+log "Starting rollup service..."
+sudo systemctl start rollup
+
+log "Rollup restarted. Creating EBS snapshot..."
+
+# Get AWS region from instance metadata (IMDSv2)
+IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+
+# Get volume ID from NVMe device serial number
+# The serial number is the volume ID without the dash (e.g., "vol0abc123" -> "vol-0abc123")
+SERIAL=$(sudo nvme id-ctrl -v "$SNAPSHOTS_DEVICE" 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
+if [[ "$SERIAL" =~ ^vol ]]; then
+    # Insert dash after "vol" to get proper volume ID format
+    VOLUME_ID="vol-${SERIAL:3}"
+    log "Snapshots disk volume ID: $VOLUME_ID"
+
+    # Create EBS snapshot with descriptive tags
+    TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    SNAPSHOT_ID=$(aws ec2 create-snapshot \
+        --region "$AWS_REGION" \
+        --volume-id "$VOLUME_ID" \
+        --description "Rollup backup snapshot from $INSTANCE_ID at $TIMESTAMP" \
+        --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=rollup-backup-$INSTANCE_ID},{Key=InstanceId,Value=$INSTANCE_ID},{Key=CreatedAt,Value=$TIMESTAMP},{Key=AutomatedBackup,Value=true}]" \
+        --query 'SnapshotId' \
+        --output text)
+
+    log "EBS snapshot initiated: $SNAPSHOT_ID"
+else
+    log "WARNING: Could not determine volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
+fi
+
+log "=== Snapshot complete ==="

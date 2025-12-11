@@ -43,6 +43,18 @@ disk_profiles:
     logs_disk_index: 1
     da_disk_index: null
 
+  # AWS: Backup node with NVMe for rollup/logs + EBS for snapshots
+  # 1st NVMe → rollup, 2nd NVMe → logs, EBS → /mnt/snapshots
+  aws_ebs_backup_node:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    ebs_serial_prefix: "vol"
+    use_raid: false
+    rollup_disk_index: 0
+    logs_disk_index: 1
+    da_disk_index: null
+    snapshots_disk_from_ebs: true
+
   # AWS: Auto-discover instance store disks, no RAID
   # 1st disk → rollup, 2nd disk → logs
   aws_simple:
@@ -88,6 +100,7 @@ reformat_disks: false
 rollup_storage_dir: "/mnt/rollup"
 rollup_log_dir: "/mnt/logs"  # Only used when logs_disk is configured; otherwise journald uses default location
 da_store: "/mnt/da"
+snapshots_dir: "/mnt/snapshots"  # Used by aws_ebs_backup_node profile for EBS-backed snapshots
 
 # File limits for users
 # These are high values suitable for services that need to handle many connections

@@ -34,6 +34,11 @@ rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 # Options: "mock_zkvm" (fast, for development) or "risc0" (full proving)
 zkvm_role: "mock_zkvm"
 
+# Sequencer type
+# "Preferred": will run the preferred sequencer that provides soft confirmations.
+# "Standard": will run a basic near-stateless sequencer.
+rollup_sequencer_kind: "preferred"
+
 # Build mode
 # true = debug build (faster compile, larger binary, more logging)
 # false = release build (slower compile, optimized binary)
