@@ -12,6 +12,9 @@
 - name: install dependencies
   include_tasks: deps.yaml
 
+- name: disable rsyslog
+  include_tasks: rsyslog.yaml
+
 - name: chrony
   include_tasks: chrony.yaml
 
