@@ -10,33 +10,29 @@
     # TCP buffer sizes (10k, 87.38k (linux default), 12M resp)
     - { name: 'net.ipv4.tcp_rmem', value: '10240 87380 12582912' }
     - { name: 'net.ipv4.tcp_wmem', value: '10240 87380 12582912' }
-    # Enable TCP westwood for kernels >= 2.6.13
-    - { name: 'net.ipv4.tcp_congestion_control', value: 'westwood' }
     - { name: 'net.ipv4.tcp_fastopen', value: '3' }
-    - { name: 'net.ipv4.tcp_timestamps', value: '0' }
+    - { name: 'net.ipv4.tcp_timestamps', value: '1' }
     - { name: 'net.ipv4.tcp_sack', value: '1' }
-    - { name: 'net.ipv4.tcp_low_latency', value: '1' }
-    # Enable fast recycling TIME-WAIT sockets
-    - { name: 'net.ipv4.tcp_tw_reuse', value: '1' }
     # Don't cache ssthresh from previous connection
-    - { name: 'net.ipv4.tcp_no_metrics_save', value: '1' }
     - { name: 'net.ipv4.tcp_moderate_rcvbuf', value: '1' }
     # Kernel tuning
     - { name: 'kernel.timer_migration', value: '0' }
     - { name: 'kernel.hung_task_timeout_secs', value: '30' }
-    - { name: 'kernel.pid_max', value: '49152' }
     # VM tuning
     - { name: 'vm.swappiness', value: '30' }
     - { name: 'vm.max_map_count', value: '2000000' }
     - { name: 'vm.stat_interval', value: '10' }
-    - { name: 'vm.dirty_ratio', value: '40' }
-    - { name: 'vm.dirty_background_ratio', value: '10' }
-    - { name: 'vm.min_free_kbytes', value: '3000000' }
-    - { name: 'vm.dirty_expire_centisecs', value: '36000' }
-    - { name: 'vm.dirty_writeback_centisecs', value: '3000' }
+    # 4 GiB
+    - { name: 'vm.dirty_bytes', value: '4294967296' }
+    # 1 GiB
+    - { name: 'vm.dirty_background_bytes', value: '1073741824' }
+    # 256 MiB
+    - { name: 'vm.min_free_kbytes', value: '262144' }
+    # 30 seconds
+    - { name: 'vm.dirty_expire_centisecs', value: '3000' }
+    # 5 seconds
+    - { name: 'vm.dirty_writeback_centisecs', value: '500' }
     - { name: 'vm.dirtytime_expire_seconds', value: '43200' }
     # Network core tuning
     - { name: 'net.core.rmem_max', value: '134217728' }
-    - { name: 'net.core.rmem_default', value: '134217728' }
     - { name: 'net.core.wmem_max', value: '134217728' }
-    - { name: 'net.core.wmem_default', value: '134217728' }
