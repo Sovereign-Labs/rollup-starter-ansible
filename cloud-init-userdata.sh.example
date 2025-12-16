@@ -33,6 +33,12 @@ CELESTIA_RPC_URL="https://rpc-mocha.pops.one"
 CELESTIA_GRPC_URL="grpc-mocha.pops.one:443"
 DA_ROLLUP_ADDRESS="celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
 
+# Optional constants.toml overrides (leave empty to use rollup defaults)
+ROLLUP_CHAIN_ID=""
+ROLLUP_CHAIN_NAME=""
+ROLLUP_HYPERLANE_BRIDGE_DOMAIN=""
+ROLLUP_DEFERRED_SLOTS_COUNT=""
+
 # Secrets (CDK should retrieve from AWS Secrets Manager or SSM)
 # CELESTIA_GRPC_AUTH_TOKEN=""
 # SIGNER_PRIVATE_KEY=""
@@ -152,6 +158,31 @@ EOF
 signer_private_key: "$SIGNER_PRIVATE_KEY"
 EOF
     fi
+fi
+
+# Add optional constants.toml overrides if provided
+if [[ -n "${ROLLUP_CHAIN_ID:-}" ]]; then
+    cat >> "$RUNTIME_VARS_FILE" << EOF
+rollup_chain_id: $ROLLUP_CHAIN_ID
+EOF
+fi
+
+if [[ -n "${ROLLUP_CHAIN_NAME:-}" ]]; then
+    cat >> "$RUNTIME_VARS_FILE" << EOF
+rollup_chain_name: "$ROLLUP_CHAIN_NAME"
+EOF
+fi
+
+if [[ -n "${ROLLUP_HYPERLANE_BRIDGE_DOMAIN:-}" ]]; then
+    cat >> "$RUNTIME_VARS_FILE" << EOF
+rollup_hyperlane_bridge_domain: $ROLLUP_HYPERLANE_BRIDGE_DOMAIN
+EOF
+fi
+
+if [[ -n "${ROLLUP_DEFERRED_SLOTS_COUNT:-}" ]]; then
+    cat >> "$RUNTIME_VARS_FILE" << EOF
+rollup_deferred_slots_count: $ROLLUP_DEFERRED_SLOTS_COUNT
+EOF
 fi
 
 # Secure the file (contains secrets)

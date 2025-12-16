@@ -86,6 +86,17 @@
 # Note: Celestia RPC/gRPC URLs and secrets go in vars/celestia_secrets.yaml
 
 # ============================================
+# Constants.toml Overrides
+# ============================================
+# These values override the defaults in the rollup's constants.toml file
+# Only specify values you want to change - unset variables use rollup defaults
+
+# rollup_chain_id: 6669
+# rollup_chain_name: "MyChain"
+# rollup_hyperlane_bridge_domain: 5555
+# rollup_deferred_slots_count: 100000
+
+# ============================================
 # zkVM - Risc0
 # ============================================
 
