@@ -51,3 +51,20 @@
     mode: '0644'
   become: true
   notify: restart journald
+
+# Disable rsyslog to prevent duplicate logging (journald + rsyslog)
+# rsyslog writes to /var/log/syslog on root disk without rotation limits,
+# while journald already handles log retention with configured limits
+- name: stop and disable rsyslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: stopped
+    enabled: false
+  become: true
+  ignore_errors: true
+
+- name: mask syslog.socket to prevent rsyslog activation
+  ansible.builtin.systemd:
+    name: syslog.socket
+    masked: true
+  become: true
