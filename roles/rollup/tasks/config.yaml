@@ -29,6 +29,46 @@
     backup: no
   when: data_availability_role == 'celestia'
 
+- name: update CHAIN_ID in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^CHAIN_ID = \d+'
+    replace: 'CHAIN_ID = {{ rollup_chain_id }}'
+    backup: no
+  when: rollup_chain_id is defined and rollup_chain_id | string | length > 0
+
+- name: update CHAIN_NAME in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^CHAIN_NAME = ".*"'
+    replace: 'CHAIN_NAME = "{{ rollup_chain_name }}"'
+    backup: no
+  when: rollup_chain_name is defined and rollup_chain_name | string | length > 0
+
+- name: update HYPERLANE_BRIDGE_DOMAIN in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^HYPERLANE_BRIDGE_DOMAIN = \d+'
+    replace: 'HYPERLANE_BRIDGE_DOMAIN = {{ rollup_hyperlane_bridge_domain }}'
+    backup: no
+  when: rollup_hyperlane_bridge_domain is defined and rollup_hyperlane_bridge_domain | string | length > 0
+
+- name: update DEFERRED_SLOTS_COUNT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^DEFERRED_SLOTS_COUNT = \d+'
+    replace: 'DEFERRED_SLOTS_COUNT = {{ rollup_deferred_slots_count }}'
+    backup: no
+  when: rollup_deferred_slots_count is defined and rollup_deferred_slots_count | string | length > 0
+
 - name: render evm_pinned_cache.json
   become: true
   become_user: sovereign

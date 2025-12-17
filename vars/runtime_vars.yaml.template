@@ -78,6 +78,24 @@ da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
 signer_private_key: ""
 
 # ============================================================================
+# CONSTANTS.TOML OVERRIDES (optional)
+# ============================================================================
+# These values override the defaults in the rollup's constants.toml file
+# Only specify values you want to change - unset variables use rollup defaults
+
+# Chain identifier (integer)
+# rollup_chain_id: 6669
+
+# Chain name (string)
+# rollup_chain_name: "MyChain"
+
+# Hyperlane bridge domain (integer)
+# rollup_hyperlane_bridge_domain: 5555
+
+# Deferred slots count (integer)
+# rollup_deferred_slots_count: 100000
+
+# ============================================================================
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================
 
