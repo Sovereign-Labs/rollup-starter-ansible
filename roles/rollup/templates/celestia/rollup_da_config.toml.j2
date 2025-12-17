@@ -1,7 +1,9 @@
 [da]
 rpc_url = "{{ celestia_rpc_url }}"
 grpc_url = "{{ celestia_grpc_url }}"
+{% if celestia_grpc_auth_token is defined and celestia_grpc_auth_token | length > 0 %}
 grpc_auth_token = "{{ celestia_grpc_auth_token }}"
+{% endif %}
 signer_private_key = "{{ signer_private_key }}"
 request_timeout_secs = {{ celestia_request_timeout }}
 {% if celestia_tx_priority %}
