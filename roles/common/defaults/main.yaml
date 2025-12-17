@@ -5,7 +5,8 @@
 #
 # Select a predefined disk profile or set to "none" to skip disk setup entirely.
 # Available profiles:
-#   - aws_raid: Auto-discover instance store disks (recommended for AWS)
+#   - aws_raid_1: Auto-discover instance store disks, RAID-1 (mirrored)
+#   - aws_raid_0: Auto-discover instance store disks, RAID-0 (striped)
 #   - aws_simple: Single disk for rollup, separate logs disk
 #   - raid_manual: RAID-1 for rollup (2 disks), explicit paths
 #   - hetzner: Single disk for rollup, logs on root volume
@@ -23,24 +24,26 @@ disk_profile: "none"
 #   - "SAMSUNG"                           - Samsung SSDs
 #
 disk_profiles:
-  # AWS: Auto-discover instance store disks for RAID-1
-  aws_raid:
+  # AWS: Auto-discover instance store disks for RAID-1 (mirrored)
+  # 1st + 2nd disk → RAID-1, 3rd disk → logs
+  aws_raid_1:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
     use_raid: true
+    raid_level: 1
     raid_disk_count: 2
     logs_disk_index: 2
     da_disk_index: null
 
-  # AWS: Hybrid RAID-1 with NVMe (fast) + EBS (persistent, write-mostly)
-  # NVMe serves reads, EBS provides persistence with write-behind buffer
-  aws_raid_ebs:
+  # AWS: Auto-discover instance store disks for RAID-0 (striped)
+  # 1st + 2nd disk → RAID-0, 3rd disk → logs
+  aws_raid_0:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
-    ebs_serial_prefix: "vol"
     use_raid: true
-    raid_write_mostly: true
-    logs_disk_index: 1
+    raid_level: 0
+    raid_disk_count: 2
+    logs_disk_index: 2
     da_disk_index: null
 
   # AWS: Backup node with NVMe for rollup/logs + EBS for snapshots
@@ -67,6 +70,7 @@ disk_profiles:
 
   raid_manual:
     use_raid: true
+    raid_level: 1
     raid_disks:
       - "/dev/nvme1n1"
       - "/dev/nvme2n1"

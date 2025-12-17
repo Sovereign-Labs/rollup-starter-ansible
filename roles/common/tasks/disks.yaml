@@ -4,14 +4,15 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_raid, aws_raid_ebs, aws_simple, raid_manual, hetzner, none, custom
+# Set disk_profile variable to select: aws_raid_1, aws_raid_0, aws_simple, raid_manual, hetzner, none, custom
 #
-# For aws_raid profile, disk paths are resolved from discovered instance store disks.
+# For aws_raid_* profiles, disk paths are resolved from discovered instance store disks.
 # For other profiles, disk paths are specified explicitly.
 #
 # Resolved disk_config contains:
-#   - use_raid: Whether to create RAID-1 for rollup storage
-#   - raid_disks: List of disks for RAID-1 (when use_raid=true)
+#   - use_raid: Whether to create RAID array for rollup storage
+#   - raid_level: RAID level (0=striped, 1=mirrored)
+#   - raid_disks: List of disks for RAID (when use_raid=true)
 #   - rollup_disk: Single disk for rollup (when use_raid=false)
 #   - logs_disk: Disk for /mnt/logs (empty string = skip)
 #   - da_disk: Disk for /mnt/da (empty string = skip)
@@ -25,7 +26,7 @@
     msg:
       - "===== Disk Configuration ====="
       - "Profile: {{ disk_profile }}{{ ' (auto-discovered)' if disk_config.auto_discover | default(false) else '' }}"
-      - "Use RAID: {{ disk_config.use_raid | default(false) }}{{ ' (write-mostly)' if disk_config.raid_write_mostly | default(false) else '' }}"
+      - "Use RAID: {{ disk_config.use_raid | default(false) }}{{ ' (level ' + (disk_config.raid_level | string) + ')' if disk_config.use_raid | default(false) else '' }}"
       - "RAID disks: {{ disk_config.raid_disks | default([]) | join(', ') or 'N/A' }}"
       - "Rollup disk: {{ disk_config.rollup_disk | default('N/A') or 'N/A' }}"
       - "Logs disk: {{ disk_config.logs_disk | default('') or 'N/A (root volume)' }}"
@@ -154,10 +155,10 @@
     - reformat_disks | default(false) | bool
     - disk_config.use_raid | default(false) | bool
 
-- name: create RAID-1 array (standard)
+- name: create RAID array
   shell: |
     mdadm --create /dev/md/rollup \
-      --level=1 \
+      --level={{ disk_config.raid_level | default(1) }} \
       --raid-devices={{ disk_config.raid_disks | length }} \
       --name=rollup \
       --metadata=1.2 \
@@ -166,26 +167,6 @@
   become: true
   when:
     - disk_config.use_raid | default(false) | bool
-    - not (disk_config.raid_write_mostly | default(false) | bool)
-    - raid_state.stdout != 'exists'
-    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
-
-- name: create RAID-1 array (write-mostly for EBS persistence)
-  shell: |
-    echo "y" | mdadm --create /dev/md/rollup \
-      --level=1 \
-      --raid-devices=2 \
-      --name=rollup \
-      --assume-clean \
-      --bitmap=internal \
-      --bitmap-chunk=8M \
-      --write-behind=16383 \
-      {{ disk_config.raid_disks[0] }} \
-      --write-mostly {{ disk_config.raid_disks[1] }}
-  become: true
-  when:
-    - disk_config.use_raid | default(false) | bool
-    - disk_config.raid_write_mostly | default(false) | bool
     - raid_state.stdout != 'exists'
     - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
 

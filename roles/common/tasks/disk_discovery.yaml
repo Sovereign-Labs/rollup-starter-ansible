@@ -64,7 +64,7 @@
       - "Instance store disks ({{ discovered_instance_store_disks | length }}): {{ discovered_instance_store_disks | join(', ') or 'none' }}"
       - "EBS disk: {{ discovered_ebs_disk | default('N/A') }}"
 
-- name: validate sufficient disks for standard RAID
+- name: validate sufficient disks for RAID
   fail:
     msg: >
       Not enough instance store disks for RAID configuration.
@@ -72,17 +72,7 @@
       Found: {{ discovered_instance_store_disks | length }} disk(s).
   when:
     - disk_profile_raw.use_raid | default(false)
-    - not (disk_profile_raw.raid_write_mostly | default(false))
     - discovered_instance_store_disks | length < disk_profile_raw.raid_disk_count | int
-
-- name: validate disks for write-mostly RAID (NVMe + EBS)
-  fail:
-    msg: >
-      Write-mostly RAID requires 1 NVMe instance store and 1 EBS volume.
-      Found: {{ discovered_instance_store_disks | length }} instance store disk(s), EBS: {{ discovered_ebs_disk | default('none') }}.
-  when:
-    - disk_profile_raw.raid_write_mostly | default(false)
-    - discovered_instance_store_disks | length < 1 or (discovered_ebs_disk | default('')) == ''
 
 - name: validate rollup disk index
   fail:
@@ -122,16 +112,6 @@
   when:
     - disk_profile_raw.snapshots_disk_from_ebs | default(false)
     - (discovered_ebs_disk | default('')) == ''
-
-- name: validate snapshots and write-mostly RAID are mutually exclusive
-  fail:
-    msg: >
-      Cannot use snapshots_disk_from_ebs with raid_write_mostly.
-      Both options require the EBS volume, but only one EBS disk is discovered.
-      Use either aws_ebs_backup_node (NVMe RAID + EBS snapshots) or aws_raid_ebs (NVMe+EBS RAID), not both.
-  when:
-    - disk_profile_raw.snapshots_disk_from_ebs | default(false)
-    - disk_profile_raw.raid_write_mostly | default(false)
 
 - name: validate snapshots requires standard sequencer
   fail:
