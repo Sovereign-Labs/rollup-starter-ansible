@@ -37,3 +37,6 @@
 
 - name: configure rollup telegraf monitoring
   include_tasks: telegraf.yaml
+
+- name: deploy login banner
+  include_tasks: motd.yaml

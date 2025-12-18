@@ -6,9 +6,6 @@
 - name: create user
   include_tasks: user.yaml
 
-- name: deploy login banner
-  include_tasks: motd.yaml
-
 - name: install dependencies
   include_tasks: deps.yaml
 
