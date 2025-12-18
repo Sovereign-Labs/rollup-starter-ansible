@@ -9,6 +9,7 @@ ExecStart=/home/sovereign/hyperlane-relayer.sh
 Restart=always
 RestartSec=3
 User=sovereign
+WorkingDirectory=/home/sovereign
 LimitNOFILE={{ max_open_files | default(1000000) }}
 LogRateLimitIntervalSec=0
 StandardOutput=journal

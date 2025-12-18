@@ -1,7 +1,7 @@
 #!/bin/bash
 export NO_COLOR=1
 export RUST_BACKTRACE=full
-export CONFIG_FILES={{ hyperlane_agent_config_path }}
+export CONFIG_FILES={{ hyperlane_config_files }}
 export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
 
 /home/sovereign/validator \
@@ -13,4 +13,5 @@ export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
   --checkpointSyncer.folder {{ hyperlane_checkpoint_syncer_folder }} \
   --metrics-port {{ hyperlane_validator_metrics_port }} \
   --log.level {{ hyperlane_log_level }} \
-  --log.format json
+  --log.format json{% for chain, url in hyperlane_custom_rpc_urls.items() %}{% if url %} \
+  --chains.{{ chain }}.customRpcUrls="{{ url }}"{% endif %}{% endfor %}

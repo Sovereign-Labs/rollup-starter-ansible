@@ -6,13 +6,26 @@
       - rollup_hyperlane_bridge_domain | string | length > 0
     fail_msg: "rollup_hyperlane_bridge_domain must be defined"
 
-- name: create registry directory
+- name: create config directory
   ansible.builtin.file:
     path: "{{ hyperlane_agent_config_path | dirname }}"
     state: directory
     owner: sovereign
     group: sovereign
     mode: '0755'
+  become: true
+
+- name: copy hyperlane configs from repo
+  ansible.builtin.shell:
+    cmd: cp /home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/config/* {{ hyperlane_agent_config_path | dirname }}/
+  become: true
+
+- name: set ownership on copied configs
+  ansible.builtin.file:
+    path: "{{ hyperlane_agent_config_path | dirname }}"
+    owner: sovereign
+    group: sovereign
+    recurse: yes
   become: true
 
 - name: render agent config
@@ -23,3 +36,13 @@
     group: sovereign
     mode: '0644'
   become: true
+
+- name: find all config files
+  ansible.builtin.find:
+    paths: "{{ hyperlane_agent_config_path | dirname }}"
+    patterns: "*.json"
+  register: config_files
+
+- name: set config files list
+  ansible.builtin.set_fact:
+    hyperlane_config_files: "{{ config_files.files | map(attribute='path') | join(',') }}"

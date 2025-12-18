@@ -4,13 +4,26 @@
   become_user: ubuntu
   vars:
     build_profile_flag: "{{ '--release' if not debug else '' }}"
-  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin validator --bin relayer --bin scraper
+  # --bin scraper
+  # TODO: Build only what is needed.
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin validator --bin relayer
   args:
     chdir: /home/ubuntu/{{ hyperlane_repo_dir }}/rust/main
     executable: /bin/bash
   register: build_result
   async: 3600
   poll: 30
+
+- name: stop hyperlane services before copying binaries
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - hyperlane-validator
+    - hyperlane-relayer
+  become: true
+  ignore_errors: true
+  failed_when: false
 
 - name: copy hyperlane binaries to sovereign's home directory
   vars:
