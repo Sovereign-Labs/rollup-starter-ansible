@@ -7,7 +7,7 @@ export HYP_CHAINS_{{ chain | upper }}_SIGNER_KEY={{ key }}
 {% endfor %}
 
 /home/sovereign/relayer \
-  --db {{ rollup_storage_dir }} \
+  --db {{ hyperlane_relayer_db_path }} \
   --relayChains {{ hyperlane_relayer_relay_chains }} \
   --checkpointSyncer.type s3 \
   --checkpointSyncer.bucket {{ hyperlane_checkpoint_syncer_bucket }} \

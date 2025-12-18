@@ -7,6 +7,15 @@
       - hyperlane_checkpoint_syncer_folder | length > 0
     fail_msg: "hyperlane_checkpoint_syncer_bucket, hyperlane_checkpoint_syncer_region, and hyperlane_checkpoint_syncer_folder are mandatory"
 
+- name: create relayer db directory
+  ansible.builtin.file:
+    path: "{{ hyperlane_relayer_db_path }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
 - name: copy relayer shell script
   ansible.builtin.template:
     src: hyperlane-relayer.sh.j2

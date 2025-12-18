@@ -5,7 +5,7 @@ export CONFIG_FILES={{ hyperlane_config_files }}
 export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
 
 /home/sovereign/validator \
-  --db {{ rollup_storage_dir }} \
+  --db {{ hyperlane_validator_db_path }} \
   --originChainName {{ hyperlane_validator_origin_chain }} \
   --checkpointSyncer.type s3 \
   --checkpointSyncer.bucket {{ hyperlane_checkpoint_syncer_bucket }} \
