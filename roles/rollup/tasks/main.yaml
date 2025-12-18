@@ -10,6 +10,10 @@
 # Load zkvm configuration variables
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
+- name: setup local postgresql
+  include_tasks: postgres.yaml
+  when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
+
 - name: git update
   import_tasks: git.yaml
 

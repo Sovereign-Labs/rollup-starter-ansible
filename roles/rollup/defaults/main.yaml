@@ -79,6 +79,12 @@ wipe: false
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
 
+# Local PostgreSQL configuration
+# Used when rollup_sequencer_postgres_connection_string is not provided
+postgres_db_name: "rollup"
+postgres_db_user: "rollup"
+postgres_db_password: "rollup_secure_password"
+
 # Optional comma separated string of EVM addresses for RAM pinning (privileged deployers)
 evm_pinned_addresses: ""
 # When defined, renders evm_pinned_cache.json next to rollup_config.toml

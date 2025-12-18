@@ -132,8 +132,3 @@ grafana_tempo_username: "sov-logger"
 # This is used by the rollup role to determine if telemetry should be enabled
 opentelemetry_available: "{{ (grafana_loki_token is defined and grafana_loki_token) or (grafana_tempo_token is defined and grafana_tempo_token) }}"
 
-# PostgreSQL configuration
-# Local PostgreSQL is automatically installed if rollup_sequencer_postgres_connection_string is not provided
-postgres_db_name: "rollup"
-postgres_db_user: "rollup"
-postgres_db_password: "rollup_secure_password"
