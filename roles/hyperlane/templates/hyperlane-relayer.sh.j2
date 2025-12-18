@@ -4,13 +4,13 @@ export RUST_BACKTRACE=full
 export CONFIG_FILES=/home/sovereign/registry/agent-config.json
 
 {% set build_profile = 'debug' if debug else 'release' %}
-/home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/validator \
+/home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/relayer \
   --db {{ rollup_storage_dir }} \
-  --originChainName {{ hyperlane_validator_origin_chain }} \
+  --relayChains {{ hyperlane_relayer_relay_chains }} \
   --checkpointSyncer.type s3 \
   --checkpointSyncer.bucket {{ hyperlane_checkpoint_syncer_bucket }} \
   --checkpointSyncer.region {{ hyperlane_checkpoint_syncer_region }} \
   --checkpointSyncer.folder {{ hyperlane_checkpoint_syncer_folder }} \
-  --metrics-port {{ hyperlane_validator_metrics_port }} \
+  --metrics-port {{ hyperlane_relayer_metrics_port }} \
   --log.level {{ hyperlane_log_level }} \
   --log.format json

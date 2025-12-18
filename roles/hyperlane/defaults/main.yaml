@@ -8,17 +8,25 @@ hyperlane_repo_dir: "hyperlane-monorepo"
 
 # Build
 debug: false
+hyperlane_log_level: "info"
 
 # Validator
 # If hyperlane_validator_origin_chain is defined, validator runs as systemd service
 hyperlane_validator_origin_chain: ""
 hyperlane_validator_metrics_port: 9092
-hyperlane_validator_log_level: "info"
 
-# Target chain signer
+# Relayer
+# If hyperlane_relayer_relay_chains is defined, relayer runs as systemd service
+hyperlane_relayer_relay_chains: ""
+hyperlane_relayer_metrics_port: 9091
+
+# Target chain config (used in registry/chains/metadata.yaml and agent-config.json)
 hyperlane_target_chain: "sovstarter"
+hyperlane_target_chain_name: "Sov Starter"
 hyperlane_target_signer_type: "sovereignKey"
 hyperlane_target_signer_account_type: "ethereum"
+hyperlane_rollup_url: ""
+hyperlane_is_testnet: true
 
 # Checkpoint syncer (S3) - mandatory when validator is enabled
 hyperlane_checkpoint_syncer_bucket: ""

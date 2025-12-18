@@ -1,0 +1,10 @@
+{{ hyperlane_target_chain }}:
+  domainId: {{ rollup_hyperlane_bridge_domain }}
+  isTestnet: {{ hyperlane_is_testnet | lower }}
+  name: {{ hyperlane_target_chain_name }}
+  protocol: sovereign
+  signer:
+    type: {{ hyperlane_target_signer_type }}
+    account_type: {{ hyperlane_target_signer_account_type }}
+  rpcUrls:
+    - http: {{ hyperlane_rollup_url }}

@@ -1,0 +1,18 @@
+[Unit]
+Description=Hyperlane Relayer
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/home/sovereign/hyperlane-relayer.sh
+Restart=always
+RestartSec=3
+User=sovereign
+LimitNOFILE={{ max_open_files | default(1000000) }}
+LogRateLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

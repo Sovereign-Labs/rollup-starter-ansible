@@ -5,6 +5,13 @@
 - name: build hyperlane binaries
   import_tasks: build.yaml
 
+- name: render hyperlane config
+  import_tasks: config.yaml
+
 - name: setup hyperlane validator service
   include_tasks: validator.yaml
   when: hyperlane_validator_origin_chain | length > 0
+
+- name: setup hyperlane relayer service
+  include_tasks: relayer.yaml
+  when: hyperlane_relayer_relay_chains | length > 0

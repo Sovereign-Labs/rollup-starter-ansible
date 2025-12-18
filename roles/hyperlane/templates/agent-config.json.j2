@@ -1,0 +1,23 @@
+{
+  "chains": {
+    "{{ hyperlane_target_chain }}": {
+      "domainId": {{ rollup_hyperlane_bridge_domain }},
+      "isTestnet": {{ hyperlane_is_testnet | lower }},
+      "name": "{{ hyperlane_target_chain_name }}",
+      "protocol": "sovereign",
+      "mailbox": "0x0000000000000000000000000000000000000000",
+      "merkleTreeHook": "0x0000000000000000000000000000000000000000",
+      "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
+      "validatorAnnounce": "0x0000000000000000000000000000000000000000",
+      "signer": {
+        "type": "{{ hyperlane_target_signer_type }}",
+        "account_type": "{{ hyperlane_target_signer_account_type }}"
+      },
+      "rpcUrls": [
+        {
+          "http": "{{ hyperlane_rollup_url }}"
+        }
+      ]
+    }
+  }
+}
