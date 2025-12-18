@@ -1,0 +1,25 @@
+---
+- name: validate rollup_hyperlane_bridge_domain is defined
+  assert:
+    that:
+      - rollup_hyperlane_bridge_domain is defined
+      - rollup_hyperlane_bridge_domain | string | length > 0
+    fail_msg: "rollup_hyperlane_bridge_domain must be defined"
+
+- name: create registry directory
+  ansible.builtin.file:
+    path: "{{ hyperlane_agent_config_path | dirname }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
+- name: render agent config
+  ansible.builtin.template:
+    src: agent-config.json.j2
+    dest: "{{ hyperlane_agent_config_path }}"
+    owner: sovereign
+    group: sovereign
+    mode: '0644'
+  become: true

@@ -1,7 +1,7 @@
 #!/bin/bash
 export NO_COLOR=1
 export RUST_BACKTRACE=full
-export CONFIG_FILES=/home/sovereign/registry/agent-config.json
+export CONFIG_FILES={{ hyperlane_agent_config_path }}
 
 {% set build_profile = 'debug' if debug else 'release' %}
 /home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/relayer \
