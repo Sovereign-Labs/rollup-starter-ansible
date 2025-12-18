@@ -14,9 +14,9 @@ hyperlane_agent_config_path: "/home/sovereign/config/agent-config.json"
 # Custom RPC URLs per chain (defined in secrets)
 hyperlane_custom_rpc_urls: {}
 
-# Target chain config (used in registry/chains/metadata.yaml and agent-config.json)
+# Target chain config (used in agent-config.json)
 hyperlane_target_chain: "sovstarter"
-hyperlane_target_chain_name: "Sov Starter"
+hyperlane_target_chain_display_name: "Sov Starter"
 hyperlane_target_signer_type: "sovereignKey"
 hyperlane_target_signer_account_type: "ethereum"
 hyperlane_rollup_url: ""
@@ -31,8 +31,10 @@ hyperlane_checkpoint_syncer_folder: ""
 # If hyperlane_validator_origin_chain is defined, validator runs as systemd service
 hyperlane_validator_origin_chain: ""
 hyperlane_validator_metrics_port: 9092
+hyperlane_validator_db_path: "{{ rollup_storage_dir }}/hyperlane-validator"
 
 # Relayer
 # If hyperlane_relayer_relay_chains is defined, relayer runs as systemd service
 hyperlane_relayer_relay_chains: ""
 hyperlane_relayer_metrics_port: 9091
+hyperlane_relayer_db_path: "{{ rollup_storage_dir }}/hyperlane-relayer"
