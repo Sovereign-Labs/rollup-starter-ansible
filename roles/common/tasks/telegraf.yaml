@@ -1,8 +1,14 @@
+- name: check if monitoring secrets file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/monitoring_secrets.yaml"
+  register: monitoring_secrets_stat
+
 - name: load telegraf secrets
   include_vars:
-    file: vars/monitoring_secrets.yaml
-  ignore_errors: true
-  when: influxdb_token is not defined
+    file: "{{ playbook_dir }}/vars/monitoring_secrets.yaml"
+  when:
+    - influxdb_token is not defined
+    - monitoring_secrets_stat.stat.exists
 
 - name: create directory for keyring
   ansible.builtin.file:
