@@ -4,7 +4,7 @@ export RUST_BACKTRACE=full
 
 {% set build_profile = 'debug' if debug else 'release' %}
 /home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/validator \
-  --db {{ hyperlane_validator_storage_dir }} \
+  --db {{ rollup_storage_dir }} \
   --originChainName {{ hyperlane_validator_origin_chain }} \
   --chains.{{ hyperlane_target_chain }}.signer.type "{{ hyperlane_target_signer_type }}" \
   --chains.{{ hyperlane_target_chain }}.signer.accountType "{{ hyperlane_target_signer_account_type }}" \

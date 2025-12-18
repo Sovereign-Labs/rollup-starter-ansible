@@ -12,7 +12,6 @@ debug: false
 # Validator
 # If hyperlane_validator_origin_chain is defined, validator runs as systemd service
 hyperlane_validator_origin_chain: ""
-hyperlane_validator_storage_dir: "/mnt/hyperlane-validator"
 hyperlane_validator_metrics_port: 9092
 hyperlane_validator_log_level: "info"
 
