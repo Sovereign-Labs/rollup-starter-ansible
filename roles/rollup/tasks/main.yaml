@@ -10,6 +10,10 @@
 # Load zkvm configuration variables
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
+- name: setup local postgresql
+  include_tasks: postgres.yaml
+  when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
+
 - name: git update
   import_tasks: git.yaml
 
@@ -30,3 +34,9 @@
 
 - name: install and setup nginx
   include_tasks: nginx.yaml
+
+- name: configure rollup telegraf monitoring
+  include_tasks: telegraf.yaml
+
+- name: deploy login banner
+  include_tasks: motd.yaml

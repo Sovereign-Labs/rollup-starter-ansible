@@ -29,6 +29,7 @@
       assert:
         that: data_availability_role is defined
         fail_msg: "Please specify 'data_availability_role' (celestia or mock_da)."
+      when: "'r' in switches"
 
     - name: Check switches parameter is provided
       assert:

@@ -6,9 +6,6 @@
 - name: create user
   include_tasks: user.yaml
 
-- name: deploy login banner
-  include_tasks: motd.yaml
-
 - name: install dependencies
   include_tasks: deps.yaml
 
@@ -37,7 +34,4 @@
 
 - name: grafana alloy agent for exporting logs and traces
   include_tasks: grafana_alloy.yaml
-
-- name: setup local postgresql
-  include_tasks: postgres.yaml
-  when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
+  when: (grafana_loki_token is defined and grafana_loki_token) or (grafana_tempo_token is defined and grafana_tempo_token)

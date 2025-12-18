@@ -21,11 +21,21 @@
   precision = "0s"
   hostname = "{{ effective_hostname }}"
 
+{% if influxdb_token is defined and influxdb_token %}
 [[outputs.influxdb_v2]]
   urls = ["{{ influxdb_remote_url }}"]
   organization = "{{ influxdb_org }}"
   bucket = "{{ influxdb_bucket }}"
   token = "{{ influxdb_token }}"
+{% else %}
+# Placeholder. You can add `outputs.influxdb_v2` manually
+[[outputs.discard]]
+#[[outputs.influxdb_v2]]
+#  urls = ["http://127.0.0.1:8086"]
+#  token = ""
+#  organization = """
+#  bucket = ""
+{% endif %}
 
 # Collectors
 [[inputs.socket_listener]]
@@ -76,16 +86,5 @@
   fieldpass = ["*"]
 # Telegraf self-monitoring
 [[inputs.internal]]
-[[inputs.http_response]]
-  interval = "2s"
-  urls = ["http://127.0.0.1:12346/sequencer/ready"]
 
-#[[inputs.postgresql]]
-#  address = "host=localhost user=rollup password=hunter2 sslmode=disable"
-# Rollup, legacy
-#[[inputs.prometheus]]
-#  urls = ["http://127.0.0.1:9845/metrics"]
-#   metric_version = 1
-#   [inputs.prometheus.tags]
-#     source = "sov-rollup"
-# Alloy
+# Alloy collector can be added here if needed

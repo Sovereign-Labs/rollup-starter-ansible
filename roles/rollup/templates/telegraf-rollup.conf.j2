@@ -1,0 +1,13 @@
+# Rollup-specific Telegraf inputs
+[[inputs.http_response]]
+  interval = "2s"
+  urls = ["http://127.0.0.1:12346/sequencer/ready"]
+
+#[[inputs.postgresql]]
+#  address = "host=localhost user=rollup password=hunter2 sslmode=disable"
+# Rollup, legacy
+#[[inputs.prometheus]]
+#  urls = ["http://127.0.0.1:9845/metrics"]
+#   metric_version = 1
+#   [inputs.prometheus.tags]
+#     source = "sov-rollup"

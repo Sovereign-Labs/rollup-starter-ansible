@@ -50,6 +50,15 @@
     mode: '0644'
   become: true
 
+- name: create telegraf.d directory for drop-in configs
+  ansible.builtin.file:
+    path: /etc/telegraf/telegraf.d
+    state: directory
+    owner: telegraf
+    group: telegraf
+    mode: '0755'
+  become: true
+
 - name: start and enable telegraf service
   systemd:
     name: telegraf
