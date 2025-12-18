@@ -6,3 +6,4 @@
   debug:
     msg: "Using {{ data_availability_role }} DA"
   run_once: true
+  when: "'r' in switches"
