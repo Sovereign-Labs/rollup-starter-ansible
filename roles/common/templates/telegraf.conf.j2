@@ -21,11 +21,15 @@
   precision = "0s"
   hostname = "{{ effective_hostname }}"
 
+{% if influxdb_token is defined and influxdb_token %}
 [[outputs.influxdb_v2]]
   urls = ["{{ influxdb_remote_url }}"]
   organization = "{{ influxdb_org }}"
   bucket = "{{ influxdb_bucket }}"
   token = "{{ influxdb_token }}"
+{% else %}
+[[outputs.discard]]
+{% endif %}
 
 # Collectors
 [[inputs.socket_listener]]
@@ -76,6 +80,7 @@
   fieldpass = ["*"]
 # Telegraf self-monitoring
 [[inputs.internal]]
+
 [[inputs.http_response]]
   interval = "2s"
   urls = ["http://127.0.0.1:12346/sequencer/ready"]
