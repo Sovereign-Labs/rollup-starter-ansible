@@ -8,3 +8,9 @@
   systemd:
     name: systemd-journald
     state: restarted
+
+- name: restart telegraf
+  become: true
+  systemd:
+    name: telegraf
+    state: restarted

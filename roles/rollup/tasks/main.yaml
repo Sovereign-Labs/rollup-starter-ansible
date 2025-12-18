@@ -30,3 +30,6 @@
 
 - name: install and setup nginx
   include_tasks: nginx.yaml
+
+- name: configure rollup telegraf monitoring
+  include_tasks: telegraf.yaml

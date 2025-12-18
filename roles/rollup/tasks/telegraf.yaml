@@ -1,0 +1,12 @@
+---
+# Rollup-specific Telegraf configuration
+
+- name: deploy rollup telegraf config
+  ansible.builtin.template:
+    src: telegraf-rollup.conf.j2
+    dest: /etc/telegraf/telegraf.d/rollup.conf
+    owner: telegraf
+    group: telegraf
+    mode: '0644'
+  become: true
+  notify: restart telegraf
