@@ -1,0 +1,13 @@
+---
+- name: build hyperlane binaries
+  become: true
+  become_user: ubuntu
+  vars:
+    build_profile_flag: "{{ '--release' if not debug else '' }}"
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin validator --bin relayer --bin scraper
+  args:
+    chdir: /home/ubuntu/{{ hyperlane_repo_dir }}/rust/main
+    executable: /bin/bash
+  register: build_result
+  async: 3600
+  poll: 30

@@ -1,0 +1,27 @@
+# Hyperlane Role Defaults
+
+# Git
+hyperlane_repo: "https://github.com/Sovereign-Labs/hyperlane-monorepo.git"
+hyperlane_commit_hash: ""
+hyperlane_branch: "integration"
+hyperlane_repo_dir: "hyperlane-monorepo"
+
+# Build
+debug: false
+
+# Validator
+# If hyperlane_validator_origin_chain is defined, validator runs as systemd service
+hyperlane_validator_origin_chain: ""
+hyperlane_validator_storage_dir: "/mnt/hyperlane-validator"
+hyperlane_validator_metrics_port: 9092
+hyperlane_validator_log_level: "info"
+
+# Target chain signer
+hyperlane_target_chain: "sovstarter"
+hyperlane_target_signer_type: "sovereignKey"
+hyperlane_target_signer_account_type: "ethereum"
+
+# Checkpoint syncer (S3) - mandatory when validator is enabled
+hyperlane_checkpoint_syncer_bucket: ""
+hyperlane_checkpoint_syncer_region: ""
+hyperlane_checkpoint_syncer_folder: ""

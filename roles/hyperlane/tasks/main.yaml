@@ -1,0 +1,10 @@
+---
+- name: git update
+  import_tasks: git.yaml
+
+- name: build hyperlane binaries
+  import_tasks: build.yaml
+
+- name: setup hyperlane validator service
+  include_tasks: validator.yaml
+  when: hyperlane_validator_origin_chain | length > 0

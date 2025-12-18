@@ -1,0 +1,10 @@
+---
+- name: checkout hyperlane repo to home folder
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ hyperlane_repo }}"
+    dest: "/home/ubuntu/{{ hyperlane_repo_dir }}"
+    version: "{{ hyperlane_commit_hash if (hyperlane_commit_hash is defined and hyperlane_commit_hash | length > 0) else hyperlane_branch }}"
+    accept_hostkey: yes
+    force: yes
