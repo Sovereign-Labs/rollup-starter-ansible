@@ -67,6 +67,12 @@ nginx_port: 8081
 
 custom_rust_log: ""
 
+# OpenTelemetry mode: "off", "logs", or "full"
+# - off: No telemetry (or when opentelemetry_available is false)
+# - logs: Only logs via OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+# - full: Full telemetry via SOV_OTEL_ENABLED
+opentelemetry_mode: "logs"
+
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
 

@@ -37,6 +37,7 @@
 
 - name: grafana alloy agent for exporting logs and traces
   include_tasks: grafana_alloy.yaml
+  when: (grafana_loki_token is defined and grafana_loki_token) or (grafana_tempo_token is defined and grafana_tempo_token)
 
 - name: setup local postgresql
   include_tasks: postgres.yaml

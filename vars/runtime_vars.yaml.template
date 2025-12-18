@@ -113,8 +113,8 @@ signer_private_key: ""
 # Custom host label for monitoring (optional)
 # custom_host_label: "my-rollup-node-1"
 
-# Grafana telemetry mode: "off", "logs", or "full"
-# grafana_telemetry_mode: "logs"
+# OpenTelemetry mode: "off", "logs", or "full"
+# opentelemetry_mode: "logs"
 
 # InfluxDB configuration (override if using custom monitoring)
 # influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
