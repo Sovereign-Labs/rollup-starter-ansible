@@ -28,7 +28,13 @@
   bucket = "{{ influxdb_bucket }}"
   token = "{{ influxdb_token }}"
 {% else %}
+# Placeholder. You can add `outputs.influxdb_v2` manually
 [[outputs.discard]]
+#[[outputs.influxdb_v2]]
+#  urls = ["http://127.0.0.1:8086"]
+#  token = ""
+#  organization = """
+#  bucket = ""
 {% endif %}
 
 # Collectors
