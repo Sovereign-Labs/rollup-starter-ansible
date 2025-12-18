@@ -1,0 +1,25 @@
+// Hyperlane log collection
+
+{% if hyperlane_validator_origin_chain | length > 0 %}
+// Hyperlane Validator logs from journal
+loki.source.journal "hyperlane_validator" {
+  forward_to = [loki.process.add_hostname.receiver]
+  matches    = "_SYSTEMD_UNIT=hyperlane-validator.service"
+  labels     = {
+    job       = "hyperlane-validator",
+    component = "validator",
+  }
+}
+{% endif %}
+
+{% if hyperlane_relayer_relay_chains | length > 0 %}
+// Hyperlane Relayer logs from journal
+loki.source.journal "hyperlane_relayer" {
+  forward_to = [loki.process.add_hostname.receiver]
+  matches    = "_SYSTEMD_UNIT=hyperlane-relayer.service"
+  labels     = {
+    job       = "hyperlane-relayer",
+    component = "relayer",
+  }
+}
+{% endif %}

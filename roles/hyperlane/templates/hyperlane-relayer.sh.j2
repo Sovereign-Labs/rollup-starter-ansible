@@ -2,9 +2,11 @@
 export NO_COLOR=1
 export RUST_BACKTRACE=full
 export CONFIG_FILES={{ hyperlane_agent_config_path }}
+{% for chain, key in hyperlane_relayer_signer_keys.items() %}
+export HYP_CHAINS_{{ chain | upper }}_SIGNER_KEY={{ key }}
+{% endfor %}
 
-{% set build_profile = 'debug' if debug else 'release' %}
-/home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/relayer \
+/home/sovereign/relayer \
   --db {{ rollup_storage_dir }} \
   --relayChains {{ hyperlane_relayer_relay_chains }} \
   --checkpointSyncer.type s3 \

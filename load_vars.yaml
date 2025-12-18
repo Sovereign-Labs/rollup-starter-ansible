@@ -28,3 +28,18 @@
   when:
     - celestia_secrets_stat.stat.exists
     - signer_private_key is not defined
+
+- name: Check if Hyperlane secrets file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/hyperlane_secrets.yaml"
+  register: hyperlane_secrets_stat
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Load Hyperlane secrets from file (if not provided via extra vars)
+  include_vars:
+    file: "{{ playbook_dir }}/vars/hyperlane_secrets.yaml"
+  when:
+    - hyperlane_secrets_stat.stat.exists
+    - hyperlane_validator_key is not defined

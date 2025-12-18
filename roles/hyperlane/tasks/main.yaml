@@ -15,3 +15,11 @@
 - name: setup hyperlane relayer service
   include_tasks: relayer.yaml
   when: hyperlane_relayer_relay_chains | length > 0
+
+- name: setup hyperlane telegraf monitoring
+  import_tasks: telegraf.yaml
+  when: hyperlane_validator_origin_chain | length > 0 or hyperlane_relayer_relay_chains | length > 0
+
+- name: setup hyperlane alloy log collection
+  import_tasks: alloy.yaml
+  when: opentelemetry_available | bool and (hyperlane_validator_origin_chain | length > 0 or hyperlane_relayer_relay_chains | length > 0)

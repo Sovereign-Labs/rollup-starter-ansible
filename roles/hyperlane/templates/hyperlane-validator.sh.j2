@@ -2,9 +2,9 @@
 export NO_COLOR=1
 export RUST_BACKTRACE=full
 export CONFIG_FILES={{ hyperlane_agent_config_path }}
+export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
 
-{% set build_profile = 'debug' if debug else 'release' %}
-/home/ubuntu/{{ hyperlane_repo_dir }}/rust/main/target/{{ build_profile }}/validator \
+/home/sovereign/validator \
   --db {{ rollup_storage_dir }} \
   --originChainName {{ hyperlane_validator_origin_chain }} \
   --checkpointSyncer.type s3 \
