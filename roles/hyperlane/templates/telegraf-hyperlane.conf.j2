@@ -1,0 +1,19 @@
+# Hyperlane-specific Telegraf inputs
+
+{% if hyperlane_validator_origin_chain | length > 0 %}
+# Hyperlane Validator metrics
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:{{ hyperlane_validator_metrics_port }}/metrics"]
+  metric_version = 2
+  [inputs.prometheus.tags]
+    source = "hyperlane-validator"
+{% endif %}
+
+{% if hyperlane_relayer_relay_chains | length > 0 %}
+# Hyperlane Relayer metrics
+[[inputs.prometheus]]
+  urls = ["http://127.0.0.1:{{ hyperlane_relayer_metrics_port }}/metrics"]
+  metric_version = 2
+  [inputs.prometheus.tags]
+    source = "hyperlane-relayer"
+{% endif %}

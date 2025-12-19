@@ -38,7 +38,7 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_privs:
-    database: "{{ postgres_db_name }}"
+    db: "{{ postgres_db_name }}"
     privs: ALL
     type: database
     role: "{{ postgres_db_user }}"
@@ -47,7 +47,7 @@
   become: true
   become_user: postgres
   community.postgresql.postgresql_privs:
-    database: "{{ postgres_db_name }}"
+    db: "{{ postgres_db_name }}"
     privs: ALL
     type: schema
     objs: public

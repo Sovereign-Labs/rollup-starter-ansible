@@ -11,7 +11,7 @@
     - name: check switches parameter is provided
       assert:
         that: switches | length > 0
-        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup)."
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup), 'h' (hyperlane)."
     - name: import preconditions
       import_tasks: preconditions.yaml
   roles:
@@ -19,3 +19,5 @@
       when: "'c' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"
+    - role: "./roles/hyperlane"
+      when: "'h' in switches"

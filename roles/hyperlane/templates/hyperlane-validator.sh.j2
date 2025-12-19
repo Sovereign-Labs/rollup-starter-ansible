@@ -1,0 +1,18 @@
+#!/bin/bash
+export NO_COLOR=1
+export RUST_BACKTRACE=full
+export CONFIG_FILES="{{ hyperlane_config_files }}"
+export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
+
+/home/sovereign/validator \
+  --db {{ hyperlane_validator_db_path }} \
+  --originChainName {{ hyperlane_validator_origin_chain }} \
+  --checkpointSyncer.type s3 \
+  --checkpointSyncer.bucket {{ hyperlane_checkpoint_syncer_bucket }} \
+  --checkpointSyncer.region {{ hyperlane_checkpoint_syncer_region }} \
+  --checkpointSyncer.folder {{ hyperlane_checkpoint_syncer_folder }} \
+  --metrics-port {{ hyperlane_validator_metrics_port }} \
+  --log.level {{ hyperlane_log_level }} \
+  --log.format json{% for chain, url in hyperlane_custom_rpc_urls.items() %}{% if url %} \
+  --chains.{{ chain }}.customRpcUrls="{{ url }}"{% endif %}{% endfor %}{% for chain, block in hyperlane_chain_index_from.items() %}{% if block is defined and block != '' %} \
+  --chains.{{ chain }}.index.from={{ block }}{% endif %}{% endfor %}

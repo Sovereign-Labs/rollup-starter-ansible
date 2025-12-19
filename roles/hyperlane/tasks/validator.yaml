@@ -1,0 +1,56 @@
+---
+- name: validate mandatory checkpoint syncer params
+  assert:
+    that:
+      - hyperlane_checkpoint_syncer_bucket | length > 0
+      - hyperlane_checkpoint_syncer_region | length > 0
+      - hyperlane_checkpoint_syncer_folder | length > 0
+    fail_msg: "hyperlane_checkpoint_syncer_bucket, hyperlane_checkpoint_syncer_region, and hyperlane_checkpoint_syncer_folder are mandatory"
+
+- name: create validator db directory
+  ansible.builtin.file:
+    path: "{{ hyperlane_validator_db_path }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
+- name: copy validator shell script
+  ansible.builtin.template:
+    src: hyperlane-validator.sh.j2
+    dest: /home/sovereign/hyperlane-validator.sh
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
+- name: copy validator service file
+  ansible.builtin.template:
+    src: hyperlane-validator.service.j2
+    dest: /etc/systemd/system/hyperlane-validator.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: true
+
+- name: enable and start hyperlane-validator service
+  ansible.builtin.systemd:
+    name: hyperlane-validator
+    state: started
+    enabled: yes
+  become: true
+
+- name: wait for hyperlane-validator service to be active
+  ansible.builtin.systemd:
+    name: hyperlane-validator
+  register: result
+  until: result.status.ActiveState == "active" and result.status.SubState == "running"
+  retries: 30
+  delay: 10
+  become: true

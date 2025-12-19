@@ -1,0 +1,12 @@
+---
+# Hyperlane-specific Telegraf configuration
+
+- name: deploy hyperlane telegraf config
+  ansible.builtin.template:
+    src: telegraf-hyperlane.conf.j2
+    dest: /etc/telegraf/telegraf.d/hyperlane.conf
+    owner: telegraf
+    group: telegraf
+    mode: '0644'
+  become: true
+  notify: restart telegraf

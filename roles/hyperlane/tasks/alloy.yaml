@@ -1,0 +1,12 @@
+---
+# Hyperlane-specific Alloy configuration for log collection
+
+- name: deploy hyperlane alloy config
+  ansible.builtin.template:
+    src: hyperlane.alloy.j2
+    dest: /etc/alloy/hyperlane.alloy
+    owner: alloy
+    group: alloy
+    mode: '0644'
+  become: true
+  notify: restart alloy
