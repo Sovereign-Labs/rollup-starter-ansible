@@ -22,9 +22,15 @@ log "=== Starting rollup snapshot ==="
 log "Stopping rollup service..."
 sudo systemctl stop rollup
 
-# Rsync rollup data to snapshots disk
+# Rsync rollup data to snapshots disk, ensuring rollup restarts regardless of outcome
 log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_DIR..."
-rsync -a --delete "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"
+if ! rsync -a --delete --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"; then
+    log "ERROR: Rsync failed!"
+    log "Restarting rollup service..."
+    sudo systemctl start rollup
+    log "Rollup restarted. Exiting due to rsync failure."
+    exit 1
+fi
 
 log "Sync complete."
 
@@ -59,7 +65,7 @@ if [[ "$SERIAL" =~ ^vol ]]; then
 
     log "EBS snapshot initiated: $SNAPSHOT_ID"
 else
-    log "WARNING: Could not determine volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
+    log "ERROR: Could not determine volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
 fi
 
 log "=== Snapshot complete ==="

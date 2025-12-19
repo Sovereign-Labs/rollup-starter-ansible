@@ -1,4 +1,4 @@
-# Note: monitoring_secrets.yaml is loaded in load_vars.yaml
+# Note: monitoring_secrets.yaml is loaded in load_vars.yaml during pre_tasks
 
 - name: create directory for keyring
   ansible.builtin.file:
