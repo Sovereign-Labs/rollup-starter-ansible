@@ -14,4 +14,5 @@ export HYP_VALIDATOR_KEY={{ hyperlane_validator_key }}
   --metrics-port {{ hyperlane_validator_metrics_port }} \
   --log.level {{ hyperlane_log_level }} \
   --log.format json{% for chain, url in hyperlane_custom_rpc_urls.items() %}{% if url %} \
-  --chains.{{ chain }}.customRpcUrls="{{ url }}"{% endif %}{% endfor %}
+  --chains.{{ chain }}.customRpcUrls="{{ url }}"{% endif %}{% endfor %}{% for chain, block in hyperlane_chain_index_from.items() %}{% if block is defined and block != '' %} \
+  --chains.{{ chain }}.index.from={{ block }}{% endif %}{% endfor %}
