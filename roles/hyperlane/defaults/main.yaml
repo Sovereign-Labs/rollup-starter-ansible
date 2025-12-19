@@ -16,7 +16,6 @@ hyperlane_custom_rpc_urls: {}
 
 # Target chain config (used in agent-config.json)
 hyperlane_target_chain: "sovstarter"
-hyperlane_target_chain_display_name: "Sov Starter"
 hyperlane_target_signer_type: "sovereignKey"
 hyperlane_target_signer_account_type: "ethereum"
 hyperlane_rollup_url: ""
