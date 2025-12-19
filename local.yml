@@ -44,3 +44,5 @@
       when: "'c' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"
+    - role: "./roles/hyperlane"
+      when: "'h' in switches"
