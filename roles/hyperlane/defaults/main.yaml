@@ -16,8 +16,7 @@ hyperlane_custom_rpc_urls: {}
 
 # Custom index.from block number per chain (optional)
 # Specifies the block number from which to start indexing for each chain
-hyperlane_chain_index_from:
-  sepolia: 9872667
+hyperlane_chain_index_from: {}
 
 # Target chain config (used in agent-config.json)
 hyperlane_target_chain: "sovstarter"
