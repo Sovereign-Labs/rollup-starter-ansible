@@ -43,3 +43,23 @@
   when:
     - hyperlane_secrets_stat.stat.exists
     - hyperlane_validator_key is not defined
+
+- name: Check if monitoring secrets file exists
+  stat:
+    path: "{{ playbook_dir }}/vars/monitoring_secrets.yaml"
+  register: monitoring_secrets_stat
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Load monitoring secrets from file (if not provided via extra vars)
+  include_vars:
+    file: "{{ playbook_dir }}/vars/monitoring_secrets.yaml"
+  when:
+    - monitoring_secrets_stat.stat.exists
+    - influxdb_token is not defined or influxdb_token == ""
+
+- name: Debug monitoring secrets status
+  debug:
+    msg: "WARNING: influxdb_token not configured - telegraf metrics will be discarded"
+  when: influxdb_token is not defined or influxdb_token == ""

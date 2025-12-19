@@ -56,6 +56,7 @@
     paths: "{{ hyperlane_agent_config_path | dirname }}"
     patterns: "*.json"
   register: config_files
+  become: true
 
 - name: set config files list
   ansible.builtin.set_fact:

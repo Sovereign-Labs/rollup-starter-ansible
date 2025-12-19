@@ -9,7 +9,7 @@ hyperlane_repo_dir: "hyperlane-monorepo"
 # Build
 debug: false
 hyperlane_log_level: "info"
-hyperlane_agent_config_path: "/home/sovereign/configs/agent-config.json"
+hyperlane_agent_config_path: "/home/sovereign/config/agent-config.json"
 
 # Custom RPC URLs per chain (defined in secrets)
 hyperlane_custom_rpc_urls: {}

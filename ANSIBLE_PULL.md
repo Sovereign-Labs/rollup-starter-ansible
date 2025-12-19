@@ -72,10 +72,10 @@ debug: true
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 da_start_height: 1
 
-# Optional: Monitoring tokens (leave empty to skip monitoring setup)
-influxdb_token: ""
-grafana_loki_token: ""
-grafana_tempo_token: ""
+# Monitoring tokens (set values here, or leave empty to skip monitoring)
+influxdb_token: "your-influxdb-token"
+grafana_loki_token: "your-loki-token"
+grafana_tempo_token: "your-tempo-token"
 EOF
 ```
 
