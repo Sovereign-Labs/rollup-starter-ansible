@@ -87,6 +87,8 @@ postgres_db_password: "rollup_secure_password"
 
 # Optional comma separated string of EVM addresses for RAM pinning (privileged deployers)
 evm_pinned_addresses: ""
+# Whether reverted EVM txs should be published to DA
+publish_reverted_evm_txs: false
 # When defined, renders evm_pinned_cache.json next to rollup_config.toml
 # Example:
 # evm_pinned_addresses: "0x006e4eb63413050681079338404e07a1d72ab697,0xe7d2b7610d1574610cbd903ea896c59d17470633"
