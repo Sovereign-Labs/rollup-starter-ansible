@@ -8,7 +8,7 @@
 #   - aws_raid_1: Auto-discover instance store disks, RAID-1 (mirrored)
 #   - aws_raid_0: Auto-discover instance store disks, RAID-0 (striped)
 #   - aws_ebs_backup_node: NVMe for rollup/logs + EBS for snapshots
-#   - aws_ebs_backup_node_raid0: RAID-0 for rollup + EBS for snapshots
+#   - aws_ebs_backup_node_raid_0: RAID-0 for rollup + EBS for snapshots
 #   - aws_simple: Single disk for rollup, separate logs disk
 #   - raid_manual: RAID-1 for rollup (2 disks), explicit paths
 #   - hetzner: Single disk for rollup, logs on root volume
@@ -62,7 +62,7 @@ disk_profiles:
 
   # AWS: Backup node with RAID-0 for rollup + EBS for snapshots
   # 1st + 2nd NVMe → RAID-0, 3rd NVMe → logs, EBS → /mnt/snapshots
-  aws_ebs_backup_node_raid0:
+  aws_ebs_backup_node_raid_0:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
     ebs_serial_prefix: "vol"
