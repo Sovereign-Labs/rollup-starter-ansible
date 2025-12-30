@@ -1,0 +1,60 @@
+// Hyperlane log collection
+
+// JSON parsing and field extraction for hyperlane logs
+loki.process "hyperlane_json" {
+  forward_to = [loki.process.add_hostname.receiver]
+
+  // Parse JSON and extract fields
+  stage.json {
+    expressions = {
+      level          = "level",
+      target         = "target",
+      span_name      = "span.name",
+      span_domain    = "span.domain",
+      fields_message = "fields.message",
+      // tx_id          = "fields.tx_id",
+    }
+  }
+
+  // Low-cardinality fields as labels (indexed, fast filtering)
+  stage.labels {
+    values = {
+      level       = "",
+      target      = "",
+      span_name   = "",
+      span_domain = "",
+    }
+  }
+
+  // High-cardinality fields as structured metadata (queryable, not indexed)
+  //stage.structured_metadata {
+  //  values = {
+  //    tx_id          = "",
+  //    fields_message = "",
+  //  }
+  //}
+}
+
+{% if hyperlane_validator_origin_chain | length > 0 %}
+// Hyperlane Validator logs from journal
+loki.source.journal "hyperlane_validator" {
+  forward_to = [loki.process.hyperlane_json.receiver]
+  matches    = "_SYSTEMD_UNIT=hyperlane-validator.service"
+  labels     = {
+    job       = "hyperlane-validator",
+    component = "validator",
+  }
+}
+{% endif %}
+
+{% if hyperlane_relayer_relay_chains | length > 0 %}
+// Hyperlane Relayer logs from journal
+loki.source.journal "hyperlane_relayer" {
+  forward_to = [loki.process.hyperlane_json.receiver]
+  matches    = "_SYSTEMD_UNIT=hyperlane-relayer.service"
+  labels     = {
+    job       = "hyperlane-relayer",
+    component = "relayer",
+  }
+}
+{% endif %}

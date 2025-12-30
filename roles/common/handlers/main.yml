@@ -14,3 +14,9 @@
   systemd:
     name: telegraf
     state: restarted
+
+- name: restart alloy
+  become: true
+  systemd:
+    name: alloy
+    state: restarted
