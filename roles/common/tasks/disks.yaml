@@ -129,6 +129,20 @@
 # PHASE 4: Setup Rollup Storage (RAID-1 or Single Disk)
 # =============================================================================
 
+- name: stop journald for reformat
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  become: true
+  failed_when: false
+  loop:
+    - systemd-journald.socket
+    - systemd-journald-dev-log.socket
+    - systemd-journald-audit.socket
+    - systemd-journald.service
+  when:
+    - reformat_disks | default(false) | bool
+
 - name: unmount rollup storage for reformat
   mount:
     path: "{{ rollup_storage_dir }}"
@@ -137,6 +151,15 @@
   when:
     - reformat_disks | default(false) | bool
     - rollup_mount_state.stdout == 'mounted'
+
+- name: unmount logs disk for reformat
+  mount:
+    path: "{{ rollup_log_dir }}"
+    state: unmounted
+  become: true
+  when:
+    - reformat_disks | default(false) | bool
+    - logs_mount_state.stdout == 'mounted'
 
 - name: stop existing RAID array for reformat
   shell: mdadm --stop /dev/md/rollup || true
@@ -271,16 +294,6 @@
 # =============================================================================
 # PHASE 5: Setup Logs Disk
 # =============================================================================
-
-- name: unmount logs disk for reformat
-  mount:
-    path: "{{ rollup_log_dir }}"
-    state: unmounted
-  become: true
-  when:
-    - reformat_disks | default(false) | bool
-    - logs_mount_state.stdout == 'mounted'
-    - disk_config.logs_disk | default('') | length > 0
 
 - name: format logs disk
   filesystem:
