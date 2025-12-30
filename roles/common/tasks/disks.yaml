@@ -190,8 +190,7 @@
   become: true
   when:
     - disk_config.use_raid | default(false) | bool
-    - raid_state.stdout != 'exists'
-    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+    - (reformat_disks | default(false) | bool) or (raid_state.stdout != 'exists' and rollup_mount_state.stdout == 'not_mounted')
 
 - name: wait for RAID device
   wait_for:
@@ -460,3 +459,15 @@
       - "Note: RAID sync runs in background. Array is immediately usable."
       - "Monitor: cat /proc/mdstat"
   when: disk_config.use_raid | default(false) | bool
+
+# =============================================================================
+# PHASE 9: Restart Journald (if stopped for reformat)
+# =============================================================================
+
+- name: restart journald after reformat
+  ansible.builtin.systemd:
+    name: systemd-journald.service
+    state: started
+  become: true
+  when:
+    - reformat_disks | default(false) | bool
