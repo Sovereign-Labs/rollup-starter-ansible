@@ -4,7 +4,7 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_raid_1, aws_raid_0, aws_simple, raid_manual, hetzner, none, custom
+# Set disk_profile variable to select: aws_raid_1, aws_raid_0, aws_ebs_backup_node, aws_ebs_backup_node_raid0, aws_simple, raid_manual, hetzner, none, custom
 #
 # For aws_raid_* profiles, disk paths are resolved from discovered instance store disks.
 # For other profiles, disk paths are specified explicitly.
