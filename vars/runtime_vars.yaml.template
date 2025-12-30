@@ -99,9 +99,6 @@ signer_private_key: ""
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================
 
-# Enable/disable automatic disk setup
-# setup_disks: true
-
 # Storage directories
 # rollup_storage_dir: "/mnt/rollup"
 # rollup_log_dir: "/mnt/logs"

@@ -4,7 +4,7 @@
 # =============================================================================
 #
 # Uses predefined disk profiles from disk_profiles dictionary.
-# Set disk_profile variable to select: aws_raid_1, aws_raid_0, aws_simple, raid_manual, hetzner, none, custom
+# Set disk_profile variable to select: aws_raid_1, aws_raid_0, aws_ebs_backup_node, aws_ebs_backup_node_raid_0, aws_simple, raid_manual, hetzner, none, custom
 #
 # For aws_raid_* profiles, disk paths are resolved from discovered instance store disks.
 # For other profiles, disk paths are specified explicitly.
@@ -129,6 +129,20 @@
 # PHASE 4: Setup Rollup Storage (RAID-1 or Single Disk)
 # =============================================================================
 
+- name: stop journald for reformat
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  become: true
+  failed_when: false
+  loop:
+    - systemd-journald.socket
+    - systemd-journald-dev-log.socket
+    - systemd-journald-audit.socket
+    - systemd-journald.service
+  when:
+    - reformat_disks | default(false) | bool
+
 - name: unmount rollup storage for reformat
   mount:
     path: "{{ rollup_storage_dir }}"
@@ -137,6 +151,15 @@
   when:
     - reformat_disks | default(false) | bool
     - rollup_mount_state.stdout == 'mounted'
+
+- name: unmount logs disk for reformat
+  mount:
+    path: "{{ rollup_log_dir }}"
+    state: unmounted
+  become: true
+  when:
+    - reformat_disks | default(false) | bool
+    - logs_mount_state.stdout == 'mounted'
 
 - name: stop existing RAID array for reformat
   shell: mdadm --stop /dev/md/rollup || true
@@ -167,8 +190,7 @@
   become: true
   when:
     - disk_config.use_raid | default(false) | bool
-    - raid_state.stdout != 'exists'
-    - rollup_mount_state.stdout == 'not_mounted' or (reformat_disks | default(false) | bool)
+    - (reformat_disks | default(false) | bool) or (raid_state.stdout != 'exists' and rollup_mount_state.stdout == 'not_mounted')
 
 - name: wait for RAID device
   wait_for:
@@ -271,16 +293,6 @@
 # =============================================================================
 # PHASE 5: Setup Logs Disk
 # =============================================================================
-
-- name: unmount logs disk for reformat
-  mount:
-    path: "{{ rollup_log_dir }}"
-    state: unmounted
-  become: true
-  when:
-    - reformat_disks | default(false) | bool
-    - logs_mount_state.stdout == 'mounted'
-    - disk_config.logs_disk | default('') | length > 0
 
 - name: format logs disk
   filesystem:
@@ -447,3 +459,15 @@
       - "Note: RAID sync runs in background. Array is immediately usable."
       - "Monitor: cat /proc/mdstat"
   when: disk_config.use_raid | default(false) | bool
+
+# =============================================================================
+# PHASE 9: Restart Journald (if stopped for reformat)
+# =============================================================================
+
+- name: restart journald after reformat
+  ansible.builtin.systemd:
+    name: systemd-journald.service
+    state: started
+  become: true
+  when:
+    - reformat_disks | default(false) | bool

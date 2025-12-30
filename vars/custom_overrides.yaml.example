@@ -7,14 +7,6 @@
 # Common Infrastructure Variables
 # ============================================
 
-# Disk setup (set to false to skip disk mounting/formatting)
-# setup_disks: true
-
-# Disk list for mounting
-# raw_disk_list:
-#   - /dev/nvme1n1
-#   - /dev/nvme2n1
-
 # Storage paths
 # rollup_storage_dir: "/mnt/rollup"
 # rollup_log_dir: "/mnt/logs"
