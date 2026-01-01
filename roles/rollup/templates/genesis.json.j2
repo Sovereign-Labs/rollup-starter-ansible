@@ -7,32 +7,38 @@
     "reward_address": "{{ rollup_sequencer_address }}"
   },
   "attester_incentives": {
-    "minimum_attester_bond": [1000, 1000],
-    "minimum_challenger_bond": [1000, 1000],
+    "minimum_attester_bond": {{ rollup_genesis_verifier_min_bond }},
+    "minimum_challenger_bond": {{ rollup_genesis_challenger_min_bond }},
     "initial_attesters": [
-      ["{{ rollup_sequencer_address }}", "200000"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_init_bond }}"]
     ],
     "rollup_finality_period": 5,
     "maximum_attested_height": 0,
     "light_client_finalized_height": 0
   },
   "bank": {
-    "gas_token_config": {
+    "gas_token_config": {% if rollup_genesis_bank_disable_gas_token %}null{% else %}{
       "token_name": "sov-token",
       "address_and_balances": [
+{%- set seq_has_balance = rollup_genesis_seq_init_balance|int != 0 %}
+{%- set extras_have_balance = rollup_genesis_extra_init_balance|int != 0 and rollup_genesis_extra_addresses is not string and rollup_genesis_extra_addresses|length > 0 %}
+{%- if seq_has_balance %}
         [
           "{{ rollup_sequencer_address }}",
           "{{ rollup_genesis_seq_init_balance }}"
-        ]{%- if rollup_genesis_extra_addresses|length > 0 %},{% endif %}
-        {% for extra_address in rollup_genesis_extra_addresses %}
+        ]{% if extras_have_balance %},{% endif %}
+{%- endif %}
+{%- if extras_have_balance %}
+{% for extra_address in rollup_genesis_extra_addresses %}
         [
           "{{ extra_address }}",
           "{{ rollup_genesis_extra_init_balance }}"
         ]{% if not loop.last %},{% endif %}
-        {% endfor %}
+{% endfor %}
+{%- endif %}
       ],
-      "admins": ["{{ rollup_sequencer_address }}"]
-    },
+      "admins": {% if rollup_genesis_bank_disable_admin %}[]{% else %}["{{ rollup_sequencer_address }}"]{% endif %}
+    }{% endif %},
     "tokens": []
   },
   "chain_state": {
@@ -61,18 +67,18 @@
     ]
   },
   "prover_incentives": {
-    "proving_penalty": [10, 10],
-    "minimum_bond": [1000, 1000],
+    "proving_penalty": {{ rollup_genesis_proving_penalty }},
+    "minimum_bond": {{ rollup_genesis_verifier_min_bond }},
     "initial_provers": [
-      ["{{ rollup_sequencer_address }}", "200000"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_init_bond }}"]
     ]
   },
   "sequencer_registry": {
-    "minimum_bond": "5000",
+    "minimum_bond": "{{ rollup_genesis_seq_min_bond }}",
     "sequencer_config": {
       "seq_rollup_address": "{{ rollup_sequencer_address }}",
       "seq_da_address": "{{ da_rollup_address }}",
-      "seq_bond": "{{ rollup_genesis_seq_bond }}",
+      "seq_bond": "{{ rollup_genesis_seq_init_bond }}",
       "is_preferred_sequencer": true
     }
   },

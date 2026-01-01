@@ -26,10 +26,18 @@ rollup_node_id: "node1"
 # Paths
 rollup_config_path: "/home/sovereign/rollup_config.toml"
 
-# Genesis configuration
+# Genesis configuration.
+# Fo testing it locally, create path/to/your/vars.yaml with variables you want to check and run:
+#   ansible localhost -m template \
+#    -a "src=roles/rollup/templates/genesis.json.j2 dest=/tmp/genesis.json" \
+#     -e "@roles/rollup/defaults/main.yaml" \
+#    -e "@path/to/your/vars.yaml"
 genesis_folder: "/home/sovereign/genesis"
-rollup_genesis_seq_bond: 100000000000000000000000000000000
+rollup_genesis_bank_disable_admin: false
+rollup_genesis_seq_min_bond: 5000
+rollup_genesis_seq_init_bond: 100000000000000000000000000000000
 rollup_genesis_seq_init_balance: 10000000000000000000000000000000000
+rollup_genesis_bank_disable_gas_token: false
 rollup_genesis_extra_init_balance: 10000000000000000000000000000
 rollup_genesis_extra_addresses:
   - "0xe7d2b7610d1574610cbd903ea896c59d17470633"
@@ -45,6 +53,15 @@ rollup_genesis_extra_addresses:
   - "0xca7f2cF9b6d765334A4A9D5744e57563EA76C602"
   - "0x74bb92E136628E7028e2290fF60A8EC83Eea904f"
 rollup_genesis_evm_block_gas_limit: 1000000000
+
+# Both ZK/Optimistic Verifier is attester or prover
+rollup_genesis_verifier_min_bond: [1000, 1000]
+rollup_genesis_verifier_init_bond: 200000
+# Optimistic genesis
+rollup_genesis_challenger_min_bond: [1000, 1000]
+# ZK genesis
+rollup_genesis_proving_penalty: [10, 10]
+
 # 10GB, in bytes
 rollup_state_cache_size: 10000000000
 rollup_state_user_commit_concurrency: 6
