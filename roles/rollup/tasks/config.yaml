@@ -95,7 +95,7 @@
   ansible.builtin.template:
     src: "evm_pinned_cache.json.j2"
     dest: "/home/sovereign/evm_pinned_cache.json"
-  when: evm_pinned_addresses is defined and evm_pinned_addresses | length > 0
+  when: (evm_pinned_addresses is defined and evm_pinned_addresses | length > 0) or (publish_reverted_evm_txs is defined and publish_reverted_evm_txs | bool)
 
 - name: render wipe-rollup-data.sh helper script
   become: true
