@@ -10,7 +10,7 @@
     "minimum_attester_bond": {{ rollup_genesis_verifier_min_bond }},
     "minimum_challenger_bond": {{ rollup_genesis_challenger_min_bond }},
     "initial_attesters": [
-      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_initial_bond }}"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_init_bond }}"]
     ],
     "rollup_finality_period": 5,
     "maximum_attested_height": 0,
@@ -20,16 +20,22 @@
     "gas_token_config": {
       "token_name": "sov-token",
       "address_and_balances": [
+{%- set seq_has_balance = rollup_genesis_seq_init_balance|int != 0 %}
+{%- set extras_have_balance = rollup_genesis_extra_init_balance|int != 0 and rollup_genesis_extra_addresses is not string and rollup_genesis_extra_addresses|length > 0 %}
+{%- if seq_has_balance %}
         [
           "{{ rollup_sequencer_address }}",
           "{{ rollup_genesis_seq_init_balance }}"
-        ]{%- if rollup_genesis_extra_addresses|length > 0 %},{% endif %}
-        {% for extra_address in rollup_genesis_extra_addresses %}
+        ]{% if extras_have_balance %},{% endif %}
+{%- endif %}
+{%- if extras_have_balance %}
+{% for extra_address in rollup_genesis_extra_addresses %}
         [
           "{{ extra_address }}",
           "{{ rollup_genesis_extra_init_balance }}"
         ]{% if not loop.last %},{% endif %}
-        {% endfor %}
+{% endfor %}
+{%- endif %}
       ],
       "admins": {% if rollup_genesis_bank_disable_admin %}[]{% else %}["{{ rollup_sequencer_address }}"]{% endif %}
     },
@@ -64,15 +70,15 @@
     "proving_penalty": {{ rollup_genesis_proving_penalty }},
     "minimum_bond": {{ rollup_genesis_verifier_min_bond }},
     "initial_provers": [
-      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_initial_bond }}"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_init_bond }}"]
     ]
   },
   "sequencer_registry": {
-    "minimum_bond": "5000",
+    "minimum_bond": "{{ rollup_genesis_seq_min_bond }}",
     "sequencer_config": {
       "seq_rollup_address": "{{ rollup_sequencer_address }}",
       "seq_da_address": "{{ da_rollup_address }}",
-      "seq_bond": "{{ rollup_genesis_seq_bond }}",
+      "seq_bond": "{{ rollup_genesis_seq_init_bond }}",
       "is_preferred_sequencer": true
     }
   },
