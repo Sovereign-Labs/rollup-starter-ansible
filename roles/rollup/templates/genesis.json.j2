@@ -7,10 +7,10 @@
     "reward_address": "{{ rollup_sequencer_address }}"
   },
   "attester_incentives": {
-    "minimum_attester_bond": [1000, 1000],
-    "minimum_challenger_bond": [1000, 1000],
+    "minimum_attester_bond": {{ rollup_genesis_verifier_min_bond }},
+    "minimum_challenger_bond": {{ rollup_genesis_challenger_min_bond }},
     "initial_attesters": [
-      ["{{ rollup_sequencer_address }}", "200000"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_initial_bond }}"]
     ],
     "rollup_finality_period": 5,
     "maximum_attested_height": 0,
@@ -31,7 +31,7 @@
         ]{% if not loop.last %},{% endif %}
         {% endfor %}
       ],
-      "admins": ["{{ rollup_sequencer_address }}"]
+      "admins": {% if rollup_genesis_bank_disable_admin %}[]{% else %}["{{ rollup_sequencer_address }}"]{% endif %}
     },
     "tokens": []
   },
@@ -61,10 +61,10 @@
     ]
   },
   "prover_incentives": {
-    "proving_penalty": [10, 10],
-    "minimum_bond": [1000, 1000],
+    "proving_penalty": {{ rollup_genesis_proving_penalty }},
+    "minimum_bond": {{ rollup_genesis_verifier_min_bond }},
     "initial_provers": [
-      ["{{ rollup_sequencer_address }}", "200000"]
+      ["{{ rollup_sequencer_address }}", "{{ rollup_genesis_verifier_initial_bond }}"]
     ]
   },
   "sequencer_registry": {
