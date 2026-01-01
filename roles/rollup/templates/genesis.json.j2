@@ -17,7 +17,7 @@
     "light_client_finalized_height": 0
   },
   "bank": {
-    "gas_token_config": {
+    "gas_token_config": {% if rollup_genesis_bank_disable_gas_token %}null{% else %}{
       "token_name": "sov-token",
       "address_and_balances": [
 {%- set seq_has_balance = rollup_genesis_seq_init_balance|int != 0 %}
@@ -38,7 +38,7 @@
 {%- endif %}
       ],
       "admins": {% if rollup_genesis_bank_disable_admin %}[]{% else %}["{{ rollup_sequencer_address }}"]{% endif %}
-    },
+    }{% endif %},
     "tokens": []
   },
   "chain_state": {

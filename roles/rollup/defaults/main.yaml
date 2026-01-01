@@ -34,9 +34,10 @@ rollup_config_path: "/home/sovereign/rollup_config.toml"
 #    -e "@path/to/your/vars.yaml"
 genesis_folder: "/home/sovereign/genesis"
 rollup_genesis_bank_disable_admin: false
-rollup_genesis_seq_min_bond: 500
+rollup_genesis_seq_min_bond: 5000
 rollup_genesis_seq_init_bond: 100000000000000000000000000000000
 rollup_genesis_seq_init_balance: 10000000000000000000000000000000000
+rollup_genesis_bank_disable_gas_token: false
 rollup_genesis_extra_init_balance: 10000000000000000000000000000
 rollup_genesis_extra_addresses:
   - "0xe7d2b7610d1574610cbd903ea896c59d17470633"
