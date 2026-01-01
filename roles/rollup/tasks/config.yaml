@@ -85,7 +85,7 @@
   ansible.builtin.replace:
     path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
     regexp: '^GAS_TOKEN_ID\s*=.*$'
-    replace: 'GAS_TOKEN_ID = { bech32 = "{{ rollup_custom_gas_token_id }}" type = "TokenId" }'
+    replace: 'GAS_TOKEN_ID = { bech32 = "{{ rollup_custom_gas_token_id }}", type = "TokenId" }'
     backup: no
   when: rollup_custom_gas_token_id is defined and rollup_custom_gas_token_id | string | length > 0
 
