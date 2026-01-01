@@ -74,7 +74,7 @@
   become_user: ubuntu
   ansible.builtin.replace:
     path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
-    regexp: '^SETUP_MODE_TERMINATION_HEIGHT = \d+'
+    regexp: '^SETUP_MODE_TERMINATION_HEIGHT\s*=.*$'
     replace: 'SETUP_MODE_TERMINATION_HEIGHT = {{ rollup_setup_mode_termination_height }}'
     backup: no
   when: rollup_setup_mode_termination_height is defined and rollup_setup_mode_termination_height | string | length > 0
