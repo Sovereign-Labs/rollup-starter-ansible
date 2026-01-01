@@ -97,3 +97,5 @@ evm_pinned_addresses: ""
 # rollup_chain_name: "TestChain"
 # rollup_hyperlane_bridge_domain: 5555
 # rollup_deferred_slots_count: 100000
+# rollup_setup_mode_termination_height: 0
+# rollup_custom_gas_token_id: "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"

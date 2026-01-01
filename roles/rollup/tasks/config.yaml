@@ -69,6 +69,26 @@
     backup: no
   when: rollup_deferred_slots_count is defined and rollup_deferred_slots_count | string | length > 0
 
+- name: update SETUP_MODE_TERMINATION_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^SETUP_MODE_TERMINATION_HEIGHT\s*=.*$'
+    replace: 'SETUP_MODE_TERMINATION_HEIGHT = {{ rollup_setup_mode_termination_height }}'
+    backup: no
+  when: rollup_setup_mode_termination_height is defined and rollup_setup_mode_termination_height | string | length > 0
+
+- name: update GAS_TOKEN_ID in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^GAS_TOKEN_ID\s*=.*$'
+    replace: 'GAS_TOKEN_ID = { bech32 = "{{ rollup_custom_gas_token_id }}", type = "TokenId" }'
+    backup: no
+  when: rollup_custom_gas_token_id is defined and rollup_custom_gas_token_id | string | length > 0
+
 - name: render evm_pinned_cache.json
   become: true
   become_user: sovereign
