@@ -24,14 +24,14 @@ sudo systemctl stop rollup
 
 # Rsync rollup data to snapshots disk, ensuring rollup restarts regardless of outcome
 log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_DIR..."
-if ! rsync -a --delete --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"; then
+if ! rsync -a --fsync --delete --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"; then
     log "ERROR: Rsync failed!"
     log "Restarting rollup service..."
     sudo systemctl start rollup
     log "Rollup restarted. Exiting due to rsync failure."
     exit 1
 fi
-
+sync
 log "Sync complete."
 
 # Restart the rollup service
@@ -51,7 +51,9 @@ SERIAL=$(sudo nvme id-ctrl -v "$SNAPSHOTS_DEVICE" 2>/dev/null | grep -i "^sn" | 
 if [[ "$SERIAL" =~ ^vol ]]; then
     # Insert dash after "vol" to get proper volume ID format
     VOLUME_ID="vol-${SERIAL:3}"
-    log "Snapshots disk volume ID: $VOLUME_ID"
+    log "Snapshots disk volume ID: $VOLUME_ID. Unmounting it from $SNAPSHOT_DIR..."
+    sudo umount "$SNAPSHOT_DIR"
+    log "Triggering AWS snapshot"
 
     # Create EBS snapshot with descriptive tags
     TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -64,6 +66,8 @@ if [[ "$SERIAL" =~ ^vol ]]; then
         --output text)
 
     log "EBS snapshot initiated: $SNAPSHOT_ID"
+    sudo mount "$SNAPSHOT_DIR"
+    log "Remounted snapshot directory."
 else
     log "ERROR: Could not determine volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
 fi
