@@ -165,6 +165,8 @@ if [ "$FORCE" != "true" ]; then
     echo "  3. Restore data from $SOURCE_DESC"
     echo "  4. Restart the rollup service"
     echo ""
+    echo "!!NOTE!! Restoration can take 1-3 hours. Make sure you are in a \`screen\` or \`tmux\` session before proceeding, so that connection loss does not abort the process!!"
+    echo ""
     read -p "Are you sure you want to proceed? (type 'yes' to confirm): " CONFIRM
     if [ "$CONFIRM" != "yes" ]; then
         echo "Aborted."
@@ -178,7 +180,7 @@ sudo systemctl stop rollup || true
 
 # Create volume from snapshot if needed
 if [ "$SOURCE_TYPE" = "snapshot" ]; then
-    log "Creating temporary volume from snapshot (this may take a while for large snapshots)..."
+    log "Creating temporary volume from snapshot..."
     VOLUME_ID=$(aws ec2 create-volume \
         --region "$AWS_REGION" \
         --availability-zone "$AVAILABILITY_ZONE" \
@@ -263,8 +265,9 @@ fi
 log "Clearing existing data in $ROLLUP_DATA_DIR..."
 sudo rm -rf "${ROLLUP_DATA_DIR:?}"/*
 
-log "Restoring data (this may take a while for large datasets)..."
-sudo rsync -ah --info=progress2 "$TEMP_MOUNT/rollup/" "$ROLLUP_DATA_DIR/"
+log "Restoring data. This will take a while. Expect the rate to be very slow until the EBS volume is warmed up - this is normal and should speed up dramatically."
+sudo rsync -ah --fsync --info=progress2 "$TEMP_MOUNT/rollup/" "$ROLLUP_DATA_DIR/"
+sync
 
 # Fix ownership
 log "Fixing ownership..."
