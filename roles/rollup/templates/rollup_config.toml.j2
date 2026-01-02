@@ -62,3 +62,19 @@ priority_fee_percentage = 0
 max_fee = 100_000_000
 interval_millis = 50
 {% endif %}
+
+{% if rollup_sequencer_kind == "preferred" and rollup_rate_limiter_enabled %}
+[sequencer.preferred.rate_limiter]
+max_nb_of_concurrent_users_in_rate_limiter = {{ rollup_rate_limiter_max_concurrent_users }}
+max_requests_per_second = {{ rollup_rate_limiter_max_requests_per_second }}
+{% if rollup_rate_limiter_address_limits | length > 0 %}
+address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{{ item.address }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }]{% if not loop.last %}, {% endif %}{% endfor %}]
+{% endif %}
+{% if rollup_rate_limiter_ip_limits | length > 0 %}
+ip_custom_limits = [{% for item in rollup_rate_limiter_ip_limits %}["{{ item.ip }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }]{% if not loop.last %}, {% endif %}{% endfor %}]
+{% endif %}
+
+[sequencer.preferred.rate_limiter.default_limits]
+resources_per_bucket = {{ rollup_rate_limiter_default_resources_per_bucket }}
+refill_rate = {{ rollup_rate_limiter_default_refill_rate }}
+{% endif %}
