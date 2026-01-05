@@ -54,6 +54,10 @@ rollup_genesis_extra_addresses:
   - "0x74bb92E136628E7028e2290fF60A8EC83Eea904f"
 rollup_genesis_evm_block_gas_limit: 1000000000
 
+
+rollup_genesis_evm_allow_all_contract_creation: true 
+rollup_genesis_evm_contract_creation_allowlist: []
+
 # Both ZK/Optimistic Verifier is attester or prover
 rollup_genesis_verifier_min_bond: [1000, 1000]
 rollup_genesis_verifier_init_bond: 200000
