@@ -94,7 +94,17 @@
   "value_setter": null,
   "evm": {
     "accounts": [],
-    "contract_creation_policy": "everyone",
+    "contract_creation_policy": {%- if rollup_genesis_evm_allow_all_contract_creation %} "everyone",
+{%- else %}
+{ 
+      "allowlist": [
+{%- for address in rollup_genesis_evm_contract_creation_allowlist %}
+"{{ address }}"{% if not loop.last %}, {% endif %}
+{%- endfor %}
+] 
+    },
+{%- endif %}
+
     "initial_base_fee": 7,
     "genesis_timestamp": 0,
     "chain_spec": {
