@@ -68,7 +68,7 @@ interval_millis = 50
 max_nb_of_concurrent_users_in_rate_limiter = {{ rollup_rate_limiter_max_concurrent_users }}
 max_requests_per_second = {{ rollup_rate_limiter_max_requests_per_second }}
 # Add requested limits onto hardcoded OFAC list taken from https://github.com/ultrasoundmoney/ofac-ethereum-addresses/blob/main/data.csv
-address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{{ item.address }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }],{% endfor %},
+address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{{ item.address }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }]{% if not loop.last %}, {% endif %}{% endfor %},
 ["0x098B716B8Aaf21512996dC57EB0615e2383E2f96", {resources_per_bucket = 0, refill_rate = 0}],
 ["0xa0e1c89Ef1a489c9C7dE96311eD5Ce5D32c20E4B", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x3Cffd56B47B7b41c56258D9C7731ABaDc360E073", {resources_per_bucket = 0, refill_rate = 0}],
