@@ -18,7 +18,7 @@
 
 - name: add influxdata signing key to keyring
   ansible.builtin.shell: |
-    gpg --dearmor < /etc/apt/keyrings/influxdata-archive_compat.key > /etc/apt/keyrings/influxdata-archive_compat.gpg
+    cat /etc/apt/keyrings/influxdata-archive_compat.key | gpg --dearmor > /etc/apt/keyrings/influxdata-archive_compat.gpg
   become: true
   when: influxdata_key.changed
 
