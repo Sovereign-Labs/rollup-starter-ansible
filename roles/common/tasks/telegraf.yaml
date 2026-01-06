@@ -9,15 +9,18 @@
 
 - name: download influxdata GPG key
   ansible.builtin.get_url:
-    url: https://repos.influxdata.com/influxdata-archive_compat.key
+    url: https://repos.influxdata.com/influxdata-archive_compat-exp2029.key
     dest: /etc/apt/keyrings/influxdata-archive_compat.key
+    checksum: sha256:a721ad6e344dc8439df36ecf3e4130aeee4505dc78d83baf17a430231ac121b4
     mode: '0644'
   become: true
+  register: influxdata_key
 
 - name: add influxdata signing key to keyring
   ansible.builtin.shell: |
     cat /etc/apt/keyrings/influxdata-archive_compat.key | gpg --dearmor > /etc/apt/keyrings/influxdata-archive_compat.gpg
   become: true
+  when: influxdata_key.changed
 
 - name: add influxdata repository
   ansible.builtin.apt_repository:
