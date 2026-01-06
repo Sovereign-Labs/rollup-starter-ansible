@@ -44,6 +44,7 @@
   "chain_state": {
     "current_time": 0,
     "operating_mode": "operator",
+    {% if rollup_genesis_bank_disable_gas_token %}"admin": "{{ rollup_sequencer_address }}",{% endif %}
     "inner_code_commitment": [0, 0, 0, 0, 0, 0, 0, 0],
     "outer_code_commitment": [0, 0, 0, 0, 0, 0, 0, 0],
     "genesis_da_height": {{ genesis_da_height }}
