@@ -10,13 +10,21 @@
 - name: download influxdata GPG key
   ansible.builtin.get_url:
     url: https://repos.influxdata.com/influxdata-archive_compat.key
-    dest: /etc/apt/keyrings/influxdata-archive_compat.key
+    dest: /tmp/influxdata-archive_compat.key
     mode: '0644'
   become: true
 
 - name: add influxdata signing key to keyring
   ansible.builtin.shell: |
-    cat /etc/apt/keyrings/influxdata-archive_compat.key | gpg --dearmor > /etc/apt/keyrings/influxdata-archive_compat.gpg
+    gpg --dearmor < /tmp/influxdata-archive_compat.key > /etc/apt/keyrings/influxdata-archive_compat.gpg
+  args:
+    creates: /etc/apt/keyrings/influxdata-archive_compat.gpg
+  become: true
+
+- name: set proper permissions on GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/influxdata-archive_compat.gpg
+    mode: '0644'
   become: true
 
 - name: add influxdata repository
@@ -24,6 +32,7 @@
     repo: "deb [signed-by=/etc/apt/keyrings/influxdata-archive_compat.gpg] https://repos.influxdata.com/ubuntu stable main"
     state: present
     filename: influxdata
+    update_cache: yes
   become: true
 
 - name: update apt cache
