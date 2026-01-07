@@ -45,12 +45,12 @@ location / {
 
         -- Select backend based on routing decision
         if use_leader then
-            ngx.var.backend = backend_cache:get("leader") or "{{ proxy_rollup_leader_ip }}:{{ proxy_backend_port }}"
+            ngx.var.backend = backend_cache:get("leader") or "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}"
         else
             -- Route all other requests to follower (fallback to leader if no follower)
             ngx.var.backend = backend_cache:get("follower") or
                              backend_cache:get("leader") or
-                             "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ proxy_backend_port }}"
+                             "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ rollup_http_port }}"
         end
     }
 

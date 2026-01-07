@@ -82,11 +82,11 @@ lua_shared_dict backend_cache 1m;
 init_worker_by_lua_block {
     -- Set backend addresses (leader handles writes, follower handles reads)
     local cache = ngx.shared.backend_cache
-    cache:set("leader", "{{ proxy_rollup_leader_ip }}:{{ proxy_backend_port }}")
+    cache:set("leader", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
 {% if proxy_rollup_follower_ip | length > 0 %}
-    cache:set("follower", "{{ proxy_rollup_follower_ip }}:{{ proxy_backend_port }}")
+    cache:set("follower", "{{ proxy_rollup_follower_ip }}:{{ rollup_http_port }}")
 {% else %}
-    cache:set("follower", "{{ proxy_rollup_leader_ip }}:{{ proxy_backend_port }}")
+    cache:set("follower", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
 {% endif %}
 }
 
