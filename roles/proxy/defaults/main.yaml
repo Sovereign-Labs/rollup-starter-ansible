@@ -1,0 +1,5 @@
+---
+# Proxy Configuration
+
+# Network port for nginx proxy
+nginx_port: 8081

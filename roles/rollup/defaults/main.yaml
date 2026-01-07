@@ -38,8 +38,6 @@ rollup_bin: "rollup"
 
 # Network ports
 rollup_http_port: 12346
-# TODO: Optional nginx
-nginx_port: 8081
 
 # Sequencer address - used for telegraf monitoring
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
