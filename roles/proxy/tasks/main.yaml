@@ -1,16 +1,29 @@
 ---
 # Proxy role - OpenResty reverse proxy for Sovereign rollup
 
+# =============================================================================
+# Validation
+# =============================================================================
 - name: Validate proxy_rollup_leader_ip is defined
   assert:
     that: proxy_rollup_leader_ip is defined and proxy_rollup_leader_ip | length > 0
     fail_msg: "proxy_rollup_leader_ip is required when using the proxy role"
 
+- name: Validate SSL requirements
+  assert:
+    that:
+      - proxy_domain_name is defined and proxy_domain_name | length > 0
+      - proxy_certbot_email is defined and proxy_certbot_email | length > 0
+    fail_msg: "proxy_domain_name and proxy_certbot_email are required when proxy_ssl_enabled is true"
+  when: proxy_ssl_enabled | bool
+
 - name: Set follower IP to leader if not specified
   set_fact:
-    proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}"
+    proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
 
-# OpenResty Installation
+# =============================================================================
+# OpenResty Installation (using modern GPG keyring approach)
+# =============================================================================
 - name: Install OpenResty dependencies
   become: true
   apt:
@@ -18,19 +31,44 @@
       - wget
       - gnupg
       - ca-certificates
+      - lsb-release
     state: present
     update_cache: yes
 
-- name: Add OpenResty GPG key
+- name: Download OpenResty GPG key
   become: true
-  apt_key:
+  get_url:
     url: https://openresty.org/package/pubkey.gpg
-    state: present
+    dest: /tmp/openresty-pubkey.gpg
+    mode: '0644'
+
+# Official fingerprint: E522 18E7 0878 97DC 6DEA 6D6D 97DB 7443 D5ED EB74
+# Source: https://openresty.org/en/linux-packages.html
+- name: Verify OpenResty GPG key fingerprint
+  become: true
+  shell: |
+    FINGERPRINT=$(gpg --with-fingerprint --with-colons /tmp/openresty-pubkey.gpg 2>/dev/null | grep '^fpr' | head -1 | cut -d: -f10)
+    EXPECTED="E52218E7087897DC6DEA6D6D97DB7443D5EDEB74"
+    if [ "$FINGERPRINT" != "$EXPECTED" ]; then
+      echo "ERROR: GPG key fingerprint mismatch!"
+      echo "Expected: $EXPECTED"
+      echo "Got: $FINGERPRINT"
+      exit 1
+    fi
+    echo "GPG key fingerprint verified: $FINGERPRINT"
+  register: gpg_verify
+  changed_when: false
+
+- name: Dearmor and install OpenResty GPG key
+  become: true
+  shell: gpg --dearmor < /tmp/openresty-pubkey.gpg > /usr/share/keyrings/openresty.gpg
+  args:
+    creates: /usr/share/keyrings/openresty.gpg
 
 - name: Add OpenResty repository
   become: true
   apt_repository:
-    repo: "deb http://openresty.org/package/ubuntu {{ ansible_distribution_release }} main"
+    repo: "deb [arch={{ ansible_architecture | regex_replace('x86_64', 'amd64') | regex_replace('aarch64', 'arm64') }} signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu {{ ansible_distribution_release }} main"
     state: present
     filename: openresty
 
@@ -41,12 +79,13 @@
     state: present
     update_cache: yes
 
+# =============================================================================
 # Certbot Installation (when SSL enabled)
+# =============================================================================
 - name: Install certbot
   become: true
   apt:
-    name:
-      - certbot
+    name: certbot
     state: present
   when: proxy_ssl_enabled | bool
 
@@ -58,7 +97,9 @@
     mode: '0755'
   when: proxy_ssl_enabled | bool
 
-# Create conf.d directory
+# =============================================================================
+# Configuration Directories
+# =============================================================================
 - name: Create OpenResty conf.d directory
   become: true
   file:
@@ -66,7 +107,16 @@
     state: directory
     mode: '0755'
 
-# Render configuration templates
+- name: Create nginx log directory
+  become: true
+  file:
+    path: /var/log/nginx
+    state: directory
+    mode: '0755'
+
+# =============================================================================
+# Render Configuration Templates
+# =============================================================================
 - name: Render http-base.conf
   become: true
   template:
@@ -101,8 +151,10 @@
   when: proxy_ssl_enabled | bool
   notify: reload openresty
 
-# Render main config (HTTP-only first for cert acquisition)
-- name: Render OpenResty HTTP config (for initial cert acquisition)
+# =============================================================================
+# Initial HTTP Config (for cert acquisition)
+# =============================================================================
+- name: Render OpenResty HTTP config
   become: true
   template:
     src: openresty-http.conf.j2
@@ -110,46 +162,39 @@
     mode: '0644'
   notify: reload openresty
 
-- name: Ensure OpenResty is running for cert acquisition
+- name: Ensure OpenResty is running
   become: true
   systemd:
     name: openresty
     state: started
     enabled: yes
 
-# Obtain SSL certificates
-- name: Obtain SSL certificate for primary domain
+# =============================================================================
+# SSL Certificate Acquisition
+# =============================================================================
+- name: Build certbot domain arguments
+  set_fact:
+    _certbot_domains: "{{ [proxy_domain_name] + proxy_unlimited_domains }}"
+  when: proxy_ssl_enabled | bool
+
+- name: Obtain SSL certificate for all domains (single cert with SANs)
   become: true
-  command: >
-    certbot certonly --webroot
-    -w {{ proxy_certbot_webroot }}
-    -d {{ proxy_domain_name }}
-    --non-interactive
-    --agree-tos
-    --email {{ proxy_certbot_email }}
+  shell: |
+    certbot certonly --webroot \
+      -w {{ proxy_certbot_webroot }} \
+      {% for domain in _certbot_domains %}-d {{ domain }} {% endfor %} \
+      --non-interactive \
+      --agree-tos \
+      --email {{ proxy_certbot_email }}
   args:
     creates: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
   when:
     - proxy_ssl_enabled | bool
     - proxy_domain_name | length > 0
 
-- name: Obtain SSL certificates for additional domains
-  become: true
-  command: >
-    certbot certonly --webroot
-    -w {{ proxy_certbot_webroot }}
-    -d {{ item }}
-    --non-interactive
-    --agree-tos
-    --email {{ proxy_certbot_email }}
-  args:
-    creates: "/etc/letsencrypt/live/{{ item }}/fullchain.pem"
-  loop: "{{ proxy_additional_domains }}"
-  when:
-    - proxy_ssl_enabled | bool
-    - proxy_additional_domains | length > 0
-
-# Switch to HTTPS config after certs are obtained
+# =============================================================================
+# Switch to HTTPS Config
+# =============================================================================
 - name: Render OpenResty HTTPS config
   become: true
   template:
@@ -159,7 +204,9 @@
   when: proxy_ssl_enabled | bool
   notify: reload openresty
 
-# Certbot auto-renewal
+# =============================================================================
+# Certbot Auto-Renewal
+# =============================================================================
 - name: Setup certbot renewal cron job
   become: true
   cron:
@@ -169,6 +216,9 @@
     job: "certbot renew --quiet --post-hook 'systemctl reload openresty'"
   when: proxy_ssl_enabled | bool
 
+# =============================================================================
+# Final Service State
+# =============================================================================
 - name: Ensure OpenResty is restarted and enabled on boot
   become: true
   systemd:
