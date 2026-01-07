@@ -248,3 +248,16 @@
   when:
     - proxy_ssl_enabled | bool
     - certbot_result.failed | default(false)
+
+# =============================================================================
+# Telegraf Monitoring
+# =============================================================================
+- name: Configure proxy telegraf monitoring
+  import_tasks: telegraf.yaml
+
+# =============================================================================
+# Alloy Log Export (opt-in)
+# =============================================================================
+- name: Configure proxy log export
+  import_tasks: alloy.yaml
+  when: proxy_enable_logs_export | bool
