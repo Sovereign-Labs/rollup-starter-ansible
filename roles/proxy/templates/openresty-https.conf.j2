@@ -1,0 +1,52 @@
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /usr/local/openresty/nginx/logs/nginx.pid;
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include conf.d/http-base.conf;
+
+    # HTTP server - redirect to HTTPS and handle ACME challenges
+    server {
+        listen {{ proxy_listen_port }};
+        server_name {{ proxy_domain_name }}{% for domain in proxy_additional_domains %} {{ domain }}{% endfor %};
+
+        location /health {
+            access_log off;
+            default_type text/plain;
+            return 200 "healthy\n";
+        }
+
+        location /.well-known/acme-challenge/ {
+            root {{ proxy_certbot_webroot }};
+        }
+
+        # Redirect all other HTTP traffic to HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # HTTPS server - main proxy
+    server {
+        listen {{ proxy_listen_port_ssl }} ssl;
+        http2 on;
+        server_name {{ proxy_domain_name }}{% for domain in proxy_additional_domains %} {{ domain }}{% endfor %};
+
+        include conf.d/ssl.conf;
+        include conf.d/security-headers.conf;
+
+        location /health {
+            access_log off;
+            default_type text/plain;
+            return 200 "healthy\n";
+        }
+
+        include conf.d/proxy-location.conf;
+    }
+}

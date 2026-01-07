@@ -1,5 +1,33 @@
 ---
-# Proxy Configuration
+# Proxy Configuration - OpenResty reverse proxy for Sovereign rollup
 
-# Network port for nginx proxy
-nginx_port: 8081
+# SSL/TLS Configuration
+proxy_ssl_enabled: false
+# proxy_domain_name: ""  # Required when SSL enabled
+proxy_additional_domains: []  # Additional domains for SSL certs and rate limit exemption
+
+# Backend Configuration
+# proxy_rollup_leader_ip: ""  # REQUIRED - Primary node IP (handles writes)
+proxy_rollup_follower_ip: ""  # Replica node IP (defaults to leader if empty)
+proxy_backend_port: 12346
+
+# Listen Ports
+proxy_listen_port: 80
+proxy_listen_port_ssl: 443
+
+# Rate Limiting
+proxy_rate_limit_enabled: true
+proxy_rate_limit_rate: "100r/s"
+proxy_rate_limit_burst: 50
+proxy_rate_limit_exempt_ips: []
+
+# DNS Resolver (empty = system default)
+proxy_dns_resolver: ""
+
+# Timeouts
+proxy_websocket_timeout: "3600s"
+proxy_connect_timeout: "5s"
+
+# Certbot Configuration
+proxy_certbot_webroot: "/var/www/certbot"
+# proxy_certbot_email: ""  # Required when SSL enabled
