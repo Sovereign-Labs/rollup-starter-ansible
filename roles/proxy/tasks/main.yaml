@@ -79,6 +79,23 @@
     state: present
     update_cache: yes
 
+- name: Create OpenResty systemd override directory
+  become: true
+  file:
+    path: /etc/systemd/system/openresty.service.d
+    state: directory
+    mode: '0755'
+
+- name: Configure OpenResty file descriptor limits
+  become: true
+  copy:
+    content: |
+      [Service]
+      LimitNOFILE=65535
+    dest: /etc/systemd/system/openresty.service.d/limits.conf
+    mode: '0644'
+  notify: reload systemd
+
 # =============================================================================
 # Certbot Installation (when SSL enabled)
 # =============================================================================

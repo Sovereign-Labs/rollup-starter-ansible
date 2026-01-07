@@ -1,4 +1,9 @@
 ---
+- name: reload systemd
+  become: true
+  systemd:
+    daemon_reload: yes
+
 - name: reload openresty
   become: true
   systemd:
