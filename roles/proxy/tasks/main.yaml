@@ -212,7 +212,6 @@
     dest: /usr/local/openresty/nginx/conf/nginx.conf
     mode: '0644'
   when: proxy_ssl_enabled | bool
-  notify: reload openresty
 
 # =============================================================================
 # Certbot Auto-Renewal
@@ -229,9 +228,17 @@
 # =============================================================================
 # Final Service State
 # =============================================================================
-- name: Ensure OpenResty is restarted and enabled on boot
+- name: Restart OpenResty with new config
   become: true
   systemd:
     name: openresty
     state: restarted
     enabled: yes
+  when: not (proxy_ssl_enabled | bool and (certbot_result.failed | default(false)))
+
+- name: Keep OpenResty running on HTTP (certbot failed)
+  debug:
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds."
+  when:
+    - proxy_ssl_enabled | bool
+    - certbot_result.failed | default(false)
