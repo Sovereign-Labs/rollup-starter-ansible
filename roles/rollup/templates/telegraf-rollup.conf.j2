@@ -11,3 +11,13 @@
 #   metric_version = 1
 #   [inputs.prometheus.tags]
 #     source = "sov-rollup"
+
+[[inputs.http]]
+  urls = ["http://127.0.0.1:{{ rollup_port }}/modules/bank/tokens/gas_token/balances/{{ sequencer_address }}"]
+  data_format = "json"
+  json_string_fields = ["amount"]
+  tagexclude = ["url"]
+
+  fielddrop = ["token_id"]
+
+  name_override = "sov_gas_balance"
