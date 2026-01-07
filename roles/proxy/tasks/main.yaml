@@ -185,12 +185,22 @@
       {% for domain in _certbot_domains %}-d {{ domain }} {% endfor %} \
       --non-interactive \
       --agree-tos \
-      --email {{ proxy_certbot_email }}
+      --email {{ proxy_certbot_email }} \
+      --keep-until-expiring
   args:
     creates: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: certbot_result
+  ignore_errors: yes
   when:
     - proxy_ssl_enabled | bool
     - proxy_domain_name | length > 0
+
+- name: Warn if certbot failed
+  debug:
+    msg: "WARNING: Certbot failed - DNS may not be configured yet. Re-run playbook once DNS is ready."
+  when:
+    - certbot_result is defined
+    - certbot_result.failed | default(false)
 
 # =============================================================================
 # Switch to HTTPS Config
