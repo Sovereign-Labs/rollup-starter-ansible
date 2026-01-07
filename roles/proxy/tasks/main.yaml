@@ -1,37 +1,177 @@
-- name: install NGINX
+---
+# Proxy role - OpenResty reverse proxy for Sovereign rollup
+
+- name: Validate proxy_rollup_leader_ip is defined
+  assert:
+    that: proxy_rollup_leader_ip is defined and proxy_rollup_leader_ip | length > 0
+    fail_msg: "proxy_rollup_leader_ip is required when using the proxy role"
+
+- name: Set follower IP to leader if not specified
+  set_fact:
+    proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}"
+
+# OpenResty Installation
+- name: Install OpenResty dependencies
   become: true
-  become_user: root
   apt:
-    name: nginx
-    state: latest
+    name:
+      - wget
+      - gnupg
+      - ca-certificates
+    state: present
+    update_cache: yes
 
-- name: render NGINX configuration file for rollup
+- name: Add OpenResty GPG key
   become: true
-  become_user: root
+  apt_key:
+    url: https://openresty.org/package/pubkey.gpg
+    state: present
+
+- name: Add OpenResty repository
+  become: true
+  apt_repository:
+    repo: "deb http://openresty.org/package/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: openresty
+
+- name: Install OpenResty
+  become: true
+  apt:
+    name: openresty
+    state: present
+    update_cache: yes
+
+# Certbot Installation (when SSL enabled)
+- name: Install certbot
+  become: true
+  apt:
+    name:
+      - certbot
+    state: present
+  when: proxy_ssl_enabled | bool
+
+- name: Create certbot webroot directory
+  become: true
+  file:
+    path: "{{ proxy_certbot_webroot }}"
+    state: directory
+    mode: '0755'
+  when: proxy_ssl_enabled | bool
+
+# Create conf.d directory
+- name: Create OpenResty conf.d directory
+  become: true
+  file:
+    path: /usr/local/openresty/nginx/conf/conf.d
+    state: directory
+    mode: '0755'
+
+# Render configuration templates
+- name: Render http-base.conf
+  become: true
   template:
-    src: rollup_nginx.conf.j2
-    dest: /etc/nginx/sites-available/rollup_nginx.conf
+    src: conf.d/http-base.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/http-base.conf
+    mode: '0644'
+  notify: reload openresty
 
-- name: enable configuration by creating symlink
+- name: Render proxy-location.conf
   become: true
-  become_user: root
-  file:
-    src: /etc/nginx/sites-available/rollup_nginx.conf
-    dest: /etc/nginx/sites-enabled/rollup_nginx.conf
-    state: link
-    force: yes
+  template:
+    src: conf.d/proxy-location.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/proxy-location.conf
+    mode: '0644'
+  notify: reload openresty
 
-- name: remove default NGINX configuration
+- name: Render ssl.conf
   become: true
-  become_user: root
-  file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
+  template:
+    src: conf.d/ssl.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/ssl.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+  notify: reload openresty
 
-- name: ensure NGINX is restarted and enabled on boot
+- name: Render security-headers.conf
   become: true
-  become_user: root
+  template:
+    src: conf.d/security-headers.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/security-headers.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+  notify: reload openresty
+
+# Render main config (HTTP-only first for cert acquisition)
+- name: Render OpenResty HTTP config (for initial cert acquisition)
+  become: true
+  template:
+    src: openresty-http.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Ensure OpenResty is running for cert acquisition
+  become: true
   systemd:
-    name: nginx
+    name: openresty
+    state: started
+    enabled: yes
+
+# Obtain SSL certificates
+- name: Obtain SSL certificate for primary domain
+  become: true
+  command: >
+    certbot certonly --webroot
+    -w {{ proxy_certbot_webroot }}
+    -d {{ proxy_domain_name }}
+    --non-interactive
+    --agree-tos
+    --email {{ proxy_certbot_email }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_domain_name | length > 0
+
+- name: Obtain SSL certificates for additional domains
+  become: true
+  command: >
+    certbot certonly --webroot
+    -w {{ proxy_certbot_webroot }}
+    -d {{ item }}
+    --non-interactive
+    --agree-tos
+    --email {{ proxy_certbot_email }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ item }}/fullchain.pem"
+  loop: "{{ proxy_additional_domains }}"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_additional_domains | length > 0
+
+# Switch to HTTPS config after certs are obtained
+- name: Render OpenResty HTTPS config
+  become: true
+  template:
+    src: openresty-https.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+  notify: reload openresty
+
+# Certbot auto-renewal
+- name: Setup certbot renewal cron job
+  become: true
+  cron:
+    name: "certbot renewal"
+    minute: "0"
+    hour: "3"
+    job: "certbot renew --quiet --post-hook 'systemctl reload openresty'"
+  when: proxy_ssl_enabled | bool
+
+- name: Ensure OpenResty is restarted and enabled on boot
+  become: true
+  systemd:
+    name: openresty
     state: restarted
     enabled: yes
