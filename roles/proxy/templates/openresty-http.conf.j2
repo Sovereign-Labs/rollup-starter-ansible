@@ -14,7 +14,7 @@ http {
     server {
         listen {{ proxy_listen_port }};
 {% if proxy_domain_name | length > 0 %}
-        server_name {{ proxy_domain_name }}{% for domain in proxy_additional_domains %} {{ domain }}{% endfor %};
+        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %};
 {% else %}
         server_name _;
 {% endif %}

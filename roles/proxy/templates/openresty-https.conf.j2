@@ -14,7 +14,7 @@ http {
     # HTTP server - redirect to HTTPS and handle ACME challenges
     server {
         listen {{ proxy_listen_port }};
-        server_name {{ proxy_domain_name }}{% for domain in proxy_additional_domains %} {{ domain }}{% endfor %};
+        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %};
 
         location /health {
             access_log off;
@@ -36,7 +36,7 @@ http {
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
         http2 on;
-        server_name {{ proxy_domain_name }}{% for domain in proxy_additional_domains %} {{ domain }}{% endfor %};
+        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %};
 
         include conf.d/ssl.conf;
         include conf.d/security-headers.conf;

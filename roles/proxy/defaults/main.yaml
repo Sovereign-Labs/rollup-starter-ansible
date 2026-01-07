@@ -3,8 +3,8 @@
 
 # SSL/TLS Configuration
 proxy_ssl_enabled: false
-# proxy_domain_name: ""  # Required when SSL enabled
-proxy_additional_domains: []  # Additional domains for SSL certs and rate limit exemption
+proxy_domain_name: ""  # Required when SSL enabled
+proxy_unlimited_domains: []  # Additional domains for SSL certs and rate limit exemption
 
 # Backend Configuration
 # proxy_rollup_leader_ip: ""  # REQUIRED - Primary node IP (handles writes)

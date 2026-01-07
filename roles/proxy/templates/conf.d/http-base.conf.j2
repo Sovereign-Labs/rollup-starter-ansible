@@ -109,7 +109,7 @@ map $host $host_exempt {
 {% if proxy_domain_name is defined and proxy_domain_name | length > 0 %}
     "{{ proxy_domain_name }}" 1;
 {% endif %}
-{% for domain in proxy_additional_domains %}
+{% for domain in proxy_unlimited_domains %}
     "{{ domain }}" 1;
 {% endfor %}
 }
