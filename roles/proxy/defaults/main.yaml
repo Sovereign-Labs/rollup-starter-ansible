@@ -9,7 +9,7 @@ proxy_unlimited_domains: []  # Additional domains for SSL certs and rate limit e
 # Backend Configuration
 # proxy_rollup_leader_ip: ""  # REQUIRED - Primary node IP (handles writes)
 proxy_rollup_follower_ip: ""  # Replica node IP (defaults to leader if empty)
-proxy_backend_port: 12346
+# Backend port: uses rollup_http_port from rollup role (default: 12346)
 
 # Listen Ports
 proxy_listen_port: 80
