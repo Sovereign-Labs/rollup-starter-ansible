@@ -228,6 +228,12 @@
 # =============================================================================
 # Final Service State
 # =============================================================================
+- name: Ensure OpenResty is enabled on boot
+  become: true
+  systemd:
+    name: openresty
+    enabled: yes
+
 - name: Restart OpenResty with new config
   become: true
   systemd:
