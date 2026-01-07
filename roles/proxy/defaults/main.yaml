@@ -31,3 +31,6 @@ proxy_connect_timeout: "5s"
 # Certbot Configuration
 proxy_certbot_webroot: "/var/www/certbot"
 proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
+
+# Observability
+proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy
