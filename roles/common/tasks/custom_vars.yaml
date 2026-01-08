@@ -44,3 +44,7 @@
   set_fact:
     disk_config: "{{ disk_profile_raw }}"
   when: not (disk_profile_raw.auto_discover | default(false))
+
+- name: set is_backup_node fact
+  set_fact:
+    is_backup_node: "{{ disk_profile | regex_search('backup_node') is not none }}"
