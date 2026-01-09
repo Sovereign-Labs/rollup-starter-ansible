@@ -47,7 +47,7 @@ num_cache_warmup_workers = 0
 {% if rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0 %}
 [sequencer.preferred.postgres_config]
 postgres_connection_string = "{{ rollup_sequencer_postgres_connection_string }}"
-node_role = {{ rollup_node_role }}
+node_role = "{{ rollup_node_role }}"
 node_id = "{{ rollup_node_id }}"
 {% endif %}
 {% else %}
