@@ -19,7 +19,8 @@ zkvm_role: "mock_zkvm"
 # Sequencer type: "preferred" or "standard"
 rollup_sequencer_kind: "preferred"
 debug: false
-is_rollup_replica: false
+# Node Role "Leader" or "Replica".
+rollup_node_role: "Replica"
 # For replication testing. Should be set by the deployer
 rollup_node_id: "node1"
 
