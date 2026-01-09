@@ -9,6 +9,10 @@
 {% if deployment_name is defined and deployment_name %}
   deployment_name = "{{ deployment_name }}"
 {% endif %}
+{% for key, value in telegraf_extra_tags.items() if key not in ['environment', 'deployment_name'] %}
+  {{ key }} = "{{ value }}"
+{% endfor %}
+
 
 [agent]
   interval = "30s"
