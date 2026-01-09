@@ -1,0 +1,12 @@
+---
+# Proxy-specific Alloy configuration for log collection
+
+- name: Deploy proxy alloy config
+  ansible.builtin.template:
+    src: proxy.alloy.j2
+    dest: /etc/alloy/proxy.alloy
+    owner: alloy
+    group: alloy
+    mode: '0644'
+  become: true
+  notify: restart alloy

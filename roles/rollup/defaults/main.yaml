@@ -105,8 +105,6 @@ rollup_rate_limiter_ip_limits: []
 # Network ports
 rollup_http_host: "127.0.0.1"
 rollup_http_port: 12346
-# TODO: Optional nginx
-nginx_port: 8081
 
 custom_rust_log: ""
 

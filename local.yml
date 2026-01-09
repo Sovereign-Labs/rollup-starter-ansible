@@ -46,3 +46,5 @@
       when: "'r' in switches"
     - role: "./roles/hyperlane"
       when: "'h' in switches"
+    - role: "./roles/proxy"
+      when: "'p' in switches"

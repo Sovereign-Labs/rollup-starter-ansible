@@ -1,0 +1,23 @@
+---
+- name: reload systemd
+  become: true
+  systemd:
+    daemon_reload: yes
+
+- name: reload openresty
+  become: true
+  systemd:
+    name: openresty
+    state: reloaded
+
+- name: restart telegraf
+  become: true
+  systemd:
+    name: telegraf
+    state: restarted
+
+- name: restart alloy
+  become: true
+  systemd:
+    name: alloy
+    state: restarted
