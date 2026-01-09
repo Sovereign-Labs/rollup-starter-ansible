@@ -131,6 +131,11 @@ max_open_files: 1000000
 
 # Telegraf configuration
 influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
+
+# Extra global tags for Telegraf (dict format)
+# Example: telegraf_extra_tags: { role: backup_node, region: us-east-1 }
+# Note: 'environment' and 'deployment_name' keys are ignored (already handled)
+telegraf_extra_tags: {}
 influxdb_org: "Sovereign Labs"
 influxdb_bucket: "sov-dev"
 
