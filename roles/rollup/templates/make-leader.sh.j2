@@ -5,7 +5,7 @@
 #
 set -euo pipefail
 
-CONFIG_FILE="{{ rollup_config_path }}"
+CONFIG_FILE="/home/sovereign/rollup_config.toml"
 
 echo "=== Make Leader Script ==="
 echo ""
@@ -16,21 +16,21 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 
 # Check current state
-if grep -q '^node_role = Leader' "$CONFIG_FILE"; then
-    echo "Node is already configured as leader (node_role = Leader)"
+if grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
+    echo 'Node is already configured as leader (node_role = "Leader")'
     exit 0
 fi
 
 echo "Updating $CONFIG_FILE..."
-sudo sed -i 's/^node_role = Replica$/node_role = Leader/' "$CONFIG_FILE"
+sudo sed -i 's/^node_role = "Replica"/node_role = "Leader"/' "$CONFIG_FILE"
 
 # Verify the change was made
-if ! grep -q '^node_role = Leader' "$CONFIG_FILE"; then
+if ! grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
     echo "ERROR: Failed to update node_role setting" >&2
     exit 1
 fi
 
-echo "Successfully set node_role = Leader"
+echo 'Successfully set node_role = "Leader"'
 echo ""
 echo "Restarting rollup service..."
 sudo systemctl restart rollup
