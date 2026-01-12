@@ -1,4 +1,15 @@
 ---
+# The rollup manager coordinates rollup binary execution and version upgrades
+# GitHub repository for the rollup manager
+rollup_manager_repo: "https://github.com/Sovereign-Labs/sov-rollup-manager"
+rollup_manager_repo_dir: "sov-rollup-manager"
+rollup_manager_branch: "master"
+
+# Rollup manager paths
+rollup_manager_bin: "rollup-manager"
+rollup_manager_config_path: "/home/sovereign/rollup-manager-config.json"
+rollup_manager_checkpoint_path: "/home/sovereign/checkpoint.json"
+
 # Rollup Configuration
 
 # GitHub repository settings

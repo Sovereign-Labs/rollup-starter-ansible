@@ -9,6 +9,13 @@
     src: "rollup_config.toml.j2"
     dest: "{{ rollup_config_path }}"
 
+- name: render rollup-manager-config.json
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "rollup-manager-config.json.j2"
+    dest: "{{ rollup_manager_config_path }}"
+
 - name: update BATCH_NAMESPACE in constants.toml
   become: true
   become_user: ubuntu

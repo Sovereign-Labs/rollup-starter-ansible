@@ -9,6 +9,7 @@ export RUST_LOG="{{ custom_rust_log }}"
 export NO_COLOR=1
 export RUST_BACKTRACE=full
 
-/home/sovereign/{{ rollup_bin }} \
-  --rollup-config-path {{ rollup_config_path }} \
-  --genesis-path {{ genesis_folder }}/genesis.json
+/home/sovereign/{{ rollup_manager_bin }} \
+  --config {{ rollup_manager_config_path }} \
+  --checkpoint-file {{ rollup_manager_checkpoint_path }} \
+  -- --genesis-path {{ genesis_folder }}/genesis.json
