@@ -1,11 +1,11 @@
 #!/bin/bash
 #
 # Make Leader Script
-# Promotes this rollup node to leader by setting is_replica = false.
+# Promotes this rollup node to leader by setting node_role = Leader.
 #
 set -euo pipefail
 
-CONFIG_FILE="{{ rollup_config_path }}"
+CONFIG_FILE="/home/sovereign/rollup_config.toml"
 
 echo "=== Make Leader Script ==="
 echo ""
@@ -16,21 +16,21 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 
 # Check current state
-if grep -q '^is_replica = false' "$CONFIG_FILE"; then
-    echo "Node is already configured as leader (is_replica = false)"
+if grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
+    echo 'Node is already configured as leader (node_role = "Leader")'
     exit 0
 fi
 
 echo "Updating $CONFIG_FILE..."
-sudo sed -i 's/^is_replica = true$/is_replica = false/' "$CONFIG_FILE"
+sudo sed -i 's/^node_role = "Replica"/node_role = "Leader"/' "$CONFIG_FILE"
 
 # Verify the change was made
-if ! grep -q '^is_replica = false' "$CONFIG_FILE"; then
-    echo "ERROR: Failed to update is_replica setting" >&2
+if ! grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
+    echo "ERROR: Failed to update node_role setting" >&2
     exit 1
 fi
 
-echo "Successfully set is_replica = false"
+echo 'Successfully set node_role = "Leader"'
 echo ""
 echo "Restarting rollup service..."
 sudo systemctl restart rollup
