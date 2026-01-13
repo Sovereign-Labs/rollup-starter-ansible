@@ -7,6 +7,10 @@
 - name: Validate DA configuration
   import_tasks: validate_da.yaml
 
+# Determine backup node status and validate configuration
+- name: Backup node detection and validation
+  import_tasks: backup_node.yaml
+
 # Load zkvm configuration variables
 - include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
 
