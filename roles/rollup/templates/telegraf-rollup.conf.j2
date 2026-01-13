@@ -1,7 +1,7 @@
 # Rollup-specific Telegraf inputs
 [[inputs.http_response]]
   interval = "2s"
-  urls = ["http://127.0.0.1:12346/sequencer/ready"]
+  urls = ["http://127.0.0.1:{{ rollup_http_port }}/sequencer/ready"]
 
 #[[inputs.postgresql]]
 #  address = "host=localhost user=rollup password=hunter2 sslmode=disable"
@@ -13,7 +13,7 @@
 #     source = "sov-rollup"
 
 [[inputs.http]]
-  urls = ["http://127.0.0.1:{{ rollup_port }}/modules/bank/tokens/gas_token/balances/{{ sequencer_address }}"]
+  urls = ["http://127.0.0.1:{{ rollup_http_port }}/modules/bank/tokens/gas_token/balances/{{ rollup_sequencer_address }}"]
   data_format = "json"
   json_string_fields = ["amount"]
   tagexclude = ["url"]
