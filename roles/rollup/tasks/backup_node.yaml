@@ -1,0 +1,19 @@
+---
+# Determine if this is a backup node and validate configuration
+
+- name: set is_backup_node from disk profile
+  set_fact:
+    is_backup_node: "{{ disk_profile | default('') | regex_search('backup_node') is not none }}"
+  when: is_backup_node is not defined
+
+- name: validate backup node configuration
+  fail:
+    msg: |
+      Backup nodes cannot use a preferred sequencer.
+      Current configuration: rollup_sequencer_kind={{ rollup_sequencer_kind }}
+
+      Either set rollup_sequencer_kind: "standard" for backup nodes,
+      or set is_backup_node: false to disable backup setup regardless of disk layout.
+  when:
+    - is_backup_node | bool
+    - rollup_sequencer_kind == 'preferred'
