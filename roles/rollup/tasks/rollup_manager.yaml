@@ -51,3 +51,10 @@
     mode: '0755'
   become: true
   become_user: root
+
+- name: render rollup-manager-config.json
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "rollup-manager-config.json.j2"
+    dest: "{{ rollup_manager_config_path }}"
