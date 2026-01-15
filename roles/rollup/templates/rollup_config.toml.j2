@@ -18,6 +18,9 @@ pre_fetched_blocks_capacity = 4
 [runner.http_config]
 bind_host = "{{ rollup_http_host }}"
 bind_port = {{ rollup_http_port }}
+{% if proxy_domain_name is defined and proxy_domain_name | length > 0 %}
+public_address = "{{ 'https' if (proxy_ssl_enabled | default(false)) else 'http' }}://{{ proxy_domain_name }}"
+{% endif %}
 
 [monitoring]
 telegraf_address = "127.0.0.1:8094"

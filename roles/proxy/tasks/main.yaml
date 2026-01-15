@@ -1,0 +1,280 @@
+---
+# Proxy role - OpenResty reverse proxy for Sovereign rollup
+
+# =============================================================================
+# Validation
+# =============================================================================
+- name: Validate proxy_rollup_leader_ip is defined
+  assert:
+    that: proxy_rollup_leader_ip is defined and proxy_rollup_leader_ip | length > 0
+    fail_msg: "proxy_rollup_leader_ip is required when using the proxy role"
+
+- name: Validate SSL requirements
+  assert:
+    that:
+      - proxy_domain_name is defined and proxy_domain_name | length > 0
+      - proxy_certbot_email is defined and proxy_certbot_email | length > 0
+    fail_msg: "proxy_domain_name and proxy_certbot_email are required when proxy_ssl_enabled is true"
+  when: proxy_ssl_enabled | bool
+
+- name: Set follower IP to leader if not specified
+  set_fact:
+    proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
+
+# =============================================================================
+# OpenResty Installation (using modern GPG keyring approach)
+# =============================================================================
+- name: Install OpenResty dependencies
+  become: true
+  apt:
+    name:
+      - wget
+      - gnupg
+      - ca-certificates
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Download OpenResty GPG key
+  become: true
+  get_url:
+    url: https://openresty.org/package/pubkey.gpg
+    dest: /tmp/openresty-pubkey.gpg
+    mode: '0644'
+
+# Official fingerprint: E522 18E7 0878 97DC 6DEA 6D6D 97DB 7443 D5ED EB74
+# Source: https://openresty.org/en/linux-packages.html
+- name: Verify OpenResty GPG key fingerprint
+  become: true
+  shell: |
+    FINGERPRINT=$(gpg --with-fingerprint --with-colons /tmp/openresty-pubkey.gpg 2>/dev/null | grep '^fpr' | head -1 | cut -d: -f10)
+    EXPECTED="E52218E7087897DC6DEA6D6D97DB7443D5EDEB74"
+    if [ "$FINGERPRINT" != "$EXPECTED" ]; then
+      echo "ERROR: GPG key fingerprint mismatch!"
+      echo "Expected: $EXPECTED"
+      echo "Got: $FINGERPRINT"
+      exit 1
+    fi
+    echo "GPG key fingerprint verified: $FINGERPRINT"
+  register: gpg_verify
+  changed_when: false
+
+- name: Dearmor and install OpenResty GPG key
+  become: true
+  shell: gpg --dearmor < /tmp/openresty-pubkey.gpg > /usr/share/keyrings/openresty.gpg
+  args:
+    creates: /usr/share/keyrings/openresty.gpg
+
+- name: Add OpenResty repository
+  become: true
+  apt_repository:
+    repo: "deb [arch={{ ansible_architecture | regex_replace('x86_64', 'amd64') | regex_replace('aarch64', 'arm64') }} signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: openresty
+
+- name: Install OpenResty
+  become: true
+  apt:
+    name: openresty
+    state: present
+    update_cache: yes
+
+- name: Create OpenResty systemd override directory
+  become: true
+  file:
+    path: /etc/systemd/system/openresty.service.d
+    state: directory
+    mode: '0755'
+
+- name: Configure OpenResty file descriptor limits
+  become: true
+  copy:
+    content: |
+      [Service]
+      LimitNOFILE=65535
+    dest: /etc/systemd/system/openresty.service.d/limits.conf
+    mode: '0644'
+  notify: reload systemd
+
+# =============================================================================
+# Certbot Installation (when SSL enabled)
+# =============================================================================
+- name: Install certbot
+  become: true
+  apt:
+    name: certbot
+    state: present
+  when: proxy_ssl_enabled | bool
+
+- name: Create certbot webroot directory
+  become: true
+  file:
+    path: "{{ proxy_certbot_webroot }}"
+    state: directory
+    mode: '0755'
+  when: proxy_ssl_enabled | bool
+
+# =============================================================================
+# Configuration Directories
+# =============================================================================
+- name: Create OpenResty conf.d directory
+  become: true
+  file:
+    path: /usr/local/openresty/nginx/conf/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Create nginx log directory
+  become: true
+  file:
+    path: /var/log/nginx
+    state: directory
+    mode: '0755'
+
+# =============================================================================
+# Render Configuration Templates
+# =============================================================================
+- name: Render http-base.conf
+  become: true
+  template:
+    src: conf.d/http-base.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/http-base.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Render proxy-location.conf
+  become: true
+  template:
+    src: conf.d/proxy-location.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/proxy-location.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Render ssl.conf
+  become: true
+  template:
+    src: conf.d/ssl.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/ssl.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+  notify: reload openresty
+
+- name: Render security-headers.conf
+  become: true
+  template:
+    src: conf.d/security-headers.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/security-headers.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+  notify: reload openresty
+
+# =============================================================================
+# Initial HTTP Config (for cert acquisition)
+# =============================================================================
+- name: Render OpenResty HTTP config
+  become: true
+  template:
+    src: openresty-http.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Ensure OpenResty is running
+  become: true
+  systemd:
+    name: openresty
+    state: started
+    enabled: yes
+
+# =============================================================================
+# SSL Certificate Acquisition
+# =============================================================================
+- name: Build certbot domain arguments
+  set_fact:
+    _certbot_domains: "{{ [proxy_domain_name] + proxy_unlimited_domains }}"
+  when: proxy_ssl_enabled | bool
+
+- name: Obtain SSL certificate for all domains (single cert with SANs)
+  become: true
+  shell: |
+    certbot certonly --webroot \
+      -w {{ proxy_certbot_webroot }} \
+      {% for domain in _certbot_domains %}-d {{ domain }} {% endfor %} \
+      --non-interactive \
+      --agree-tos \
+      --email {{ proxy_certbot_email }} \
+      --keep-until-expiring
+  args:
+    creates: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: certbot_result
+  ignore_errors: yes
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_domain_name | length > 0
+
+- name: Warn if certbot failed
+  debug:
+    msg: "WARNING: Certbot failed - DNS may not be configured yet. Re-run playbook once DNS is ready."
+  when:
+    - certbot_result is defined
+    - certbot_result.failed | default(false)
+
+# =============================================================================
+# Switch to HTTPS Config
+# =============================================================================
+- name: Render OpenResty HTTPS config
+  become: true
+  template:
+    src: openresty-https.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  when: proxy_ssl_enabled | bool
+
+# =============================================================================
+# Certbot Auto-Renewal
+# =============================================================================
+- name: Setup certbot renewal cron job
+  become: true
+  cron:
+    name: "certbot renewal"
+    minute: "0"
+    hour: "3"
+    job: "certbot renew --quiet --post-hook 'systemctl reload openresty'"
+  when: proxy_ssl_enabled | bool
+
+# =============================================================================
+# Final Service State
+# =============================================================================
+- name: Ensure OpenResty is enabled on boot
+  become: true
+  systemd:
+    name: openresty
+    enabled: yes
+
+- name: Restart OpenResty with new config
+  become: true
+  systemd:
+    name: openresty
+    state: restarted
+    enabled: yes
+  when: not (proxy_ssl_enabled | bool and (certbot_result.failed | default(false)))
+
+- name: Keep OpenResty running on HTTP (certbot failed)
+  debug:
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds."
+  when:
+    - proxy_ssl_enabled | bool
+    - certbot_result.failed | default(false)
+
+# =============================================================================
+# Telegraf Monitoring
+# =============================================================================
+- name: Configure proxy telegraf monitoring
+  import_tasks: telegraf.yaml
+
+# =============================================================================
+# Alloy Log Export (opt-in)
+# =============================================================================
+- name: Configure proxy log export
+  import_tasks: alloy.yaml
+  when: proxy_enable_logs_export | bool
