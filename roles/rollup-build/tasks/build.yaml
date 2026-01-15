@@ -5,7 +5,7 @@
   become_user: ubuntu
   vars:
     build_profile_flag: "{{ '--release' if not debug else '' }}"
-  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_bin }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_crate }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
   args:
     chdir: /home/ubuntu/{{ rollup_repo_dir }}
     executable: /bin/bash
@@ -14,37 +14,37 @@
   poll: 30     # Check status every 30 seconds
 
 - name: verify binary was built successfully
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
   stat:
-    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ 'release' if not debug else 'debug' }}/{{ rollup_bin }}"
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
   register: binary_stat
   become: true
 
 - name: fail if binary was not built
-  fail:
-    msg: "Build failed or binary not found at {{ rollup_repo_dir }}/target/{{ 'release' if not debug else 'debug' }}/{{ rollup_bin }}"
-  when: not binary_stat.stat.exists
-
-- name: stop rollup service before replacing binary
-  ansible.builtin.systemd:
-    name: rollup
-    state: stopped
-  become: true
-  ignore_errors: true
-  failed_when: false
-
-- name: copy rollup binary to sovereign's home directory
   vars:
     build_profile_path: "{{ 'release' if not debug else 'debug' }}"
-  ansible.builtin.shell:
-    cmd: cp /home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_bin }} /home/sovereign/{{ rollup_bin }}
-  become: true
-  become_user: root
+  fail:
+    msg: "Build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
+  when: not binary_stat.stat.exists
 
-- name: set owner, group, and permissions on the node binary
+- name: ensure output binary directory exists
   ansible.builtin.file:
-    path: /home/sovereign/{{ rollup_bin }}
+    path: "{{ output_binary_path }}"
+    state: directory
     owner: sovereign
     group: sovereign
     mode: '0755'
   become: true
-  become_user: root
+
+- name: copy rollup binary to output path
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  ansible.builtin.copy:
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
+    dest: "{{ output_binary_path }}/{{ rollup_bin }}"
+    remote_src: true
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true

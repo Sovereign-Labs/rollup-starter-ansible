@@ -14,6 +14,9 @@ rollup_commit_hash: ""
 rollup_branch: "main"
 
 # Build configuration
+# Cargo crate name (used in cargo build --bin)
+rollup_crate: "rollup"
+# Output binary name (used in destination path)
 rollup_bin: "rollup"
 # Can be `risc0` or `mock_zkvm`
 zkvm_role: "mock_zkvm"

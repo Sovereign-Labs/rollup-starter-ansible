@@ -13,11 +13,13 @@ rollup_manager_bin: "rollup-manager"
 rollup_manager_config_path: "/home/sovereign/rollup-manager-config.json"
 rollup_manager_checkpoint_path: "/home/sovereign/checkpoint.json"
 
+# Output paths - used by rollup-build and manager config template
+output_binary_path: "/home/sovereign"
+output_config_path: "/home/sovereign"
+output_genesis_path: "/home/sovereign/genesis"
+
 # Binary name - used by manager config template
 rollup_bin: "rollup"
-
-# Genesis folder - passed to rollup-build role
-genesis_folder: "/home/sovereign/genesis"
 
 # Network ports
 # TODO: Optional nginx

@@ -1,0 +1,25 @@
+---
+# Rollup build role - builds a single version of the rollup binary
+# This role can be invoked standalone or called by the rollup role
+
+- name: Load DA-specific variables
+  include_vars: "{{ role_path }}/vars/{{ data_availability_role }}.yaml"
+
+- name: Validate DA configuration
+  import_tasks: validate_da.yaml
+
+- name: Checkout rollup repository
+  import_tasks: git.yaml
+
+- name: Setup zkvm toolchain
+  import_tasks: zkvm.yaml
+
+- name: Configure rollup (constants.toml + rollup_config.toml)
+  import_tasks: build_config.yaml
+
+- name: Generate genesis
+  import_tasks: genesis.yaml
+  when: output_genesis_path is defined and output_genesis_path | length > 0
+
+- name: Build rollup binary
+  import_tasks: build.yaml
