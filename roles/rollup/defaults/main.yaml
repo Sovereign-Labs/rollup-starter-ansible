@@ -1,4 +1,7 @@
 ---
+# Rollup Deployment Role Defaults
+# Build-related defaults are in roles/rollup-build/defaults/main.yaml
+
 # The rollup manager coordinates rollup binary execution and version upgrades
 # GitHub repository for the rollup manager
 rollup_manager_repo: "https://github.com/Sovereign-Labs/sov-rollup-manager"
@@ -10,113 +13,13 @@ rollup_manager_bin: "rollup-manager"
 rollup_manager_config_path: "/home/sovereign/rollup-manager-config.json"
 rollup_manager_checkpoint_path: "/home/sovereign/checkpoint.json"
 
-# Rollup Configuration
-
-# GitHub repository settings
-# Full git URL - use HTTPS for public repos, git@github.com: for private repos with SSH keys
-rollup_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
-rollup_repo_dir: "rollup-starter"
-
-# Git version for the sovereign rollup repository
-# Can specify either a commit hash or use the branch name
-# If rollup_commit_hash is set, it takes priority over rollup_branch
-rollup_commit_hash: ""
-rollup_branch: "main"
-
-# Build configuration
+# Binary name - used by manager config template
 rollup_bin: "rollup"
-# Can be `risc0` or `mock_zkvm`
-zkvm_role: "mock_zkvm"
-# Sequencer type: "preferred" or "standard"
-rollup_sequencer_kind: "preferred"
-debug: false
-# Node Role "Leader" or "Replica".
-rollup_node_role: "Leader"
-# For replication testing. Should be set by the deployer
-rollup_node_id: "node1"
 
-# Paths
-rollup_config_path: "/home/sovereign/rollup_config.toml"
-
-# Genesis configuration.
-# Fo testing it locally, create path/to/your/vars.yaml with variables you want to check and run:
-#   ansible localhost -m template \
-#    -a "src=roles/rollup/templates/genesis.json.j2 dest=/tmp/genesis.json" \
-#     -e "@roles/rollup/defaults/main.yaml" \
-#    -e "@path/to/your/vars.yaml"
+# Genesis folder - passed to rollup-build role
 genesis_folder: "/home/sovereign/genesis"
-rollup_genesis_bank_disable_admin: false
-rollup_genesis_seq_min_bond: 5000
-rollup_genesis_seq_init_bond: 100000000000000000000000000000000
-rollup_genesis_seq_init_balance: 10000000000000000000000000000000000
-rollup_genesis_bank_disable_gas_token: false
-rollup_genesis_extra_init_balance: 10000000000000000000000000000
-rollup_genesis_extra_addresses:
-  - "0xe7d2b7610d1574610cbd903ea896c59d17470633"
-  - "0x23B6445f524daDee9fb576627740AaD23Afbe8b7"
-  - "0x9b08ce57a93751aE790698A2C9ebc76A78F23E25"
-  - "0xB14D211d69aff5190451b336bDe0975b57555D36"
-  - "0xe78B5e6d2BfF36b462cc29772526Dd4EBF42E98b"
-  - "0x0E0BcFa6A9D9C5694B754Aa3BF86360EE23eb52B"
-  - "0xc13b65f7c53Cd6db2EA205a4b574b4a0858720A6"
-  - "0xBaEb92889696217A3A6be2175E5a95dC4cFFC9f7"
-  - "0x2b9A8bdd2fe54C75116986f2fa892210A5f22915"
-  - "0x267d5F5Ba12AcD07Ce5D0831B17aB5927fEBCd48"
-  - "0xca7f2cF9b6d765334A4A9D5744e57563EA76C602"
-  - "0x74bb92E136628E7028e2290fF60A8EC83Eea904f"
-rollup_genesis_evm_block_gas_limit: 1000000000
-
-
-rollup_genesis_evm_allow_all_contract_creation: true 
-rollup_genesis_evm_contract_creation_allowlist: []
-
-# Both ZK/Optimistic Verifier is attester or prover
-rollup_genesis_verifier_min_bond: [1000, 1000]
-rollup_genesis_verifier_init_bond: 200000
-# Optimistic genesis
-rollup_genesis_challenger_min_bond: [1000, 1000]
-# ZK genesis
-rollup_genesis_proving_penalty: [10, 10]
-
-# 10GB, in bytes
-rollup_state_cache_size: 10000000000
-rollup_state_user_commit_concurrency: 6
-rollup_state_user_hashtable_buckets: 64_000_000
-rollup_state_user_preallocate_ht: true
-# This is for particular instance.
-# Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
-rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
-rollup_has_timing_oracle: false
-# 7 MiB
-rollup_max_batch_size_bytes: 7340032
-rollup_max_concurrent_blobs: 128
-rollup_max_allowed_node_distance_behind: 10
-
-# Rate limiter - only applies to preferred sequencer
-rollup_rate_limiter_enabled: false
-rollup_rate_limiter_max_concurrent_users: 100000
-rollup_rate_limiter_max_requests_per_second: 10000
-# Default limits (resources measured in 1/1000th of full batch capacity)
-rollup_rate_limiter_default_resources_per_bucket: 5
-rollup_rate_limiter_default_refill_rate: 5
-# Custom limits per address
-# Example:
-#   rollup_rate_limiter_address_limits:
-#     - address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
-#       resources_per_bucket: 20
-#       refill_rate: 2
-rollup_rate_limiter_address_limits: []
-# Custom limits per IP
-# Example:
-#   rollup_rate_limiter_ip_limits:
-#     - ip: "127.0.0.1"
-#       resources_per_bucket: 1000
-#       refill_rate: 1
-rollup_rate_limiter_ip_limits: []
 
 # Network ports
-rollup_http_host: "127.0.0.1"
-rollup_http_port: 12346
 # TODO: Optional nginx
 nginx_port: 8081
 
@@ -140,20 +43,6 @@ postgres_db_name: "rollup"
 postgres_db_user: "rollup"
 postgres_db_password: "rollup_secure_password"
 
-# Optional comma separated string of EVM addresses for RAM pinning (privileged deployers)
-evm_pinned_addresses: ""
-# Whether reverted EVM txs should be published to DA
-publish_reverted_evm_txs: false
-# When defined, renders evm_pinned_cache.json next to rollup_config.toml
-# Example:
-# evm_pinned_addresses: "0x006e4eb63413050681079338404e07a1d72ab697,0xe7d2b7610d1574610cbd903ea896c59d17470633"
-
-# Optional constants.toml overrides
-# These are only applied if defined (not empty)
-# rollup_chain_id: 6669
-# rollup_chain_name: "TestChain"
-# rollup_hyperlane_bridge_domain: 5555
-# rollup_deferred_slots_count: 100000
-# rollup_setup_mode_termination_height: 0
-# rollup_custom_gas_token_id: "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"
-# rollup_evm_max_fee_check_height: 0
+# DA selector - passed to rollup-build role
+# Must be provided by user: "celestia" or "mock_da"
+# data_availability_role: "mock_da"
