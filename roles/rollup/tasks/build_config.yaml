@@ -9,13 +9,6 @@
     src: "rollup_config.toml.j2"
     dest: "{{ rollup_config_path }}"
 
-- name: render rollup-manager-config.json
-  become: true
-  become_user: sovereign
-  ansible.builtin.template:
-    src: "rollup-manager-config.json.j2"
-    dest: "{{ rollup_manager_config_path }}"
-
 - name: update BATCH_NAMESPACE in constants.toml
   become: true
   become_user: ubuntu
@@ -113,53 +106,3 @@
     src: "evm_pinned_cache.json.j2"
     dest: "/home/sovereign/evm_pinned_cache.json"
   when: (evm_pinned_addresses is defined and evm_pinned_addresses | length > 0) or (publish_reverted_evm_txs is defined and publish_reverted_evm_txs | bool)
-
-- name: render wipe-rollup-data.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "wipe-rollup-data.sh.j2"
-    dest: "/home/ubuntu/wipe-rollup-data.sh"
-    mode: "0755"
-
-- name: render make-leader.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "make-leader.sh.j2"
-    dest: "/home/ubuntu/make-leader.sh"
-    mode: "0755"
-
-- name: render restore-from-snapshot.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "restore-from-snapshot.sh.j2"
-    dest: "/home/ubuntu/restore-from-snapshot.sh"
-    mode: "0755"
-
-- name: render snapshot-rollup-data.sh script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "snapshot-rollup-data.sh.j2"
-    dest: "/home/ubuntu/snapshot-rollup-data.sh"
-    mode: "0755"
-  when: is_backup_node
-
-- name: setup hourly cron for rollup snapshots
-  become: true
-  ansible.builtin.cron:
-    name: "rollup snapshot to EBS"
-    minute: "0"
-    job: "/home/ubuntu/snapshot-rollup-data.sh"
-    user: "ubuntu"
-  when: is_backup_node
-
-- name: remove snapshot cron if not backup node
-  become: true
-  ansible.builtin.cron:
-    name: "rollup snapshot to EBS"
-    state: absent
-    user: "ubuntu"
-  when: not is_backup_node

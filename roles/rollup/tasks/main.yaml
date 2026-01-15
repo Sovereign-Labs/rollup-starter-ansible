@@ -24,8 +24,8 @@
 - name: genesis
   import_tasks: genesis.yaml
 
-- name: rollup configuration setup
-  include_tasks: config.yaml
+- name: build configuration (constants.toml + rollup_config.toml)
+  include_tasks: build_config.yaml
 
 - name: setup zkvm (if required)
   include_tasks: "../../zkvm/{{ zkvm_role }}/tasks/main.yaml"
@@ -35,6 +35,12 @@
 
 - name: build rollup manager
   include_tasks: rollup_manager.yaml
+
+- name: render helper scripts
+  include_tasks: helper_scripts.yaml
+
+- name: setup or disable backups, as needed
+  include_tasks: backup.yaml
 
 - name: rollup service
   include_tasks: service.yaml
