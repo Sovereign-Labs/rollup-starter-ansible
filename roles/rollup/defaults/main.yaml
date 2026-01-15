@@ -13,17 +13,24 @@ rollup_manager_bin: "rollup-manager"
 rollup_manager_config_path: "/home/sovereign/rollup-manager-config.json"
 rollup_manager_checkpoint_path: "/home/sovereign/checkpoint.json"
 
-# Output paths - used by rollup-build and manager config template
-output_binary_path: "/home/sovereign"
-output_config_path: "/home/sovereign"
-output_genesis_path: "/home/sovereign/genesis"
+# Output folders - used by rollup-build and manager config template
+binary_folder: "/home/sovereign"
+config_folder: "/home/sovereign"
+genesis_folder: "/home/sovereign/genesis"
 
 # Binary name - used by manager config template
 rollup_bin: "rollup"
 
 # Network ports
+rollup_http_port: 12346
 # TODO: Optional nginx
 nginx_port: 8081
+
+# Sequencer address - used for telegraf monitoring
+rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
+
+# ZKVM role - used for MOTD display
+zkvm_role: "mock_zkvm"
 
 custom_rust_log: ""
 

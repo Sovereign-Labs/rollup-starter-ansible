@@ -4,7 +4,7 @@
 
 - name: ensure output config directory exists
   ansible.builtin.file:
-    path: "{{ output_config_path }}"
+    path: "{{ config_folder }}"
     state: directory
     owner: sovereign
     group: sovereign
@@ -16,7 +16,7 @@
   become_user: sovereign
   ansible.builtin.template:
     src: "rollup_config.toml.j2"
-    dest: "{{ output_config_path }}/rollup_config.toml"
+    dest: "{{ config_folder }}/rollup_config.toml"
 
 - name: update BATCH_NAMESPACE in constants.toml
   become: true
@@ -113,5 +113,5 @@
   become_user: sovereign
   ansible.builtin.template:
     src: "evm_pinned_cache.json.j2"
-    dest: "{{ output_config_path }}/evm_pinned_cache.json"
+    dest: "{{ config_folder }}/evm_pinned_cache.json"
   when: (evm_pinned_addresses is defined and evm_pinned_addresses | length > 0) or (publish_reverted_evm_txs is defined and publish_reverted_evm_txs | bool)

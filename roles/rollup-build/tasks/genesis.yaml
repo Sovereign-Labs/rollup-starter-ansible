@@ -1,6 +1,6 @@
 - name: create genesis folder
   file:
-    path: "{{ output_genesis_path }}"
+    path: "{{ genesis_folder }}"
     state: directory
     owner: sovereign
     group: sovereign
@@ -12,7 +12,7 @@
   become_user: sovereign
   ansible.builtin.template:
     src: "genesis.json.j2"
-    dest: "{{ output_genesis_path }}/genesis.json"
+    dest: "{{ genesis_folder }}/genesis.json"
   vars:
     genesis_attester_rollup_address: "{{ genesis_sequencer_rollup_address }}"
     genesis_da_height: "{{ da_start_height }}"

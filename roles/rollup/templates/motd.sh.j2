@@ -5,8 +5,8 @@ Welcome to Sovereign Rollup!
 
 Data Availability Role:  "{{ data_availability_role }}"
 ZKVM Role:               "{{ zkvm_role }}"
-Config:                   sudo vim {{ rollup_config_path }}
-Rollup executable script: /home/sovereign/rollup.sh
+Config:                   sudo vim {{ config_folder }}/rollup_config.toml
+Rollup executable script: /home/sovereign/rollup-manager.sh
 Wiping rollup data:       sudo /home/ubuntu/wipe-rollup-data.sh
 Make leader:              sudo /home/ubuntu/make-leader.sh
 Status:                   sudo systemctl status rollup

@@ -30,7 +30,7 @@
 
 - name: ensure output binary directory exists
   ansible.builtin.file:
-    path: "{{ output_binary_path }}"
+    path: "{{ binary_folder }}"
     state: directory
     owner: sovereign
     group: sovereign
@@ -42,7 +42,7 @@
     build_profile_path: "{{ 'release' if not debug else 'debug' }}"
   ansible.builtin.copy:
     src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
-    dest: "{{ output_binary_path }}/{{ rollup_bin }}"
+    dest: "{{ binary_folder }}/{{ rollup_bin }}"
     remote_src: true
     owner: sovereign
     group: sovereign

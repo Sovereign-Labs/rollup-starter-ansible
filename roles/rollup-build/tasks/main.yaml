@@ -19,7 +19,7 @@
 
 - name: Generate genesis
   import_tasks: genesis.yaml
-  when: output_genesis_path is defined and output_genesis_path | length > 0
+  when: genesis_folder is defined and genesis_folder | length > 0
 
 - name: Build rollup binary
   import_tasks: build.yaml
