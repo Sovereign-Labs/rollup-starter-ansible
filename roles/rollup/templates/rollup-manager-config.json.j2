@@ -1,11 +1,14 @@
 {
   "versions": [
+{% for version in version_spec.rollup_versions %}
     {
-      "rollup_binary": "{{ binary_folder }}/{{ rollup_bin }}",
-      "config_path": "{{ config_folder }}/rollup_config.toml",
-      "migration_path": null,
-      "start_height": null,
-      "stop_height": null
-    }
+      "rollup_binary": "{{ versions_output_dir }}/{{ version.version_id }}/rollup",
+      "config_path": "{{ versions_output_dir }}/{{ version.version_id }}/rollup_config.toml",
+      "migration_path": {{ version.migration_path | default('null') | to_json }},
+      "start_height": {{ version.start_height | default('null') | to_json }},
+      "stop_height": {{ version.stop_height | default('null') | to_json }}
+    }{% if not loop.last %},{% endif %}
+
+{% endfor %}
   ]
 }

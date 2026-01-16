@@ -1,0 +1,57 @@
+---
+# Multi-version build orchestration
+#
+# Version spec precedence:
+# 1. rollup_config_repo defined → load versions.yaml from repo
+# 2. version_spec passed directly (e.g., -e @versions.yaml) → use that
+# 3. Neither → synthesize single-version default
+
+# --- Load or synthesize version spec ---
+
+- name: Checkout rollup-config repo
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ rollup_config_repo }}"
+    dest: "{{ config_checkout_dir }}"
+    version: "{{ rollup_config_repo_branch }}"
+    accept_hostkey: yes
+    force: yes
+  when: rollup_config_repo is defined and rollup_config_repo | length > 0
+
+- name: Load versions.yaml from config repo
+  include_vars:
+    file: "{{ config_checkout_dir }}/versions.yaml"
+    name: version_spec
+  when: rollup_config_repo is defined and rollup_config_repo | length > 0
+
+- name: Synthesize single-version spec (if not provided)
+  set_fact:
+    version_spec:
+      rollup_versions:
+        - version_id: "v0"
+          ansible_commit: "{{ ansible_commit | default('main') }}"
+          vars_file: ""
+          start_height: null
+          stop_height: null
+          migration_path: null
+  when: (rollup_config_repo is not defined or rollup_config_repo | length == 0) and version_spec is not defined
+
+# --- Clone ansible repo and build versions ---
+
+- name: Clone ansible repo
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ ansible_repo_url }}"
+    dest: "{{ ansible_checkout_dir }}"
+    version: "main"
+    accept_hostkey: yes
+    force: yes
+
+- name: Build each rollup version
+  include_tasks: build_single_version.yaml
+  loop: "{{ version_spec.rollup_versions }}"
+  loop_control:
+    loop_var: version
+    index_var: version_index

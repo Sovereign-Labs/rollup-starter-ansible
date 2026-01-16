@@ -23,13 +23,15 @@ zkvm_role: "mock_zkvm"
 # Debug or release build?
 debug: false
 
+# Mock DA storage path (only used when data_availability_role=mock_da and mock_da_external_url is not set)
+da_store: "/mnt/da"
+
 # Genesis configuration.
 # For testing it locally, create path/to/your/vars.yaml with variables you want to check and run:
 #   ansible localhost -m template \
 #    -a "src=roles/rollup-build/templates/genesis.json.j2 dest=/tmp/genesis.json" \
 #     -e "@roles/rollup-build/defaults/main.yaml" \
 #    -e "@path/to/your/vars.yaml"
-genesis_folder: "/home/sovereign/genesis"
 rollup_genesis_bank_disable_admin: false
 rollup_genesis_seq_min_bond: 5000
 rollup_genesis_seq_init_bond: 100000000000000000000000000000000

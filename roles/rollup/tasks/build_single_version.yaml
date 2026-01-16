@@ -1,0 +1,85 @@
+---
+# Build a single version of the rollup via ansible-playbook subprocess
+
+- name: Set version output paths
+  set_fact:
+    version_output_dir: "{{ versions_output_dir }}/{{ version.version_id }}"
+    version_genesis_folder: "{{ genesis_folder if version_index == 0 else '' }}"
+
+- name: Create version output directory
+  ansible.builtin.file:
+    path: "{{ version_output_dir }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
+- name: Create genesis directory (first version only)
+  ansible.builtin.file:
+    path: "{{ version_genesis_folder }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+  when: version_index == 0 and version_genesis_folder | length > 0
+
+- name: Checkout ansible repo at version-specific commit
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ ansible_repo_url }}"
+    dest: "{{ ansible_checkout_dir }}"
+    version: "{{ version.ansible_commit }}"
+    force: yes
+
+- name: Check if runtime_vars_file exists
+  stat:
+    path: "{{ runtime_vars_file }}"
+  register: build_runtime_vars_stat
+
+- name: Build base vars argument
+  set_fact:
+    base_vars_arg: "{{ '-e @' + runtime_vars_file if build_runtime_vars_stat.stat.exists else '' }}"
+
+- name: Build override vars argument
+  set_fact:
+    override_vars_arg: "{{ '-e @' + config_checkout_dir + '/' + version.vars_file if (version.vars_file is defined and version.vars_file | length > 0) else '' }}"
+
+- name: Build version command
+  set_fact:
+    build_command: >-
+      ansible-playbook {{ ansible_checkout_dir }}/local.yml
+      -i {{ ansible_checkout_dir }}/inventory/localhost.ini
+      {{ base_vars_arg }}
+      {{ override_vars_arg }}
+      -e switches=b
+      -e binary_folder={{ version_output_dir }}
+      -e config_folder={{ version_output_dir }}
+      -e genesis_folder={{ version_genesis_folder }}
+      -e rollup_http_port={{ rollup_http_port }}
+      -e rollup_storage_dir={{ rollup_storage_dir }}
+
+- name: Display build command for version {{ version.version_id }}
+  debug:
+    msg: "{{ build_command }}"
+
+- name: Run build playbook for version {{ version.version_id }}
+  ansible.builtin.command:
+    cmd: "{{ build_command }}"
+  become: true
+  register: build_result
+  async: 7200
+  poll: 60
+
+- name: Verify version binary was built
+  stat:
+    path: "{{ version_output_dir }}/rollup"
+  register: version_binary_stat
+  become: true
+
+- name: Fail if version binary was not built
+  fail:
+    msg: "Build failed for version {{ version.version_id }}"
+  when: not version_binary_stat.stat.exists
