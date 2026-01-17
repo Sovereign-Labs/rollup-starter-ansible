@@ -1,36 +1,43 @@
 #!/bin/bash
 #
 # Make Leader Script
-# Promotes this rollup node to leader by setting node_role = Leader.
+# Promotes this rollup node to leader by setting node_role = Leader in all version configs.
 #
 set -euo pipefail
 
-CONFIG_FILE="/home/sovereign/rollup_config.toml"
+VERSIONS_DIR="{{ versions_output_dir }}"
 
 echo "=== Make Leader Script ==="
 echo ""
 
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "ERROR: Config file not found: $CONFIG_FILE" >&2
+# Find all rollup_config.toml files
+CONFIG_FILES=$(find "$VERSIONS_DIR" -name "rollup_config.toml" 2>/dev/null)
+
+if [[ -z "$CONFIG_FILES" ]]; then
+    echo "ERROR: No config files found in $VERSIONS_DIR" >&2
     exit 1
 fi
 
-# Check current state
-if grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
+# Check current state using the first config file
+FIRST_CONFIG=$(echo "$CONFIG_FILES" | head -n1)
+if grep -q '^node_role = "Leader"' "$FIRST_CONFIG"; then
     echo 'Node is already configured as leader (node_role = "Leader")'
     exit 0
 fi
 
-echo "Updating $CONFIG_FILE..."
-sudo sed -i 's/^node_role = "Replica"/node_role = "Leader"/' "$CONFIG_FILE"
+# Update all config files
+for CONFIG_FILE in $CONFIG_FILES; do
+    echo "Updating $CONFIG_FILE..."
+    sudo sed -i 's/^node_role = "Replica"/node_role = "Leader"/' "$CONFIG_FILE"
+done
 
-# Verify the change was made
-if ! grep -q '^node_role = "Leader"' "$CONFIG_FILE"; then
+# Verify the change was made in the first config
+if ! grep -q '^node_role = "Leader"' "$FIRST_CONFIG"; then
     echo "ERROR: Failed to update node_role setting" >&2
     exit 1
 fi
 
-echo 'Successfully set node_role = "Leader"'
+echo 'Successfully set node_role = "Leader" in all config files'
 echo ""
 echo "Restarting rollup service..."
 sudo systemctl restart rollup

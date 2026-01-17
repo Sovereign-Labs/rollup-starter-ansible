@@ -90,6 +90,21 @@
   register: build_result
   async: 7200
   poll: 60
+  ignore_errors: true
+
+- name: Display build output for version {{ version.version_id }}
+  debug:
+    msg: |
+      === Build stdout ===
+      {{ build_result.stdout | default('(no stdout)') }}
+      === Build stderr ===
+      {{ build_result.stderr | default('(no stderr)') }}
+  when: build_result is defined
+
+- name: Fail if build command failed
+  fail:
+    msg: "Build command failed for version {{ version.version_id }} with rc={{ build_result.rc }}"
+  when: build_result.rc != 0
 
 - name: Verify version binary was built
   stat:
@@ -99,5 +114,5 @@
 
 - name: Fail if version binary was not built
   fail:
-    msg: "Build failed for version {{ version.version_id }}"
+    msg: "Build completed but binary not found at {{ version_output_dir }}/rollup"
   when: not version_binary_stat.stat.exists
