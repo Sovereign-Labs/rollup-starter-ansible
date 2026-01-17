@@ -1,12 +1,11 @@
 - name: create genesis folder
   file:
-    path: /home/sovereign/genesis
+    path: "{{ genesis_folder }}"
     state: directory
     owner: sovereign
     group: sovereign
   become: true
   become_user: root
-
 
 - name: render rollup genesis.json
   become: true
