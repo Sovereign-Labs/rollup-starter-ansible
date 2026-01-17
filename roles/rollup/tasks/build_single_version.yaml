@@ -39,9 +39,26 @@
     path: "{{ runtime_vars_file }}"
   register: build_runtime_vars_stat
 
+- name: Check for secrets/override files in parent playbook
+  stat:
+    path: "{{ playbook_dir }}/vars/{{ item }}"
+  loop:
+    - custom_overrides.yaml
+    - celestia_secrets.yaml
+    - monitoring_secrets.yaml
+    - hyperlane_secrets.yaml
+  register: secrets_files_stat
+
 - name: Build base vars argument
   set_fact:
     base_vars_arg: "{{ '-e @' + runtime_vars_file if build_runtime_vars_stat.stat.exists else '' }}"
+
+- name: Build secrets vars arguments
+  set_fact:
+    secrets_vars_arg: >-
+      {% for result in secrets_files_stat.results %}
+      {% if result.stat.exists %}-e @{{ result.stat.path }} {% endif %}
+      {% endfor %}
 
 - name: Build override vars argument
   set_fact:
@@ -52,6 +69,7 @@
     build_command: >-
       ansible-playbook {{ ansible_checkout_dir }}/local.yml
       -i {{ ansible_checkout_dir }}/inventory/localhost.ini
+      {{ secrets_vars_arg }}
       {{ base_vars_arg }}
       {{ override_vars_arg }}
       -e switches=b
