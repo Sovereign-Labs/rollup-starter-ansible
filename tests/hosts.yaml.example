@@ -1,0 +1,45 @@
+# Example hosts configuration for rollup deployment tests
+# Copy this file to hosts.yaml and fill in your deployment values
+
+nodes:
+  # SSM-based node (typical for CDK deployments)
+  - name: primary
+    role: primary
+    transport:
+      type: ssm
+      instanceId: i-0abc123def456
+      region: us-east-1
+    rpcPort: 12346
+
+  # Another SSM node
+  - name: secondary
+    role: secondary
+    transport:
+      type: ssm
+      instanceId: i-0def456abc789
+      region: us-east-1
+    rpcPort: 12346
+
+  # SSH-based node (for ad-hoc deployments)
+  # - name: backup
+  #   role: backup
+  #   transport:
+  #     type: ssh
+  #     host: 10.0.1.12
+  #     user: ubuntu
+  #     keyPath: ~/.ssh/id_rsa
+  #   rpcPort: 12346
+
+# External endpoints for HTTP connectivity tests
+external:
+  # Proxy IP
+  - read: http://1.2.3.4:12345
+    write: http://1.2.3.4:12345
+  # Domain name (if configured)
+  # - read: https://api.example.com
+  #   write: https://api.example.com
+
+settings:
+  # Set to true to allow destructive tests (e.g., failover tests that kill processes)
+  # Should be false for production deployments
+  allowDestructive: false

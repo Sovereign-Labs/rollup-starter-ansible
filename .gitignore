@@ -6,3 +6,5 @@ vars/runtime_vars.yaml
 vars/hyperlane_secrets.yaml
 inventory/*.ini
 !inventory/localhost.ini
+
+node_modules/
