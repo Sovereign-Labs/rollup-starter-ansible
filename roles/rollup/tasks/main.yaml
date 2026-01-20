@@ -7,9 +7,9 @@
   include_tasks: postgres.yaml
   when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
 
-- name: Build rollup version
-  include_role:
-    name: rollup-build
+# Always use multi-version flow (synthesizes single-version spec if no config repo)
+- name: Build rollup versions
+  include_tasks: multi_version_build.yaml
 
 - name: build rollup manager
   include_tasks: rollup_manager.yaml

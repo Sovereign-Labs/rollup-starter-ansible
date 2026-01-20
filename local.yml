@@ -1,7 +1,7 @@
 ---
 # Ansible-pull entry point for Sovereign Rollup deployment
 # This playbook is designed to run on the target machine itself
-# Usage: ansible-pull -U <repo-url> -i inventory/localhost.ini local.yml -e @vars/runtime_vars.yaml
+# Usage: ansible-pull -U <repo-url> -i inventory/localhost.ini local.yml -e runtime_vars_file=/path/to/runtime_vars.yaml
 
 - name: "Sovereign Rollup - ansible-pull deployment"
   hosts: localhost
@@ -13,28 +13,39 @@
     wipe: false
 
   pre_tasks:
+    - name: Set default runtime_vars_file if not provided
+      set_fact:
+        runtime_vars_file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+      when: runtime_vars_file is not defined or runtime_vars_file | length == 0
+
     - name: Check if runtime variables file exists
       stat:
-        path: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+        path: "{{ runtime_vars_file }}"
       register: runtime_vars_stat
 
-    - name: Load runtime variables if present
+    - name: Load runtime variables if file exists
       include_vars:
-        file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+        file: "{{ runtime_vars_file }}"
       when: runtime_vars_stat.stat.exists
 
     - import_tasks: load_vars.yaml
+
+    - name: Validate 'b' switch is exclusive
+      assert:
+        that: switches == 'b'
+        fail_msg: "The 'b' (build-only) switch must be used alone, not combined with other switches."
+      when: "'b' in switches and switches != 'b'"
 
     - name: Check data_availability_role is defined
       assert:
         that: data_availability_role is defined
         fail_msg: "Please specify 'data_availability_role' (celestia or mock_da)."
-      when: "'r' in switches"
+      when: "'r' in switches or 'b' in switches"
 
     - name: Check switches parameter is provided
       assert:
         that: switches | length > 0
-        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup)."
+        fail_msg: "Please specify 'switches' parameter (e.g., -e switches=cr). Valid values: 'c' (common), 'r' (rollup), 'b' (build-only - must be used in isolation), 'h' (hyperlane)."
 
     - name: Import preconditions
       import_tasks: preconditions.yaml
@@ -42,6 +53,8 @@
   roles:
     - role: "./roles/common"
       when: "'c' in switches"
+    - role: "./roles/rollup-build"
+      when: "'b' in switches"
     - role: "./roles/rollup"
       when: "'r' in switches"
     - role: "./roles/hyperlane"

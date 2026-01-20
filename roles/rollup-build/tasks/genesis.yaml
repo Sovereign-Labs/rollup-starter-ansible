@@ -14,5 +14,4 @@
     src: "genesis.json.j2"
     dest: "{{ genesis_folder }}/genesis.json"
   vars:
-    genesis_attester_rollup_address: "{{ genesis_sequencer_rollup_address }}"
     genesis_da_height: "{{ da_start_height }}"

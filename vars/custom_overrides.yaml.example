@@ -43,10 +43,6 @@
 # Build mode: true for debug, false for release
 # debug: true
 
-# Rollup addresses
-# genesis_sequencer_rollup_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
-# genesis_rollup_prover_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
-
 # Ports
 # rollup_http_port: 12346
 # nginx_port: 8081
