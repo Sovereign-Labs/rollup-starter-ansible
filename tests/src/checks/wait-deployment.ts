@@ -20,7 +20,7 @@ export const waitDeploymentCheck: Check = {
 
       while (Date.now() - startTime < MAX_WAIT_MS) {
         try {
-          const result = await ctx.executor.exec(node.name, 'systemctl is-active sov-rollup');
+          const result = await ctx.executor.exec(node.name, 'sudo systemctl is-active rollup');
           if (result.exitCode === 0 && result.stdout.trim() === 'active') {
             passed = true;
             message = 'service is active';

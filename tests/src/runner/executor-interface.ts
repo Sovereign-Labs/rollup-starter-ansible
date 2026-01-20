@@ -10,6 +10,13 @@ export interface CommandExecutor {
   getNodeNames(): string[];
   getNodesByRole(role: NodeRole): string[];
   close(): Promise<void>;
+
+  // Stream output chunks as they arrive (optional - not all executors may support)
+  execStreaming?(
+    nodeName: string,
+    command: string,
+    onOutput: (chunk: string) => void
+  ): Promise<CommandResult>;
 }
 
 export type NodeRole = 'primary' | 'secondary' | 'backup';

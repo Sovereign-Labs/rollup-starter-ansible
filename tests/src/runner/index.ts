@@ -5,6 +5,7 @@ import { loadConfig } from './config.js';
 import { createExecutor } from './executor-factory.js';
 import type { CommandExecutor, TestConfig } from './executor-interface.js';
 import { getAllChecks, type Check, type CheckResult, type CheckContext } from '../checks/index.js';
+import { runAnsiblePull as runAnsiblePullAction } from '../actions/ansible-pull.js';
 
 export { loadConfig } from './config.js';
 export { createExecutor } from './executor-factory.js';
@@ -200,22 +201,27 @@ async function runValidation(context: TestContext, includeDestructive: boolean):
 async function runAnsiblePull(context: TestContext, branch: string): Promise<void> {
   console.log(`Running ansible-pull on all nodes (branch: ${branch})...\n`);
 
-  const cmd = `ansible-pull -U https://github.com/Sovereign-Labs/rollup-starter-ansible.git -C ${branch} -i inventory/localhost.ini -e @/tmp/runtime_vars.yaml local.yml`;
+  const result = await runAnsiblePullAction(context.executor, context.config, {
+    branch,
+    onOutput: (nodeName, chunk) => {
+      // Prefix each line with the node name for clarity
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line) {
+          process.stdout.write(`[${nodeName}] ${line}\n`);
+        }
+      }
+    },
+  });
 
-  const results = await context.executor.execOnAll(cmd);
-
-  let allOk = true;
-  for (const [nodeName, result] of results) {
-    const icon = result.exitCode === 0 ? '✓' : '✗';
-    if (result.exitCode !== 0) allOk = false;
-    console.log(`  ${icon} ${nodeName}: exit ${result.exitCode}`);
-    if (result.exitCode !== 0 && result.stderr) {
-      console.log(`    stderr: ${result.stderr}`);
-    }
+  console.log('');
+  for (const [nodeName, nodeResult] of result.results) {
+    const icon = nodeResult.exitCode === 0 ? '✓' : '✗';
+    console.log(`  ${icon} ${nodeName}: exit ${nodeResult.exitCode}`);
   }
 
   console.log('');
-  if (allOk) {
+  if (result.success) {
     console.log('ansible-pull completed successfully on all nodes.');
   } else {
     console.log('ansible-pull failed on some nodes.');

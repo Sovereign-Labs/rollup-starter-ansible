@@ -8,3 +8,4 @@ inventory/*.ini
 !inventory/localhost.ini
 
 node_modules/
+hosts.yaml
