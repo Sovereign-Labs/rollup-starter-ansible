@@ -4,7 +4,7 @@ import { parseArgs } from 'util';
 import { loadConfig } from './config.js';
 import { createExecutor } from './executor-factory.js';
 import type { CommandExecutor, TestConfig } from './executor-interface.js';
-import { getAllChecks, type Check, type CheckResult, type CheckContext } from '../checks/index.js';
+import { runValidation, type CheckResult, type CheckContext } from '../checks/index.js';
 import { runAnsiblePull as runAnsiblePullAction } from '../actions/ansible-pull.js';
 
 export { loadConfig } from './config.js';
@@ -97,7 +97,7 @@ Examples:
         break;
 
       case 'validate':
-        await runValidation(context, values.destructive ?? false);
+        await validate(context, values.destructive ?? false);
         break;
 
       case 'ansible-pull':
@@ -151,49 +151,33 @@ async function execOnAll(context: TestContext, command: string): Promise<void> {
   }
 }
 
-async function runValidation(context: TestContext, includeDestructive: boolean): Promise<void> {
-  const allChecks = getAllChecks();
-  const checks = allChecks.filter(c => includeDestructive ? c.destructive : !c.destructive);
-
-  if (checks.length === 0) {
-    console.log(includeDestructive
-      ? 'No destructive checks registered.'
-      : 'No validation checks registered.');
-    return;
-  }
-
-  if (includeDestructive && !context.config.settings.allowDestructive) {
-    console.error('Error: destructive checks require allowDestructive: true in config');
-    process.exit(1);
-  }
-
-  console.log(`Running ${checks.length} ${includeDestructive ? 'destructive' : 'validation'} check(s)...\n`);
-
+async function validate(context: TestContext, includeDestructive: boolean): Promise<void> {
   const checkContext: CheckContext = {
     config: context.config,
     executor: context.executor,
   };
 
-  let totalPassed = 0;
-  let totalFailed = 0;
+  console.log(`Running ${includeDestructive ? 'destructive' : 'validation'} checks...\n`);
 
-  for (const check of checks) {
-    const results = await check.run(checkContext);
-    for (const result of results) {
-      const icon = result.passed ? '✓' : '✗';
-      const nodeInfo = result.node ? ` [${result.node}]` : '';
-      console.log(`  ${icon} ${result.name}${nodeInfo}: ${result.message} (${result.durationMs}ms)`);
-      if (result.passed) {
-        totalPassed++;
-      } else {
-        totalFailed++;
-      }
+  const onResult = (result: CheckResult) => {
+    const icon = result.passed ? '✓' : '✗';
+    const nodeInfo = result.node ? ` [${result.node}]` : '';
+    console.log(`  ${icon} ${result.name}${nodeInfo}: ${result.message} (${result.durationMs}ms)`);
+  };
+
+  try {
+    const { passed, failed } = await runValidation(checkContext, {
+      destructive: includeDestructive,
+      onResult,
+    });
+
+    console.log(`\n${passed} passed, ${failed} failed`);
+
+    if (failed > 0) {
+      process.exit(1);
     }
-  }
-
-  console.log(`\n${totalPassed} passed, ${totalFailed} failed`);
-
-  if (totalFailed > 0) {
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
 }
