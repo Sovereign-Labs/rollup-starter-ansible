@@ -52,6 +52,7 @@ rollup_genesis_extra_addresses:
   - "0xca7f2cF9b6d765334A4A9D5744e57563EA76C602"
   - "0x74bb92E136628E7028e2290fF60A8EC83Eea904f"
 rollup_genesis_evm_block_gas_limit: 1000000000
+rollup_genesis_evm_initial_base_fee: 10
 
 rollup_genesis_evm_allow_all_contract_creation: true
 rollup_genesis_evm_contract_creation_allowlist: []
