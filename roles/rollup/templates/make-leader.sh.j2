@@ -20,24 +20,24 @@ fi
 
 # Check current state using the first config file
 FIRST_CONFIG=$(echo "$CONFIG_FILES" | head -n1)
-if grep -q '^node_role = "Leader"' "$FIRST_CONFIG"; then
-    echo 'Node is already configured as leader (node_role = "Leader")'
+if grep -q '^node_role = "DbElected"' "$FIRST_CONFIG"; then
+    echo 'Node is already configured as leader (node_role = "DbElected")'
     exit 0
 fi
 
 # Update all config files
 for CONFIG_FILE in $CONFIG_FILES; do
     echo "Updating $CONFIG_FILE..."
-    sudo sed -i 's/^node_role = "Replica"/node_role = "Leader"/' "$CONFIG_FILE"
+    sudo sed -i 's/^node_role = "Replica"/node_role = "DbElected"/' "$CONFIG_FILE"
 done
 
 # Verify the change was made in the first config
-if ! grep -q '^node_role = "Leader"' "$FIRST_CONFIG"; then
+if ! grep -q '^node_role = "DbElected"' "$FIRST_CONFIG"; then
     echo "ERROR: Failed to update node_role setting" >&2
     exit 1
 fi
 
-echo 'Successfully set node_role = "Leader" in all config files'
+echo 'Successfully set node_role = "DbElected" in all config files'
 echo ""
 echo "Restarting rollup service..."
 sudo systemctl restart rollup
