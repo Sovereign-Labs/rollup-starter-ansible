@@ -108,7 +108,7 @@ rollup_http_port: 12346
 # Sequencer type: "preferred" or "standard"
 rollup_sequencer_kind: "preferred"
 # Node Role "Leader" or "Replica".
-rollup_node_role: "Leader"
+rollup_node_role: "DbElected"
 # For replication testing. Should be set by the deployer
 rollup_node_id: "node1"
 
