@@ -105,6 +105,7 @@
 # rollup_chain_name: "MyChain"
 # rollup_hyperlane_bridge_domain: 5555
 # rollup_deferred_slots_count: 100000
+# rollup_hyperlane_meter_delivery_counter_after_height: 0
 
 # ============================================
 # zkVM - Risc0

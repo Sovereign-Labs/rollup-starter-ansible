@@ -68,6 +68,16 @@
     backup: no
   when: rollup_hyperlane_bridge_domain is defined and rollup_hyperlane_bridge_domain | string | length > 0
 
+- name: update HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT\s*=.*$'
+    replace: 'HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT = {{ rollup_hyperlane_meter_delivery_counter_after_height }}'
+    backup: no
+  when: rollup_hyperlane_meter_delivery_counter_after_height is defined and rollup_hyperlane_meter_delivery_counter_after_height | string | length > 0
+
 - name: update DEFERRED_SLOTS_COUNT in constants.toml
   become: true
   become_user: ubuntu
