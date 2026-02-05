@@ -95,6 +95,9 @@ signer_private_key: ""
 # Deferred slots count (integer)
 # rollup_deferred_slots_count: 100000
 
+# Hyperlane meter delivery counter after height (integer)
+# rollup_hyperlane_meter_delivery_counter_after_height: 0
+
 # ============================================================================
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================
