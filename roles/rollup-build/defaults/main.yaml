@@ -73,7 +73,6 @@ rollup_state_user_preallocate_ht: true
 # This is for particular instance.
 # Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
-rollup_has_timing_oracle: false
 # 7 MiB
 rollup_max_batch_size_bytes: 7340032
 rollup_max_concurrent_blobs: 128
