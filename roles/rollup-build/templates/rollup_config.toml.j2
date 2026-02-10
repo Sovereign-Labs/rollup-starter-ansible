@@ -56,13 +56,6 @@ node_id = "{{ rollup_node_id }}"
 [sequencer.extension]
 max_log_limit = 20000
 
-{% if rollup_sequencer_kind == "preferred" and rollup_has_timing_oracle %}
-[sequencer.preferred.timing_oracle]
-priority_fee_percentage = 0
-max_fee = 100_000_000
-interval_millis = 50
-{% endif %}
-
 {% if rollup_sequencer_kind == "preferred" and rollup_rate_limiter_enabled %}
 [sequencer.preferred.rate_limiter]
 max_nb_of_concurrent_users_in_rate_limiter = {{ rollup_rate_limiter_max_concurrent_users }}

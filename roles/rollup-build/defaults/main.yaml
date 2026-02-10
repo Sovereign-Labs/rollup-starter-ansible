@@ -73,7 +73,6 @@ rollup_state_user_preallocate_ht: true
 # This is for particular instance.
 # Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
-rollup_has_timing_oracle: false
 # 7 MiB
 rollup_max_batch_size_bytes: 7340032
 rollup_max_concurrent_blobs: 128
@@ -132,3 +131,4 @@ publish_reverted_evm_txs: false
 # rollup_setup_mode_termination_height: 0
 # rollup_custom_gas_token_id: "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"
 # rollup_evm_max_fee_check_height: 0
+# rollup_hyperlane_meter_delivery_counter_after_height: 0
