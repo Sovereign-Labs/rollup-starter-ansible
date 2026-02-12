@@ -118,6 +118,16 @@
     backup: no
   when: rollup_evm_max_fee_check_height is defined and rollup_evm_max_fee_check_height | string | length > 0
 
+- name: update EVM_RECEIPT_ACTUAL_FEE_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^EVM_RECEIPT_ACTUAL_FEE_HEIGHT\s*=.*$'
+    replace: 'EVM_RECEIPT_ACTUAL_FEE_HEIGHT = {{ rollup_evm_receipt_actual_fee_height }}'
+    backup: no
+  when: rollup_evm_receipt_actual_fee_height is defined and rollup_evm_receipt_actual_fee_height | string | length > 0
+
 - name: render evm_pinned_cache.json
   become: true
   become_user: sovereign
