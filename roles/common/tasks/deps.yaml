@@ -29,6 +29,7 @@
       - ncdu
       - protobuf-compiler
       - ninja-build
+      - ansible
       - tmux
       - httpie
       - postgresql-client
