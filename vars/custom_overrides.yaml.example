@@ -37,7 +37,7 @@
 # Binary name
 # rollup_bin: "rollup"
 
-# zkVM implementation: "mock_zkvm" or "risc0"
+# zkVM implementation: "mock_zkvm", "risc0", or "sp1"
 # zkvm_role: "mock_zkvm"
 
 # Build mode: true for debug, false for release
@@ -113,6 +113,13 @@
 
 # risc0_cargo_version: "1.2.0"
 # risc0_toolchain_version: "r0.1.81.0"
+
+# ============================================
+# zkVM - SP1
+# ============================================
+
+# sp1_version: "6.0.2"
+# sp1_github_token: ""
 
 # ============================================
 # Example: Full override for production
