@@ -31,7 +31,7 @@ switches: "cr"
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 
 # zkVM role
-# Options: "mock_zkvm" (fast, for development) or "risc0" (full proving)
+# Options: "mock_zkvm" (fast, for development), "risc0", or "sp1" (full proving)
 zkvm_role: "mock_zkvm"
 
 # Sequencer type

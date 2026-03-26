@@ -18,7 +18,7 @@ rollup_branch: "main"
 rollup_crate: "rollup"
 # Output binary name (used in destination path)
 rollup_bin: "rollup"
-# Can be `risc0` or `mock_zkvm`
+# Can be `risc0`, `sp1`, or `mock_zkvm`
 zkvm_role: "mock_zkvm"
 # Debug or release build?
 debug: false

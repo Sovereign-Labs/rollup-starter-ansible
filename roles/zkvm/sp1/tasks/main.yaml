@@ -1,0 +1,58 @@
+---
+# SP1 zkVM Installation
+# Installs the SP1 toolchain required for zkVM proving
+# Reference: https://github.com/succinctlabs/sp1
+
+- name: install sp1up (SP1 installer)
+  become: true
+  become_user: ubuntu
+  shell: |
+    source /home/ubuntu/.profile && curl -L https://sp1up.succinct.xyz | bash
+  args:
+    executable: /bin/bash
+  register: sp1up_install
+  retries: 3
+  delay: 10
+  until: sp1up_install.rc == 0
+
+- name: install SP1 version {{ sp1_version }}
+  become: true
+  become_user: ubuntu
+  shell: >
+    ~/.sp1/bin/sp1up
+    --version {{ sp1_version }}
+    {{ '--token ' + sp1_github_token if sp1_github_token | length > 0 else '' }}
+  args:
+    executable: /bin/bash
+  register: sp1_version_install
+  retries: 3
+  delay: 10
+  until: sp1_version_install.rc == 0
+
+- name: verify cargo-prove installation
+  become: true
+  become_user: ubuntu
+  shell: ~/.sp1/bin/cargo-prove prove --version
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: install SP1 Rust toolchain
+  become: true
+  become_user: ubuntu
+  shell: ~/.sp1/bin/cargo-prove prove install-toolchain
+  args:
+    executable: /bin/bash
+
+- name: verify SP1 toolchain installation
+  become: true
+  become_user: ubuntu
+  shell: rustc +succinct --version
+  args:
+    executable: /bin/bash
+  register: sp1_toolchain_version
+  changed_when: false
+
+- name: display SP1 toolchain version
+  debug:
+    msg: "SP1 toolchain installed: {{ sp1_toolchain_version.stdout }}"

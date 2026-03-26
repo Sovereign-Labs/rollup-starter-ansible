@@ -1,0 +1,8 @@
+---
+# SP1 zkVM Configuration
+
+# SP1 version installed by sp1up
+sp1_version: "6.0.2"
+
+# Optional GitHub token for authenticated downloads (avoids rate limits)
+sp1_github_token: ""
