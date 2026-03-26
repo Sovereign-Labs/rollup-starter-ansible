@@ -91,7 +91,7 @@ sudo ansible-pull \
     -U https://github.com/Sovereign-Labs/rollup-starter-ansible.git \
     -C main \
     -i inventory/localhost.ini \
-    -e @/tmp/runtime_vars.yaml \
+    -e runtime_vars_file=/tmp/runtime_vars.yaml \
     local.yml
 ```
 
