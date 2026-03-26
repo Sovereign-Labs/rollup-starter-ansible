@@ -34,14 +34,30 @@
     version: "{{ version.ansible_commit }}"
     force: yes
 
-- name: Check if runtime_vars_file exists
+- name: Check if runtime_vars_file exists on controller
   stat:
     path: "{{ runtime_vars_file }}"
+  delegate_to: localhost
+  become: false
   register: build_runtime_vars_stat
 
-- name: Check for secrets/override files in parent playbook
+- name: Copy runtime vars to remote for build subprocess
+  ansible.builtin.copy:
+    src: "{{ runtime_vars_file }}"
+    dest: "/tmp/build_runtime_vars.yaml"
+    mode: '0644'
+  become: true
+  when: build_runtime_vars_stat.stat.exists
+
+- name: Build base vars argument
+  set_fact:
+    base_vars_arg: "{{ '-e @/tmp/build_runtime_vars.yaml' if build_runtime_vars_stat.stat.exists else '' }}"
+
+- name: Check for secrets/override files on controller
   stat:
     path: "{{ playbook_dir }}/vars/{{ item }}"
+  delegate_to: localhost
+  become: false
   loop:
     - custom_overrides.yaml
     - celestia_secrets.yaml
@@ -49,15 +65,20 @@
     - hyperlane_secrets.yaml
   register: secrets_files_stat
 
-- name: Build base vars argument
-  set_fact:
-    base_vars_arg: "{{ '-e @' + runtime_vars_file if build_runtime_vars_stat.stat.exists else '' }}"
+- name: Copy secrets files to remote for build subprocess
+  ansible.builtin.copy:
+    src: "{{ item.stat.path }}"
+    dest: "/tmp/build_{{ item.item }}"
+    mode: '0600'
+  become: true
+  loop: "{{ secrets_files_stat.results }}"
+  when: item.stat.exists
 
 - name: Build secrets vars arguments
   set_fact:
     secrets_vars_arg: >-
       {% for result in secrets_files_stat.results %}
-      {% if result.stat.exists %}-e @{{ result.stat.path }} {% endif %}
+      {% if result.stat.exists %}-e @/tmp/build_{{ result.item }} {% endif %}
       {% endfor %}
 
 - name: Build override vars argument

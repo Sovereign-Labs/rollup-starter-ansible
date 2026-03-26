@@ -14,6 +14,16 @@
     file: "{{ playbook_dir }}/vars/custom_overrides.yaml"
   when: custom_overrides_stat.stat.exists
 
+- name: Check if runtime variables file exists
+  stat:
+    path: "{{ runtime_vars_file }}"
+  register: runtime_vars_stat
+
+- name: Load runtime variables if file exists
+  include_vars:
+    file: "{{ runtime_vars_file }}"
+  when: runtime_vars_stat.stat.exists
+
 - name: Check if Celestia secrets file exists
   stat:
     path: "{{ playbook_dir }}/vars/celestia_secrets.yaml"
