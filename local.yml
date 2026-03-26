@@ -18,16 +18,6 @@
         runtime_vars_file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
       when: runtime_vars_file is not defined or runtime_vars_file | length == 0
 
-    - name: Check if runtime variables file exists
-      stat:
-        path: "{{ runtime_vars_file }}"
-      register: runtime_vars_stat
-
-    - name: Load runtime variables if file exists
-      include_vars:
-        file: "{{ runtime_vars_file }}"
-      when: runtime_vars_stat.stat.exists
-
     - import_tasks: load_vars.yaml
 
     - name: Validate 'b' switch is exclusive
