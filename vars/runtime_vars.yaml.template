@@ -98,6 +98,13 @@ signer_private_key: ""
 # Hyperlane meter delivery counter after height (integer)
 # rollup_hyperlane_meter_delivery_counter_after_height: 0
 
+# Chain hash overrides (list of objects)
+# rollup_chain_hash_overrides:
+#   - start_height: 0
+#     end_height: 1000
+#     chain_hash: "0xabc...32_bytes_hex"
+#     grace_period: 100
+
 # ============================================================================
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================

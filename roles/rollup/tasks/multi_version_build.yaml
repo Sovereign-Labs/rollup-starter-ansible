@@ -25,12 +25,20 @@
     name: version_spec
   when: rollup_config_repo is defined and rollup_config_repo | length > 0
 
+- name: Detect current ansible repo commit
+  ansible.builtin.command:
+    cmd: git rev-parse HEAD
+    chdir: "{{ playbook_dir }}"
+  register: ansible_repo_head
+  changed_when: false
+  when: ansible_commit is not defined
+
 - name: Synthesize single-version spec (if not provided)
   set_fact:
     version_spec:
       rollup_versions:
         - version_id: "v0"
-          ansible_commit: "{{ ansible_commit | default('main') }}"
+          ansible_commit: "{{ ansible_commit | default(ansible_repo_head.stdout) }}"
           vars_file: ""
           start_height: null
           stop_height: null
@@ -45,7 +53,7 @@
   git:
     repo: "{{ ansible_repo_url }}"
     dest: "{{ ansible_checkout_dir }}"
-    version: "main"
+    version: "{{ version_spec.rollup_versions[0].ansible_commit }}"
     accept_hostkey: yes
     force: yes
 
