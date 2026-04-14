@@ -121,6 +121,13 @@ signer_private_key: ""
 # influxdb_org: "Sovereign Labs"
 # influxdb_bucket: "sov-dev"
 
+# Secondary InfluxDB outputs (optional, send metrics to multiple destinations)
+# influxdb_secondary_outputs:
+#   - name: "grafana-cloud"
+#     url: "https://influx-prod.grafana.net"
+#     org: "my-org"
+#     bucket: "prod-metrics"
+
 # Loki configuration
 # grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"
 # grafana_loki_username: "sov-logger"
@@ -137,3 +144,7 @@ signer_private_key: ""
 # influxdb_token: ""
 # grafana_loki_token: ""
 # grafana_tempo_token: ""
+
+# Secondary InfluxDB output tokens (keyed by output name from influxdb_secondary_outputs)
+# influxdb_secondary_tokens:
+#   grafana-cloud: "YOUR_SECONDARY_TOKEN"

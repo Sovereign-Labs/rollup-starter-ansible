@@ -128,7 +128,26 @@ signer_private_key: "YOUR_PRIVATE_KEY_HEX"
 #### Monitoring Secrets
 **File:** `vars/monitoring_secrets.yaml`
 
-Contains Grafana Loki and Tempo credentials.
+Contains InfluxDB, Grafana Loki, and Tempo credentials. Also supports optional secondary InfluxDB outputs for sending metrics to multiple destinations (e.g., internal InfluxDB + Grafana Cloud):
+
+```yaml
+influxdb_token: "YOUR_INFLUXDB_TOKEN"
+
+# Optional: tokens for secondary InfluxDB outputs (keyed by name)
+# Output configs are defined in custom_overrides.yaml
+influxdb_secondary_tokens:
+  grafana-cloud: "YOUR_SECONDARY_TOKEN"
+```
+
+Secondary output configs (non-secret) go in `vars/custom_overrides.yaml`:
+
+```yaml
+influxdb_secondary_outputs:
+  - name: "grafana-cloud"
+    url: "https://influx-prod.grafana.net"
+    org: "my-org"
+    bucket: "prod-metrics"
+```
 
 ### How to Override Variables
 
