@@ -1,0 +1,85 @@
+---
+# Restore Let's Encrypt state from S3 so a replacement proxy boots straight into
+# HTTPS. Validates freshness (>= proxy_cert_expiry_threshold_days remaining) and
+# that the cert covers all expected SANs; otherwise deletes the stale live/ dir
+# so certbot re-issues and uploads the fresh result.
+
+- name: Initialize cert restored flag
+  set_fact:
+    proxy_cert_restored: false
+
+- name: Ensure /etc/letsencrypt exists
+  become: true
+  file:
+    path: /etc/letsencrypt
+    state: directory
+    mode: '0755'
+
+- name: Sync certs from S3
+  become: true
+  command: >
+    aws s3 sync
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
+    /etc/letsencrypt/
+    --region {{ proxy_cert_s3_region }}
+    --quiet
+  register: _s3_restore
+  changed_when: _s3_restore.stdout | default('') | length > 0
+  failed_when: false
+
+- name: Stat restored cert.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+  register: _restored_cert
+
+- name: Check restored cert has at least {{ proxy_cert_expiry_threshold_days }} days left
+  become: true
+  command: >
+    openssl x509
+    -checkend {{ proxy_cert_expiry_threshold_days * 86400 }}
+    -noout
+    -in /etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem
+  register: _cert_valid
+  changed_when: false
+  failed_when: false
+  when: _restored_cert.stat.exists
+
+- name: Read SANs from restored cert
+  become: true
+  command: >
+    openssl x509 -noout -ext subjectAltName
+    -in /etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem
+  register: _cert_sans
+  changed_when: false
+  failed_when: false
+  when:
+    - _restored_cert.stat.exists
+    - (_cert_valid.rc | default(1)) == 0
+
+- name: Decide whether restored cert covers all expected domains
+  set_fact:
+    _cert_covers_all: >-
+      {{
+        _restored_cert.stat.exists
+        and ((_cert_valid.rc | default(1)) == 0)
+        and (
+          ([proxy_domain_name] + proxy_unlimited_domains)
+          | difference(_cert_sans.stdout | default('') | regex_findall('DNS:([^,\s]+)'))
+          | length == 0
+        )
+      }}
+
+- name: Remove stale restored cert if invalid or SAN-incomplete
+  become: true
+  file:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+    state: absent
+  when:
+    - _restored_cert.stat.exists
+    - not _cert_covers_all
+
+- name: Mark cert restored
+  set_fact:
+    proxy_cert_restored: true
+  when: _cert_covers_all

@@ -17,6 +17,14 @@
     fail_msg: "proxy_domain_name and proxy_certbot_email are required when proxy_ssl_enabled is true"
   when: proxy_ssl_enabled | bool
 
+- name: Validate S3 cert sync requirements
+  assert:
+    that: proxy_cert_s3_region | length > 0
+    fail_msg: "proxy_cert_s3_region is required when proxy_cert_s3_bucket is set"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
 - name: Set follower IP to leader if not specified
   set_fact:
     proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
@@ -114,6 +122,15 @@
     mode: '0755'
   when: proxy_ssl_enabled | bool
 
+- name: Install AWS CLI (for S3 cert sync)
+  become: true
+  apt:
+    name: awscli
+    state: present
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
 # =============================================================================
 # Configuration Directories
 # =============================================================================
@@ -187,6 +204,15 @@
     enabled: yes
 
 # =============================================================================
+# S3 Certificate Restore (zero-downtime proxy replacement)
+# =============================================================================
+- name: Try restoring certs from S3
+  import_tasks: s3_certs.yaml
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+# =============================================================================
 # SSL Certificate Acquisition
 # =============================================================================
 - name: Build certbot domain arguments
@@ -204,13 +230,27 @@
       --agree-tos \
       --email {{ proxy_certbot_email }} \
       --keep-until-expiring
-  args:
-    creates: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
   register: certbot_result
   ignore_errors: yes
+  changed_when: "'Certificate not yet due for renewal' not in (certbot_result.stdout | default(''))"
   when:
     - proxy_ssl_enabled | bool
     - proxy_domain_name | length > 0
+    - not (proxy_cert_restored | default(false))
+
+- name: Upload freshly-issued cert to S3
+  become: true
+  command: >
+    aws s3 sync /etc/letsencrypt/
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
+    --region {{ proxy_cert_s3_region }}
+    --quiet --exclude "*.log" --exclude "accounts/*"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+    - certbot_result is defined
+    - not (certbot_result.failed | default(false))
+    - certbot_result.changed | default(false)
 
 - name: Warn if certbot failed
   debug:
@@ -229,18 +269,52 @@
     dest: /usr/local/openresty/nginx/conf/nginx.conf
     mode: '0644'
   when: proxy_ssl_enabled | bool
+  notify: reload openresty
 
 # =============================================================================
 # Certbot Auto-Renewal
 # =============================================================================
-- name: Setup certbot renewal cron job
+- name: Ensure letsencrypt renewal-hooks dir
+  become: true
+  file:
+    path: /etc/letsencrypt/renewal-hooks/post
+    state: directory
+    mode: '0755'
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Install S3 upload renewal hook
+  become: true
+  template:
+    src: s3-upload-hook.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/post/upload-to-s3.sh
+    mode: '0755'
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Setup certbot renewal cron (S3 sync via hooks dir)
+  become: true
+  cron:
+    name: "certbot renewal"
+    minute: "0"
+    hour: "3"
+    job: "certbot renew --quiet"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Setup certbot renewal cron (no S3, inline reload)
   become: true
   cron:
     name: "certbot renewal"
     minute: "0"
     hour: "3"
     job: "certbot renew --quiet --post-hook 'systemctl reload openresty'"
-  when: proxy_ssl_enabled | bool
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length == 0
 
 # =============================================================================
 # Final Service State
@@ -251,19 +325,15 @@
     name: openresty
     enabled: yes
 
-- name: Restart OpenResty with new config
-  become: true
-  systemd:
-    name: openresty
-    state: restarted
-    enabled: yes
-  when: not (proxy_ssl_enabled | bool and (certbot_result.failed | default(false)))
+# Config changes above flush via the `reload openresty` handler at end of play,
+# which uses `state: reloaded` (SIGHUP) — true zero-downtime. No hard restart here.
 
-- name: Keep OpenResty running on HTTP (certbot failed)
+- name: Warn if certbot failed (proxy running on HTTP only)
   debug:
-    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds."
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds on the next run."
   when:
     - proxy_ssl_enabled | bool
+    - certbot_result is defined
     - certbot_result.failed | default(false)
 
 # =============================================================================
