@@ -1,0 +1,8 @@
+#!/bin/bash
+# Managed by Ansible (roles/proxy). Runs after `certbot renew` succeeds.
+set -e
+aws s3 sync /etc/letsencrypt/ \
+  "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}" \
+  --region {{ proxy_cert_s3_region }} \
+  --quiet --exclude "*.log" --exclude "accounts/*"
+systemctl reload openresty

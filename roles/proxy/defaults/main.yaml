@@ -34,3 +34,13 @@ proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
 
 # Observability
 proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy
+
+# S3 Certificate Backup/Restore (optional)
+# When proxy_cert_s3_bucket is set, Let's Encrypt state is synced to/from S3 so a
+# replacement proxy instance boots straight into HTTPS (zero-downtime replacement).
+# The instance must have IAM permissions on the bucket:
+#   s3:GetObject, s3:ListBucket, s3:PutObject, s3:DeleteObject
+proxy_cert_s3_bucket: ""                # empty = S3 sync disabled
+proxy_cert_s3_region: ""                # required when bucket set
+proxy_cert_s3_prefix: "letsencrypt/"    # keep trailing slash
+proxy_cert_expiry_threshold_days: 30    # re-issue if restored cert expires sooner
