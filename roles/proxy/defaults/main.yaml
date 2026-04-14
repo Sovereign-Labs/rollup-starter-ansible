@@ -44,3 +44,22 @@ proxy_cert_s3_bucket: ""                # empty = S3 sync disabled
 proxy_cert_s3_region: ""                # required when bucket set
 proxy_cert_s3_prefix: "letsencrypt/"    # keep trailing slash
 proxy_cert_expiry_threshold_days: 30    # re-issue if restored cert expires sooner
+
+# Dynamic Backend Discovery (node-discovery Rust service)
+# When enabled, a systemd service builds and runs node-discovery, which
+# subscribes to PostgreSQL for cluster topology changes, writes Lua to
+# `proxy_node_discovery_output_file`, and issues `nginx -s reload` on change.
+# This enables automatic failover/scale without re-running Ansible.
+# When disabled (default), backend IPs are baked statically from
+# proxy_rollup_leader_ip / proxy_rollup_follower_ip.
+proxy_node_discovery_enabled: false
+# DB connection is shared with the rollup: node-discovery uses
+# `rollup_sequencer_postgres_connection_string` (set by roles/rollup/tasks/postgres.yaml
+# or by the operator in runtime_vars).
+proxy_node_discovery_output_file: "/usr/local/openresty/nginx/conf/backends.generated.lua"
+proxy_node_discovery_max_age_millis: 1000
+proxy_node_discovery_metrics_port: 8094
+proxy_node_discovery_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
+proxy_node_discovery_branch: "main"
+proxy_node_discovery_commit_hash: ""    # takes priority over branch if set
+proxy_node_discovery_repo_dir: "rollup-starter-node-discovery"  # under /home/ubuntu/

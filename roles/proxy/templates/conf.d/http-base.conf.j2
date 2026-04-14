@@ -79,16 +79,23 @@ map $http_upgrade $connection_upgrade {
 # -----------------------------------------------------------------------------
 lua_shared_dict backend_cache 1m;
 
+{% if proxy_node_discovery_enabled | bool %}
+# Dynamic backends: node-discovery service writes this file from PostgreSQL
+# cluster state and triggers `nginx -s reload`. The fallback in
+# proxy-location.conf covers transient emptiness at boot.
+init_by_lua_file {{ proxy_node_discovery_output_file }};
+{% else %}
 init_worker_by_lua_block {
-    -- Set backend addresses (leader handles writes, follower handles reads)
+    -- Static backends: leader handles writes, follower handles reads.
     local cache = ngx.shared.backend_cache
     cache:set("leader", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
 {% if proxy_rollup_follower_ip | length > 0 %}
-    cache:set("follower", "{{ proxy_rollup_follower_ip }}:{{ rollup_http_port }}")
+    cache:set("follower_1", "{{ proxy_rollup_follower_ip }}:{{ rollup_http_port }}")
 {% else %}
-    cache:set("follower", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
+    cache:set("follower_1", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
 {% endif %}
 }
+{% endif %}
 
 {% if proxy_rate_limit_enabled %}
 # -----------------------------------------------------------------------------

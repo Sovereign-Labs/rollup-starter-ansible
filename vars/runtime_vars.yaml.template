@@ -73,6 +73,18 @@ nginx_port: 8081
 # proxy_cert_s3_bucket: "my-rollup-proxy-certs"
 # proxy_cert_s3_region: "us-east-1"
 
+# Dynamic backend discovery (node-discovery Rust service)
+# When enabled, the proxy builds the node-discovery binary from rollup-starter
+# and runs it as a systemd service. The service polls PostgreSQL for cluster
+# topology and reloads nginx automatically on changes — enabling failover and
+# scaling without re-running Ansible.
+#
+# Uses `rollup_sequencer_postgres_connection_string` for DB access (same as the
+# rollup). Either run the rollup role on this host, or set that variable.
+# proxy_node_discovery_enabled: true
+# proxy_node_discovery_branch: "main"
+# proxy_node_discovery_commit_hash: ""   # pin a commit for reproducible builds
+
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
 # ============================================================================

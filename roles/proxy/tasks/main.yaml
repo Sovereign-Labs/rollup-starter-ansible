@@ -149,6 +149,33 @@
     mode: '0755'
 
 # =============================================================================
+# Node-Discovery Pre-Start Stub
+# =============================================================================
+# If dynamic backend discovery is enabled, http-base.conf references
+# `init_by_lua_file {{ proxy_node_discovery_output_file }}`. That file MUST exist
+# with valid Lua before nginx first starts, or nginx will fail config load.
+# The real content is written by the node-discovery service at runtime.
+- name: Ensure node-discovery output directory exists
+  become: true
+  file:
+    path: "{{ proxy_node_discovery_output_file | dirname }}"
+    state: directory
+    mode: '0755'
+  when: proxy_node_discovery_enabled | bool
+
+- name: Create stub backends.generated.lua (overwritten at runtime by node-discovery)
+  become: true
+  copy:
+    content: |
+      -- Stub created by Ansible; replaced by node-discovery service at runtime.
+      local c = ngx.shared.backend_cache
+      c:flush_all()
+    dest: "{{ proxy_node_discovery_output_file }}"
+    mode: '0644'
+    force: no
+  when: proxy_node_discovery_enabled | bool
+
+# =============================================================================
 # Render Configuration Templates
 # =============================================================================
 - name: Render http-base.conf
@@ -335,6 +362,15 @@
     - proxy_ssl_enabled | bool
     - certbot_result is defined
     - certbot_result.failed | default(false)
+
+# =============================================================================
+# Dynamic Backend Discovery (node-discovery service)
+# =============================================================================
+# Nginx is already serving on the stub + static fallbacks; installing this
+# service last means the (slow) Rust build doesn't delay initial availability.
+- name: Install and start node-discovery service
+  import_tasks: node_discovery.yaml
+  when: proxy_node_discovery_enabled | bool
 
 # =============================================================================
 # Telegraf Monitoring
