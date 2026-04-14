@@ -58,7 +58,6 @@ proxy_node_discovery_enabled: false
 # or by the operator in runtime_vars).
 proxy_node_discovery_output_file: "/usr/local/openresty/nginx/conf/backends.generated.lua"
 proxy_node_discovery_max_age_millis: 1000
-proxy_node_discovery_metrics_port: 8094
 proxy_node_discovery_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
 proxy_node_discovery_branch: "main"
 proxy_node_discovery_commit_hash: ""    # takes priority over branch if set

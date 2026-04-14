@@ -130,6 +130,9 @@ max_open_files: 1000000
 # custom_host_label: "soak-benchmark-aws-2025-q1"
 
 # Telegraf configuration
+# Local UDP/TCP socket_listener port that accepts influx-line metrics from
+# rollup, node-discovery and other producers on the same host.
+telegraf_port: 8094
 influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
 
 # Extra global tags for Telegraf (dict format)

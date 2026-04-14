@@ -3,6 +3,8 @@ vars/monitoring_secrets.yaml
 vars/celestia_secrets.yaml
 vars/custom_overrides.yaml
 vars/runtime_vars.yaml
+vars/runtime_vars_hyperlane_relayer.yaml
+vars/runtime_vars_hyperlane_validator.yaml
 vars/hyperlane_secrets.yaml
 inventory/*.ini
 !inventory/localhost.ini
