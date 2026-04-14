@@ -47,8 +47,12 @@ location / {
         if use_leader then
             ngx.var.backend = backend_cache:get("leader") or "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}"
         else
-            -- Route all other requests to follower (fallback to leader if no follower)
-            ngx.var.backend = backend_cache:get("follower") or
+            -- Route reads to the first available follower (node-discovery writes
+            -- follower_1, follower_2, ...). Fall back to leader, then to the
+            -- static template IP if the cache is empty (e.g., before the
+            -- node-discovery service has written its first update).
+            ngx.var.backend = backend_cache:get("follower_1") or
+                             backend_cache:get("follower") or
                              backend_cache:get("leader") or
                              "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ rollup_http_port }}"
         end

@@ -21,3 +21,10 @@
   systemd:
     name: alloy
     state: restarted
+
+- name: restart node-discovery
+  become: true
+  systemd:
+    name: node-discovery
+    state: restarted
+    daemon_reload: yes
