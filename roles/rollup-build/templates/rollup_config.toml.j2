@@ -11,7 +11,6 @@ pruner_versions_to_keep = 100
 
 [runner]
 da_polling_interval_ms = 2000
-da_total_timeout_secs = 300
 concurrent_sync_tasks = 2
 pre_fetched_blocks_capacity = 4
 
@@ -46,10 +45,11 @@ recovery_strategy = "TryToSave"
 batch_execution_time_limit_millis = 6000
 ideal_lag_behind_finalized_slot = 1
 num_cache_warmup_workers = 0
-is_replica = {{ is_rollup_replica | lower }}
+
 {% if rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0 %}
 [sequencer.preferred.postgres_config]
 postgres_connection_string = "{{ rollup_sequencer_postgres_connection_string }}"
+node_role = "{{ rollup_node_role }}"
 node_id = "{{ rollup_node_id }}"
 {% endif %}
 {% else %}
@@ -58,13 +58,6 @@ node_id = "{{ rollup_node_id }}"
 
 [sequencer.extension]
 max_log_limit = 20000
-
-{% if rollup_sequencer_kind == "preferred" and rollup_has_timing_oracle %}
-[sequencer.preferred.timing_oracle]
-priority_fee_percentage = 0
-max_fee = 100_000_000
-interval_millis = 50
-{% endif %}
 
 {% if rollup_sequencer_kind == "preferred" and rollup_rate_limiter_enabled %}
 [sequencer.preferred.rate_limiter]

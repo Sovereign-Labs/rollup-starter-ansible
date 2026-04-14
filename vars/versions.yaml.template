@@ -1,0 +1,27 @@
+# Rollup Version Specification
+# Place this file in your rollup-config repo as versions.yaml
+#
+# This file defines the rollup versions to build. Each version specifies:
+# - version_id: A unique identifier for the version (used in output directory names)
+# - ansible_commit: The commit hash of rollup-starter-ansible to use for building
+# - vars_file: Optional path to override vars file (relative to config repo root)
+# - start_height: Block height where this version starts (null for first version)
+# - stop_height: Block height where this version stops (null for last/current version)
+# - migration_path: Optional path to migration script/binary to run before this version
+
+rollup_versions:
+  # First version (genesis)
+  - version_id: "v1"
+    ansible_commit: "dcb6611"           # Commit hash of rollup-starter-ansible
+    vars_file: ""                        # Optional: path to override vars in this repo
+    start_height: null                   # Must be null for first version
+    stop_height: 100                     # Height where this version stops
+    migration_path: null                 # No migration for first version
+
+  # Subsequent version (hard fork)
+  - version_id: "v2"
+    ansible_commit: "abc1234"
+    vars_file: "v2/overrides.yaml"      # Override vars for this version
+    start_height: 101                    # Must be stop_height + 1 of previous
+    stop_height: null                    # null for last/current version
+    migration_path: "migrations/v1_to_v2.sh"  # Optional migration script

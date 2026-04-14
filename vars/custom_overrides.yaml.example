@@ -22,6 +22,13 @@
 # loki_url: "https://logs-prod-017.grafana.net/loki/api/v1/push"
 # tempo_url: "https://tempo-prod-10-prod-us-central-0.grafana.net:443"
 
+# Secondary InfluxDB outputs (tokens go in monitoring_secrets.yaml)
+# influxdb_secondary_outputs:
+#   - name: "grafana-cloud"
+#     url: "https://influx-prod.grafana.net"
+#     org: "my-org"
+#     bucket: "prod-metrics"
+
 # ============================================
 # Rollup Configuration
 # ============================================
@@ -37,15 +44,11 @@
 # Binary name
 # rollup_bin: "rollup"
 
-# zkVM implementation: "mock_zkvm" or "risc0"
+# zkVM implementation: "mock_zkvm", "risc0", or "sp1"
 # zkvm_role: "mock_zkvm"
 
 # Build mode: true for debug, false for release
 # debug: true
-
-# Rollup addresses
-# genesis_sequencer_rollup_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
-# genesis_rollup_prover_address: "sov1lzkjgdaz08su3yevqu6ceywufl35se9f33kztu5cu2spja5hyyf"
 
 # Ports
 # rollup_http_port: 12346
@@ -109,6 +112,7 @@
 # rollup_chain_name: "MyChain"
 # rollup_hyperlane_bridge_domain: 5555
 # rollup_deferred_slots_count: 100000
+# rollup_hyperlane_meter_delivery_counter_after_height: 0
 
 # ============================================
 # zkVM - Risc0
@@ -116,6 +120,13 @@
 
 # risc0_cargo_version: "1.2.0"
 # risc0_toolchain_version: "r0.1.81.0"
+
+# ============================================
+# zkVM - SP1
+# ============================================
+
+# sp1_version: "6.0.2"
+# sp1_github_token: ""
 
 # ============================================
 # Example: Full override for production

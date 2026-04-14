@@ -7,10 +7,10 @@
     mode: '0644'
   become: true
 
-- name: copy rollup shell file to remote server
+- name: copy rollup manager shell file to remote server
   ansible.builtin.template:
-    src: rollup.sh.j2
-    dest: /home/sovereign/rollup.sh
+    src: rollup-manager.sh.j2
+    dest: /home/sovereign/rollup-manager.sh
     owner: sovereign
     group: sovereign
     mode: '0755'

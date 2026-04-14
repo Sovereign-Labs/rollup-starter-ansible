@@ -131,8 +131,18 @@ max_open_files: 1000000
 
 # Telegraf configuration
 influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
+
+# Extra global tags for Telegraf (dict format)
+# Example: telegraf_extra_tags: { role: backup_node, region: us-east-1 }
+# Note: 'environment' and 'deployment_name' keys are ignored (already handled)
+telegraf_extra_tags: {}
 influxdb_org: "Sovereign Labs"
 influxdb_bucket: "sov-dev"
+
+# Secondary InfluxDB outputs (optional)
+# Define outputs in custom_overrides.yaml, tokens in monitoring_secrets.yaml
+influxdb_secondary_outputs: []
+influxdb_secondary_tokens: {}
 
 # Loki configuration
 grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"

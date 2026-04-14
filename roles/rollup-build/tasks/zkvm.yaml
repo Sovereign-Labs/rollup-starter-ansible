@@ -1,0 +1,7 @@
+---
+# Setup zkvm toolchain required for building with zkvm features
+- name: Load zkvm configuration variables
+  include_vars: "{{ playbook_dir }}/roles/zkvm/{{ zkvm_role }}/defaults/main.yaml"
+
+- name: Setup zkvm ({{ zkvm_role }})
+  include_tasks: "{{ playbook_dir }}/roles/zkvm/{{ zkvm_role }}/tasks/main.yaml"

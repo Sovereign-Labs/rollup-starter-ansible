@@ -2,12 +2,21 @@
   set_fact:
     rollup_da_config: "{{ lookup('template', data_availability_role + '/rollup_da_config.toml.j2') }}"
 
+- name: ensure output config directory exists
+  ansible.builtin.file:
+    path: "{{ config_folder }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
 - name: render rollup_config.toml
   become: true
   become_user: sovereign
   ansible.builtin.template:
     src: "rollup_config.toml.j2"
-    dest: "{{ rollup_config_path }}"
+    dest: "{{ config_folder }}/rollup_config.toml"
 
 - name: update BATCH_NAMESPACE in constants.toml
   become: true
@@ -59,6 +68,16 @@
     backup: no
   when: rollup_hyperlane_bridge_domain is defined and rollup_hyperlane_bridge_domain | string | length > 0
 
+- name: update HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT\s*=.*$'
+    replace: 'HYPERLANE_METER_DELIVERY_COUNTER_AFTER_HEIGHT = {{ rollup_hyperlane_meter_delivery_counter_after_height }}'
+    backup: no
+  when: rollup_hyperlane_meter_delivery_counter_after_height is defined and rollup_hyperlane_meter_delivery_counter_after_height | string | length > 0
+
 - name: update DEFERRED_SLOTS_COUNT in constants.toml
   become: true
   become_user: ubuntu
@@ -89,60 +108,30 @@
     backup: no
   when: rollup_custom_gas_token_id is defined and rollup_custom_gas_token_id | string | length > 0
 
+- name: update EVM_MAX_FEE_CHECK_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^EVM_MAX_FEE_CHECK_HEIGHT\s*=.*$'
+    replace: 'EVM_MAX_FEE_CHECK_HEIGHT = {{ rollup_evm_max_fee_check_height }}'
+    backup: no
+  when: rollup_evm_max_fee_check_height is defined and rollup_evm_max_fee_check_height | string | length > 0
+
+- name: update EVM_RECEIPT_ACTUAL_FEE_HEIGHT in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^EVM_RECEIPT_ACTUAL_FEE_HEIGHT\s*=.*$'
+    replace: 'EVM_RECEIPT_ACTUAL_FEE_HEIGHT = {{ rollup_evm_receipt_actual_fee_height }}'
+    backup: no
+  when: rollup_evm_receipt_actual_fee_height is defined and rollup_evm_receipt_actual_fee_height | string | length > 0
+
 - name: render evm_pinned_cache.json
   become: true
   become_user: sovereign
   ansible.builtin.template:
     src: "evm_pinned_cache.json.j2"
-    dest: "/home/sovereign/evm_pinned_cache.json"
+    dest: "{{ config_folder }}/evm_pinned_cache.json"
   when: (evm_pinned_addresses is defined and evm_pinned_addresses | length > 0) or (publish_reverted_evm_txs is defined and publish_reverted_evm_txs | bool)
-
-- name: render wipe-rollup-data.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "wipe-rollup-data.sh.j2"
-    dest: "/home/ubuntu/wipe-rollup-data.sh"
-    mode: "0755"
-
-- name: render make-leader.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "make-leader.sh.j2"
-    dest: "/home/ubuntu/make-leader.sh"
-    mode: "0755"
-
-- name: render restore-from-snapshot.sh helper script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "restore-from-snapshot.sh.j2"
-    dest: "/home/ubuntu/restore-from-snapshot.sh"
-    mode: "0755"
-
-- name: render snapshot-rollup-data.sh script
-  become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "snapshot-rollup-data.sh.j2"
-    dest: "/home/ubuntu/snapshot-rollup-data.sh"
-    mode: "0755"
-  when: disk_profile == "aws_ebs_backup_node"
-
-- name: setup hourly cron for rollup snapshots
-  become: true
-  ansible.builtin.cron:
-    name: "rollup snapshot to EBS"
-    minute: "0"
-    job: "/home/ubuntu/snapshot-rollup-data.sh"
-    user: "ubuntu"
-  when: disk_profile == "aws_ebs_backup_node"
-
-- name: remove snapshot cron if not backup node
-  become: true
-  ansible.builtin.cron:
-    name: "rollup snapshot to EBS"
-    state: absent
-    user: "ubuntu"
-  when: disk_profile != "aws_ebs_backup_node"

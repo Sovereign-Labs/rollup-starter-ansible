@@ -66,6 +66,49 @@ if [[ "$SERIAL" =~ ^vol ]]; then
         --output text)
 
     log "EBS snapshot initiated: $SNAPSHOT_ID"
+
+    # --- Retention policy: keep snapshots at ~0h, ~6h, ~1d, ~1w, ~1mo ---
+    log "Applying snapshot retention policy..."
+    NOW=$(date +%s)
+    # Target ages in seconds
+    TARGETS="0 21600 86400 604800 2592000"
+
+    # List all completed automated backup snapshots for this volume, as "snapshot_id\tstart_time"
+    SNAP_LIST=$(aws ec2 describe-snapshots \
+        --region "$AWS_REGION" \
+        --filters "Name=volume-id,Values=$VOLUME_ID" "Name=tag:AutomatedBackup,Values=true" "Name=status,Values=completed" \
+        --query 'Snapshots[*].[SnapshotId,StartTime]' \
+        --output text)
+
+    if [ -n "$SNAP_LIST" ]; then
+        KEEP_IDS=""
+        for TARGET_AGE in $TARGETS; do
+            BEST_ID=""
+            BEST_DIFF=999999999
+            while IFS=$'\t' read -r sid stime; do
+                SNAP_EPOCH=$(date -d "$stime" +%s 2>/dev/null) || continue
+                AGE=$((NOW - SNAP_EPOCH))
+                DIFF=$((AGE - TARGET_AGE))
+                [ "$DIFF" -lt 0 ] && DIFF=$((-DIFF))
+                if [ "$DIFF" -lt "$BEST_DIFF" ]; then
+                    BEST_DIFF=$DIFF
+                    BEST_ID=$sid
+                fi
+            done <<< "$SNAP_LIST"
+            [ -n "$BEST_ID" ] && KEEP_IDS="$KEEP_IDS $BEST_ID"
+        done
+
+        # Delete snapshots not in the keep list
+        while IFS=$'\t' read -r sid stime; do
+            if ! echo "$KEEP_IDS" | grep -qw "$sid"; then
+                log "Deleting old snapshot $sid ($stime)"
+                aws ec2 delete-snapshot --region "$AWS_REGION" --snapshot-id "$sid" || \
+                    log "WARNING: Failed to delete snapshot $sid"
+            fi
+        done <<< "$SNAP_LIST"
+        log "Retention policy applied. Kept:$KEEP_IDS"
+    fi
+
     sudo mount "$SNAPSHOT_DIR"
     log "Remounted snapshot directory."
 else

@@ -9,6 +9,10 @@
 {% if deployment_name is defined and deployment_name %}
   deployment_name = "{{ deployment_name }}"
 {% endif %}
+{% for key, value in telegraf_extra_tags.items() if key not in ['environment', 'deployment_name'] %}
+  {{ key }} = "{{ value }}"
+{% endfor %}
+
 
 [agent]
   interval = "30s"
@@ -36,6 +40,18 @@
 #  organization = """
 #  bucket = ""
 {% endif %}
+{% for output in influxdb_secondary_outputs %}
+{% set token = influxdb_secondary_tokens[output.name] | default('') %}
+{% if token %}
+
+# Secondary output: {{ output.name }}
+[[outputs.influxdb_v2]]
+  urls = ["{{ output.url }}"]
+  organization = "{{ output.org }}"
+  bucket = "{{ output.bucket }}"
+  token = "{{ token }}"
+{% endif %}
+{% endfor %}
 
 # Collectors
 [[inputs.socket_listener]]

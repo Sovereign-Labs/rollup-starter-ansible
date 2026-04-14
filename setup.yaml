@@ -6,6 +6,11 @@
     wipe: false
     data_availability_role: "mock_da"  # Default DA role (overridden by inventory or -e)
   pre_tasks:
+    - name: Set default runtime_vars_file if not provided
+      set_fact:
+        runtime_vars_file: "{{ playbook_dir }}/vars/runtime_vars.yaml"
+      when: runtime_vars_file is not defined or runtime_vars_file | length == 0
+
     - import_tasks: load_vars.yaml
 
     - name: check switches parameter is provided

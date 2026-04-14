@@ -31,7 +31,7 @@ switches: "cr"
 rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 
 # zkVM role
-# Options: "mock_zkvm" (fast, for development) or "risc0" (full proving)
+# Options: "mock_zkvm" (fast, for development), "risc0", or "sp1" (full proving)
 zkvm_role: "mock_zkvm"
 
 # Sequencer type
@@ -95,6 +95,9 @@ signer_private_key: ""
 # Deferred slots count (integer)
 # rollup_deferred_slots_count: 100000
 
+# Hyperlane meter delivery counter after height (integer)
+# rollup_hyperlane_meter_delivery_counter_after_height: 0
+
 # ============================================================================
 # INFRASTRUCTURE CONFIGURATION (optional overrides)
 # ============================================================================
@@ -118,6 +121,13 @@ signer_private_key: ""
 # influxdb_org: "Sovereign Labs"
 # influxdb_bucket: "sov-dev"
 
+# Secondary InfluxDB outputs (optional, send metrics to multiple destinations)
+# influxdb_secondary_outputs:
+#   - name: "grafana-cloud"
+#     url: "https://influx-prod.grafana.net"
+#     org: "my-org"
+#     bucket: "prod-metrics"
+
 # Loki configuration
 # grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"
 # grafana_loki_username: "sov-logger"
@@ -134,3 +144,7 @@ signer_private_key: ""
 # influxdb_token: ""
 # grafana_loki_token: ""
 # grafana_tempo_token: ""
+
+# Secondary InfluxDB output tokens (keyed by output name from influxdb_secondary_outputs)
+# influxdb_secondary_tokens:
+#   grafana-cloud: "YOUR_SECONDARY_TOKEN"

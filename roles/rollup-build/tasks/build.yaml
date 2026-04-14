@@ -1,0 +1,50 @@
+---
+# Build rollup binary with selected DA and zkVM features
+- name: build sovereign rollup binary
+  become: true
+  become_user: ubuntu
+  vars:
+    build_profile_flag: "{{ '--release' if not debug else '' }}"
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_crate }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
+  args:
+    chdir: /home/ubuntu/{{ rollup_repo_dir }}
+    executable: /bin/bash
+  register: build_result
+  async: 3600  # Allow up to 1 hour for build
+  poll: 30     # Check status every 30 seconds
+
+- name: verify binary was built successfully
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  stat:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
+  register: binary_stat
+  become: true
+
+- name: fail if binary was not built
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  fail:
+    msg: "Build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
+  when: not binary_stat.stat.exists
+
+- name: ensure output binary directory exists
+  ansible.builtin.file:
+    path: "{{ binary_folder }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+
+- name: copy rollup binary to output path
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  ansible.builtin.copy:
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_crate }}"
+    dest: "{{ binary_folder }}/{{ rollup_bin }}"
+    remote_src: true
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true

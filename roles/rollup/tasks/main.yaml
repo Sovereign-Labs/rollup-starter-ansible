@@ -1,33 +1,24 @@
 ---
-# Load DA configuration variables based on data_availability_role
-- name: Load DA-specific variables
-  include_vars: "{{ role_path }}/vars/{{ data_availability_role }}.yaml"
-
-# Validate DA configuration
-- name: Validate DA configuration
-  import_tasks: validate_da.yaml
-
-# Load zkvm configuration variables
-- include_vars: "../../zkvm/{{ zkvm_role }}/defaults/main.yaml"
+# Determine backup node status and validate configuration
+- name: Backup node detection and validation
+  import_tasks: backup_node.yaml
 
 - name: setup local postgresql
   include_tasks: postgres.yaml
   when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
 
-- name: git update
-  import_tasks: git.yaml
+# Always use multi-version flow (synthesizes single-version spec if no config repo)
+- name: Build rollup versions
+  include_tasks: multi_version_build.yaml
 
-- name: genesis
-  import_tasks: genesis.yaml
+- name: build rollup manager
+  include_tasks: rollup_manager.yaml
 
-- name: rollup configuration setup
-  include_tasks: config.yaml
+- name: render helper scripts
+  include_tasks: helper_scripts.yaml
 
-- name: setup zkvm (if required)
-  include_tasks: "../../zkvm/{{ zkvm_role }}/tasks/main.yaml"
-
-- name: build rollup binary
-  include_tasks: build.yaml
+- name: setup or disable backups, as needed
+  include_tasks: backup.yaml
 
 - name: rollup service
   include_tasks: service.yaml
