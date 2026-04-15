@@ -22,7 +22,7 @@ public_address = "{{ 'https' if (proxy_ssl_enabled | default(false)) else 'http'
 {% endif %}
 
 [monitoring]
-telegraf_address = "127.0.0.1:8094"
+telegraf_address = "127.0.0.1:{{ telegraf_port }}"
 
 [proof_manager]
 aggregated_proof_block_jump = 1
