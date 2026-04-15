@@ -4,5 +4,5 @@ set -e
 aws s3 sync /etc/letsencrypt/ \
   "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}" \
   --region {{ proxy_cert_s3_region }} \
-  --quiet --exclude "*.log" --exclude "accounts/*"
+  --quiet --exclude "*.log"
 systemctl reload openresty

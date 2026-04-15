@@ -258,21 +258,6 @@
     - proxy_domain_name | length > 0
     - not (proxy_cert_restored | default(false))
 
-# A skipped certbot task (e.g., when proxy_cert_restored) still registers
-# certbot_result with changed=false, failed=false — so a plain `.changed` /
-# `.failed` check is sufficient and covers both the skipped and unchanged cases.
-- name: Upload freshly-issued cert to S3
-  become: true
-  command: >
-    aws s3 sync /etc/letsencrypt/
-    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
-    --region {{ proxy_cert_s3_region }}
-    --quiet --exclude "*.log" --exclude "accounts/*"
-  when:
-    - proxy_ssl_enabled | bool
-    - proxy_cert_s3_bucket | length > 0
-    - certbot_result.changed | default(false)
-
 - name: Stat OpenResty fullchain.pem
   become: true
   stat:
@@ -295,6 +280,18 @@
         and (_proxy_privkey.stat.exists | default(false))
       }}
   when: proxy_ssl_enabled | bool
+
+- name: Upload current Let's Encrypt state to S3
+  become: true
+  command: >
+    aws s3 sync /etc/letsencrypt/
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
+    --region {{ proxy_cert_s3_region }}
+    --quiet --exclude "*.log"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+    - proxy_https_ready | default(false)
 
 - name: Warn if HTTPS config is not ready (proxy running on HTTP only)
   ansible.builtin.debug:
