@@ -17,6 +17,19 @@
       rollup role on this host (it sets the fact via roles/rollup/tasks/postgres.yaml),
       or set the variable explicitly in runtime_vars.yaml.
 
+- name: Validate rollup git vars are set
+  assert:
+    that:
+      - rollup_repo is defined and rollup_repo | length > 0
+      - rollup_repo_dir is defined and rollup_repo_dir | length > 0
+      - (rollup_commit_hash is defined and rollup_commit_hash | length > 0)
+        or (rollup_branch is defined and rollup_branch | length > 0)
+    fail_msg: >-
+      node-discovery builds from the rollup-starter checkout and reuses
+      `rollup_repo`, `rollup_repo_dir`, and `rollup_commit_hash` (or
+      `rollup_branch`). Set these in runtime_vars.yaml when running the
+      proxy role standalone.
+
 - name: Verify cargo is available for the ubuntu user
   become: true
   become_user: ubuntu
@@ -30,9 +43,9 @@
   become: true
   become_user: ubuntu
   git:
-    repo: "{{ proxy_node_discovery_repo }}"
-    dest: "/home/ubuntu/{{ proxy_node_discovery_repo_dir }}"
-    version: "{{ proxy_node_discovery_commit_hash if (proxy_node_discovery_commit_hash | length > 0) else proxy_node_discovery_branch }}"
+    repo: "{{ rollup_repo }}"
+    dest: "/home/ubuntu/{{ rollup_repo_dir }}"
+    version: "{{ rollup_commit_hash if (rollup_commit_hash | length > 0) else rollup_branch }}"
     accept_hostkey: yes
     force: yes
 
@@ -41,27 +54,27 @@
   become_user: ubuntu
   shell: source /home/ubuntu/.cargo/env && cargo build --release --manifest-path crates/utils/node-discovery/Cargo.toml
   args:
-    chdir: "/home/ubuntu/{{ proxy_node_discovery_repo_dir }}"
+    chdir: "/home/ubuntu/{{ rollup_repo_dir }}"
     executable: /bin/bash
   register: _nd_build
   async: 3600
-  poll: 30
+  poll: 5
 
 - name: Verify node-discovery binary was produced
   stat:
-    path: "/home/ubuntu/{{ proxy_node_discovery_repo_dir }}/target/release/node-discovery"
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
   register: _nd_bin
   become: true
 
 - name: Fail if node-discovery binary is missing
   fail:
-    msg: "node-discovery build did not produce a binary at /home/ubuntu/{{ proxy_node_discovery_repo_dir }}/target/release/node-discovery"
+    msg: "node-discovery build did not produce a binary at /home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
   when: not _nd_bin.stat.exists
 
 - name: Install node-discovery binary to /usr/local/bin
   become: true
   copy:
-    src: "/home/ubuntu/{{ proxy_node_discovery_repo_dir }}/target/release/node-discovery"
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
     dest: /usr/local/bin/node-discovery
     remote_src: true
     mode: '0755'

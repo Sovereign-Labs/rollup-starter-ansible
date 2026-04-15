@@ -89,11 +89,9 @@ init_worker_by_lua_block {
     -- Static backends: leader handles writes, follower handles reads.
     local cache = ngx.shared.backend_cache
     cache:set("leader", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
-{% if proxy_rollup_follower_ip | length > 0 %}
+    -- proxy_rollup_follower_ip is guaranteed non-empty by the set_fact in
+    -- roles/proxy/tasks/main.yaml (defaults to leader when operator leaves it blank).
     cache:set("follower_1", "{{ proxy_rollup_follower_ip }}:{{ rollup_http_port }}")
-{% else %}
-    cache:set("follower_1", "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}")
-{% endif %}
 }
 {% endif %}
 

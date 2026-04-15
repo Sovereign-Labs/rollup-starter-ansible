@@ -15,7 +15,38 @@
     state: directory
     mode: '0755'
 
-- name: Sync certs from S3
+- name: Stat local cert.pem (pre-sync)
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+  register: _pre_cert
+
+- name: Inspect local cert (pre-sync)
+  become: true
+  community.crypto.x509_certificate_info:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    valid_at:
+      threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
+  register: _pre_cert_info
+  when: _pre_cert.stat.exists
+
+- name: Decide whether local cert is already good enough to skip S3 sync
+  set_fact:
+    _local_cert_ok: >-
+      {{
+        _pre_cert.stat.exists
+        and (_pre_cert_info.valid_at.threshold | default(false))
+        and (
+          ([proxy_domain_name] + proxy_unlimited_domains)
+          | difference(
+              _pre_cert_info.subject_alt_name | default([])
+              | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+            )
+          | length == 0
+        )
+      }}
+
+- name: Sync certs from S3 (local cert missing or stale)
   become: true
   command: >
     aws s3 sync
@@ -26,49 +57,42 @@
   register: _s3_restore
   changed_when: _s3_restore.stdout | default('') | length > 0
   failed_when: false
+  when: not _local_cert_ok
 
 - name: Stat restored cert.pem
   become: true
   stat:
     path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
   register: _restored_cert
+  when: not _local_cert_ok
 
-- name: Check restored cert has at least {{ proxy_cert_expiry_threshold_days }} days left
+- name: Inspect restored cert
   become: true
-  command: >
-    openssl x509
-    -checkend {{ proxy_cert_expiry_threshold_days * 86400 }}
-    -noout
-    -in /etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem
-  register: _cert_valid
-  changed_when: false
-  failed_when: false
-  when: _restored_cert.stat.exists
-
-- name: Read SANs from restored cert
-  become: true
-  command: >
-    openssl x509 -noout -ext subjectAltName
-    -in /etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem
-  register: _cert_sans
-  changed_when: false
-  failed_when: false
+  community.crypto.x509_certificate_info:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    valid_at:
+      threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
+  register: _restored_cert_info
   when:
+    - not _local_cert_ok
     - _restored_cert.stat.exists
-    - (_cert_valid.rc | default(1)) == 0
 
 - name: Decide whether restored cert covers all expected domains
   set_fact:
     _cert_covers_all: >-
       {{
-        _restored_cert.stat.exists
-        and ((_cert_valid.rc | default(1)) == 0)
+        (_restored_cert.stat.exists | default(false))
+        and (_restored_cert_info.valid_at.threshold | default(false))
         and (
           ([proxy_domain_name] + proxy_unlimited_domains)
-          | difference(_cert_sans.stdout | default('') | regex_findall('DNS:([^,\s]+)'))
+          | difference(
+              _restored_cert_info.subject_alt_name | default([])
+              | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+            )
           | length == 0
         )
       }}
+  when: not _local_cert_ok
 
 - name: Remove stale restored cert if invalid or SAN-incomplete
   become: true
@@ -76,10 +100,11 @@
     path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
     state: absent
   when:
+    - not _local_cert_ok
     - _restored_cert.stat.exists
     - not _cert_covers_all
 
 - name: Mark cert restored
   set_fact:
     proxy_cert_restored: true
-  when: _cert_covers_all
+  when: _local_cert_ok or (_cert_covers_all | default(false))
