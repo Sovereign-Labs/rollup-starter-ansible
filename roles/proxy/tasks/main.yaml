@@ -200,24 +200,6 @@
     mode: '0644'
   notify: reload openresty
 
-- name: Render ssl.conf
-  become: true
-  template:
-    src: conf.d/ssl.conf.j2
-    dest: /usr/local/openresty/nginx/conf/conf.d/ssl.conf
-    mode: '0644'
-  when: proxy_ssl_enabled | bool
-  notify: reload openresty
-
-- name: Render security-headers.conf
-  become: true
-  template:
-    src: conf.d/security-headers.conf.j2
-    dest: /usr/local/openresty/nginx/conf/conf.d/security-headers.conf
-    mode: '0644'
-  when: proxy_ssl_enabled | bool
-  notify: reload openresty
-
 # =============================================================================
 # Initial HTTP Config (for cert acquisition)
 # =============================================================================
@@ -245,6 +227,11 @@
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
 
+- name: Initialize HTTPS readiness flag
+  set_fact:
+    proxy_https_ready: false
+  when: proxy_ssl_enabled | bool
+
 # =============================================================================
 # SSL Certificate Acquisition
 # =============================================================================
@@ -271,6 +258,9 @@
     - proxy_domain_name | length > 0
     - not (proxy_cert_restored | default(false))
 
+# A skipped certbot task (e.g., when proxy_cert_restored) still registers
+# certbot_result with changed=false, failed=false — so a plain `.changed` /
+# `.failed` check is sufficient and covers both the skipped and unchanged cases.
 - name: Upload freshly-issued cert to S3
   become: true
   command: >
@@ -281,28 +271,66 @@
   when:
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
-    - certbot_result is defined
-    - not (certbot_result.failed | default(false))
     - certbot_result.changed | default(false)
 
-- name: Warn if certbot failed (proxy running on HTTP only)
-  debug:
-    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds on the next run."
+- name: Stat OpenResty fullchain.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: _proxy_fullchain
+  when: proxy_ssl_enabled | bool
+
+- name: Stat OpenResty privkey.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+  register: _proxy_privkey
+  when: proxy_ssl_enabled | bool
+
+- name: Set HTTPS readiness flag
+  set_fact:
+    proxy_https_ready: >-
+      {{
+        (_proxy_fullchain.stat.exists | default(false))
+        and (_proxy_privkey.stat.exists | default(false))
+      }}
+  when: proxy_ssl_enabled | bool
+
+- name: Warn if HTTPS config is not ready (proxy running on HTTP only)
+  ansible.builtin.debug:
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once a valid certificate bundle is available on a later run."
   when:
     - proxy_ssl_enabled | bool
-    - certbot_result is defined
-    - certbot_result.failed | default(false)
+    - not (proxy_https_ready | default(false))
 
 # =============================================================================
 # Switch to HTTPS Config
 # =============================================================================
+- name: Render ssl.conf
+  become: true
+  template:
+    src: conf.d/ssl.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/ssl.conf
+    mode: '0644'
+  when: proxy_https_ready | default(false)
+  notify: reload openresty
+
+- name: Render security-headers.conf
+  become: true
+  template:
+    src: conf.d/security-headers.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/security-headers.conf
+    mode: '0644'
+  when: proxy_https_ready | default(false)
+  notify: reload openresty
+
 - name: Render OpenResty HTTPS config
   become: true
   template:
     src: openresty-https.conf.j2
     dest: /usr/local/openresty/nginx/conf/nginx.conf
     mode: '0644'
-  when: proxy_ssl_enabled | bool
+  when: proxy_https_ready | default(false)
   notify: reload openresty
 
 # =============================================================================
