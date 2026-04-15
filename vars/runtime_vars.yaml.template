@@ -49,7 +49,6 @@ wipe: false
 
 # Rollup ports
 rollup_http_port: 12346
-nginx_port: 8081
 
 # Genesis addresses
 
@@ -81,9 +80,9 @@ nginx_port: 8081
 #
 # Uses `rollup_sequencer_postgres_connection_string` for DB access (same as the
 # rollup). Either run the rollup role on this host, or set that variable.
+# Source/version comes from `rollup_repo` / `rollup_branch` / `rollup_commit_hash`
+# above (same checkout as the rollup-build role).
 # proxy_node_discovery_enabled: true
-# proxy_node_discovery_branch: "main"
-# proxy_node_discovery_commit_hash: ""   # pin a commit for reproducible builds
 
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)

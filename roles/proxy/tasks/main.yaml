@@ -42,6 +42,7 @@
       - lsb-release
     state: present
     update_cache: yes
+    cache_valid_time: 3600
 
 - name: Check for existing OpenResty keyring
   stat:
@@ -90,6 +91,7 @@
     name: openresty
     state: present
     update_cache: yes
+    cache_valid_time: 3600
 
 - name: Create OpenResty systemd override directory
   become: true
@@ -263,7 +265,7 @@
       --keep-until-expiring
   register: certbot_result
   ignore_errors: yes
-  changed_when: "'Certificate not yet due for renewal' not in (certbot_result.stdout | default(''))"
+  changed_when: "'Successfully received certificate' in (certbot_result.stdout | default(''))"
   when:
     - proxy_ssl_enabled | bool
     - proxy_domain_name | length > 0
@@ -283,10 +285,11 @@
     - not (certbot_result.failed | default(false))
     - certbot_result.changed | default(false)
 
-- name: Warn if certbot failed
+- name: Warn if certbot failed (proxy running on HTTP only)
   debug:
-    msg: "WARNING: Certbot failed - DNS may not be configured yet. Re-run playbook once DNS is ready."
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds on the next run."
   when:
+    - proxy_ssl_enabled | bool
     - certbot_result is defined
     - certbot_result.failed | default(false)
 
@@ -325,47 +328,19 @@
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
 
-- name: Setup certbot renewal cron (S3 sync via hooks dir)
+# When the S3 upload hook is installed (proxy_cert_s3_bucket set), renewal-hooks/post/
+# already reloads openresty via upload-to-s3.sh; otherwise we need --post-hook here.
+- name: Setup certbot renewal cron
   become: true
   cron:
     name: "certbot renewal"
     minute: "0"
     hour: "3"
-    job: "certbot renew --quiet"
-  when:
-    - proxy_ssl_enabled | bool
-    - proxy_cert_s3_bucket | length > 0
-
-- name: Setup certbot renewal cron (no S3, inline reload)
-  become: true
-  cron:
-    name: "certbot renewal"
-    minute: "0"
-    hour: "3"
-    job: "certbot renew --quiet --post-hook 'systemctl reload openresty'"
-  when:
-    - proxy_ssl_enabled | bool
-    - proxy_cert_s3_bucket | length == 0
-
-# =============================================================================
-# Final Service State
-# =============================================================================
-- name: Ensure OpenResty is enabled on boot
-  become: true
-  systemd:
-    name: openresty
-    enabled: yes
+    job: "certbot renew --quiet{% if proxy_cert_s3_bucket | length == 0 %} --post-hook 'systemctl reload openresty'{% endif %}"
+  when: proxy_ssl_enabled | bool
 
 # Config changes above flush via the `reload openresty` handler at end of play,
 # which uses `state: reloaded` (SIGHUP) — true zero-downtime. No hard restart here.
-
-- name: Warn if certbot failed (proxy running on HTTP only)
-  debug:
-    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once DNS is configured and certbot succeeds on the next run."
-  when:
-    - proxy_ssl_enabled | bool
-    - certbot_result is defined
-    - certbot_result.failed | default(false)
 
 # =============================================================================
 # Dynamic Backend Discovery (node-discovery service)
