@@ -1,0 +1,27 @@
+---
+# Proxy-specific Alloy configuration for log collection.
+# Alloy itself is installed by the common role (roles/common/tasks/grafana_alloy.yaml),
+# which only runs when grafana_loki_token or grafana_tempo_token is set.
+
+- name: Check Alloy is installed
+  ansible.builtin.stat:
+    path: /etc/alloy
+  register: _alloy_dir
+
+- name: Fail if Alloy is not installed
+  ansible.builtin.fail:
+    msg: >-
+      proxy_enable_logs_export=true requires Alloy, but /etc/alloy is missing.
+      Set grafana_loki_token (and/or grafana_tempo_token) in monitoring_secrets
+      and re-run the common role on this host, or disable proxy_enable_logs_export.
+  when: not _alloy_dir.stat.exists
+
+- name: Deploy proxy alloy config
+  ansible.builtin.template:
+    src: proxy.alloy.j2
+    dest: /etc/alloy/proxy.alloy
+    owner: alloy
+    group: alloy
+    mode: '0644'
+  become: true
+  notify: restart alloy

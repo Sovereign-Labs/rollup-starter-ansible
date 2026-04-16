@@ -1,0 +1,390 @@
+---
+# Proxy role - OpenResty reverse proxy for Sovereign rollup
+
+# =============================================================================
+# Validation
+# =============================================================================
+- name: Validate proxy_rollup_leader_ip is defined
+  assert:
+    that: proxy_rollup_leader_ip is defined and proxy_rollup_leader_ip | length > 0
+    fail_msg: "proxy_rollup_leader_ip is required when using the proxy role"
+
+- name: Validate SSL requirements
+  assert:
+    that:
+      - proxy_domain_name is defined and proxy_domain_name | length > 0
+      - proxy_certbot_email is defined and proxy_certbot_email | length > 0
+    fail_msg: "proxy_domain_name and proxy_certbot_email are required when proxy_ssl_enabled is true"
+  when: proxy_ssl_enabled | bool
+
+- name: Validate S3 cert sync requirements
+  assert:
+    that: proxy_cert_s3_region | length > 0
+    fail_msg: "proxy_cert_s3_region is required when proxy_cert_s3_bucket is set"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Set follower IP to leader if not specified
+  set_fact:
+    proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
+
+# =============================================================================
+# OpenResty Installation (using modern GPG keyring approach)
+# =============================================================================
+- name: Install OpenResty dependencies
+  become: true
+  apt:
+    name:
+      - wget
+      - gnupg
+      - ca-certificates
+      - lsb-release
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Check for existing OpenResty keyring
+  stat:
+    path: /usr/share/keyrings/openresty.gpg
+  register: _openresty_keyring
+
+# Official fingerprint: E522 18E7 0878 97DC 6DEA 6D6D 97DB 7443 D5ED EB74
+# Source: https://openresty.org/en/linux-packages.html
+- name: Install OpenResty GPG key
+  become: true
+  when: not _openresty_keyring.stat.exists
+  block:
+    - name: Download OpenResty GPG key
+      get_url:
+        url: https://openresty.org/package/pubkey.gpg
+        dest: /tmp/openresty-pubkey.gpg
+        mode: '0644'
+
+    - name: Verify OpenResty GPG key fingerprint
+      shell: |
+        FINGERPRINT=$(gpg --with-fingerprint --with-colons /tmp/openresty-pubkey.gpg 2>/dev/null | grep '^fpr' | head -1 | cut -d: -f10)
+        EXPECTED="E52218E7087897DC6DEA6D6D97DB7443D5EDEB74"
+        if [ "$FINGERPRINT" != "$EXPECTED" ]; then
+          echo "ERROR: GPG key fingerprint mismatch!"
+          echo "Expected: $EXPECTED"
+          echo "Got: $FINGERPRINT"
+          exit 1
+        fi
+      changed_when: false
+
+    - name: Dearmor and install OpenResty GPG key
+      shell: gpg --dearmor < /tmp/openresty-pubkey.gpg > /usr/share/keyrings/openresty.gpg
+      args:
+        creates: /usr/share/keyrings/openresty.gpg
+
+- name: Add OpenResty repository
+  become: true
+  apt_repository:
+    repo: "deb [arch={{ ansible_architecture | regex_replace('x86_64', 'amd64') | regex_replace('aarch64', 'arm64') }} signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: openresty
+
+- name: Install OpenResty
+  become: true
+  apt:
+    name: openresty
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Create OpenResty systemd override directory
+  become: true
+  file:
+    path: /etc/systemd/system/openresty.service.d
+    state: directory
+    mode: '0755'
+
+- name: Configure OpenResty file descriptor limits
+  become: true
+  copy:
+    content: |
+      [Service]
+      LimitNOFILE=65535
+    dest: /etc/systemd/system/openresty.service.d/limits.conf
+    mode: '0644'
+  notify: reload systemd
+
+# =============================================================================
+# Certbot Installation (when SSL enabled)
+# =============================================================================
+- name: Install certbot
+  become: true
+  apt:
+    name: certbot
+    state: present
+  when: proxy_ssl_enabled | bool
+
+- name: Create certbot webroot directory
+  become: true
+  file:
+    path: "{{ proxy_certbot_webroot }}"
+    state: directory
+    mode: '0755'
+  when: proxy_ssl_enabled | bool
+
+- name: Install AWS CLI (for S3 cert sync)
+  become: true
+  apt:
+    name: awscli
+    state: present
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+# =============================================================================
+# Configuration Directories
+# =============================================================================
+- name: Create OpenResty conf.d directory
+  become: true
+  file:
+    path: /usr/local/openresty/nginx/conf/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Create nginx log directory
+  become: true
+  file:
+    path: /var/log/nginx
+    state: directory
+    mode: '0755'
+
+# =============================================================================
+# Node-Discovery Pre-Start Stub
+# =============================================================================
+# If dynamic backend discovery is enabled, http-base.conf references
+# `init_by_lua_file {{ proxy_node_discovery_output_file }}`. That file MUST exist
+# with valid Lua before nginx first starts, or nginx will fail config load.
+# The real content is written by the node-discovery service at runtime.
+- name: Ensure node-discovery output directory exists
+  become: true
+  file:
+    path: "{{ proxy_node_discovery_output_file | dirname }}"
+    state: directory
+    mode: '0755'
+  when: proxy_node_discovery_enabled | bool
+
+- name: Create stub backends.generated.lua (overwritten at runtime by node-discovery)
+  become: true
+  copy:
+    content: |
+      -- Stub created by Ansible; replaced by node-discovery service at runtime.
+      local c = ngx.shared.backend_cache
+      c:flush_all()
+    dest: "{{ proxy_node_discovery_output_file }}"
+    mode: '0644'
+    force: no
+  when: proxy_node_discovery_enabled | bool
+
+# =============================================================================
+# Render Configuration Templates
+# =============================================================================
+- name: Render http-base.conf
+  become: true
+  template:
+    src: conf.d/http-base.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/http-base.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Render proxy-location.conf
+  become: true
+  template:
+    src: conf.d/proxy-location.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/proxy-location.conf
+    mode: '0644'
+  notify: reload openresty
+
+# =============================================================================
+# Initial HTTP Config (for cert acquisition)
+# =============================================================================
+- name: Render OpenResty HTTP config
+  become: true
+  template:
+    src: openresty-http.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Ensure OpenResty is running
+  become: true
+  systemd:
+    name: openresty
+    state: started
+    enabled: yes
+
+# =============================================================================
+# S3 Certificate Restore (zero-downtime proxy replacement)
+# =============================================================================
+- name: Try restoring certs from S3
+  import_tasks: s3_certs.yaml
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Initialize HTTPS readiness flag
+  set_fact:
+    proxy_https_ready: false
+  when: proxy_ssl_enabled | bool
+
+# =============================================================================
+# SSL Certificate Acquisition
+# =============================================================================
+- name: Build certbot domain arguments
+  set_fact:
+    _certbot_domains: "{{ [proxy_domain_name] + proxy_unlimited_domains }}"
+  when: proxy_ssl_enabled | bool
+
+- name: Obtain SSL certificate for all domains (single cert with SANs)
+  become: true
+  shell: |
+    certbot certonly --webroot \
+      -w {{ proxy_certbot_webroot }} \
+      {% for domain in _certbot_domains %}-d {{ domain }} {% endfor %} \
+      --non-interactive \
+      --agree-tos \
+      --email {{ proxy_certbot_email }} \
+      --keep-until-expiring
+  register: certbot_result
+  ignore_errors: yes
+  changed_when: "'Successfully received certificate' in (certbot_result.stdout | default(''))"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_domain_name | length > 0
+    - not (proxy_cert_restored | default(false))
+
+- name: Stat OpenResty fullchain.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: _proxy_fullchain
+  when: proxy_ssl_enabled | bool
+
+- name: Stat OpenResty privkey.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+  register: _proxy_privkey
+  when: proxy_ssl_enabled | bool
+
+- name: Set HTTPS readiness flag
+  set_fact:
+    proxy_https_ready: >-
+      {{
+        (_proxy_fullchain.stat.exists | default(false))
+        and (_proxy_privkey.stat.exists | default(false))
+      }}
+  when: proxy_ssl_enabled | bool
+
+- name: Upload current Let's Encrypt state to S3
+  become: true
+  command: >
+    aws s3 sync /etc/letsencrypt/
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
+    --region {{ proxy_cert_s3_region }}
+    --quiet --exclude "*.log"
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+    - proxy_https_ready | default(false)
+
+- name: Warn if HTTPS config is not ready (proxy running on HTTP only)
+  ansible.builtin.debug:
+    msg: "OpenResty is running on HTTP (port {{ proxy_listen_port }}). HTTPS will activate once a valid certificate bundle is available on a later run."
+  when:
+    - proxy_ssl_enabled | bool
+    - not (proxy_https_ready | default(false))
+
+# =============================================================================
+# Switch to HTTPS Config
+# =============================================================================
+- name: Render ssl.conf
+  become: true
+  template:
+    src: conf.d/ssl.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/ssl.conf
+    mode: '0644'
+  when: proxy_https_ready | default(false)
+  notify: reload openresty
+
+- name: Render security-headers.conf
+  become: true
+  template:
+    src: conf.d/security-headers.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/security-headers.conf
+    mode: '0644'
+  when: proxy_https_ready | default(false)
+  notify: reload openresty
+
+- name: Render OpenResty HTTPS config
+  become: true
+  template:
+    src: openresty-https.conf.j2
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+    mode: '0644'
+  when: proxy_https_ready | default(false)
+  notify: reload openresty
+
+# =============================================================================
+# Certbot Auto-Renewal
+# =============================================================================
+- name: Ensure letsencrypt renewal-hooks dir
+  become: true
+  file:
+    path: /etc/letsencrypt/renewal-hooks/post
+    state: directory
+    mode: '0755'
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+- name: Install S3 upload renewal hook
+  become: true
+  template:
+    src: s3-upload-hook.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/post/upload-to-s3.sh
+    mode: '0755'
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+# When the S3 upload hook is installed (proxy_cert_s3_bucket set), renewal-hooks/post/
+# already reloads openresty via upload-to-s3.sh; otherwise we need --post-hook here.
+- name: Setup certbot renewal cron
+  become: true
+  cron:
+    name: "certbot renewal"
+    minute: "0"
+    hour: "3"
+    job: "certbot renew --quiet{% if proxy_cert_s3_bucket | length == 0 %} --post-hook 'systemctl reload openresty'{% endif %}"
+  when: proxy_ssl_enabled | bool
+
+# Config changes above flush via the `reload openresty` handler at end of play,
+# which uses `state: reloaded` (SIGHUP) — true zero-downtime. No hard restart here.
+
+# =============================================================================
+# Dynamic Backend Discovery (node-discovery service)
+# =============================================================================
+# Nginx is already serving on the stub + static fallbacks; installing this
+# service last means the (slow) Rust build doesn't delay initial availability.
+- name: Install and start node-discovery service
+  import_tasks: node_discovery.yaml
+  when: proxy_node_discovery_enabled | bool
+
+# =============================================================================
+# Telegraf Monitoring
+# =============================================================================
+- name: Configure proxy telegraf monitoring
+  import_tasks: telegraf.yaml
+
+# =============================================================================
+# Alloy Log Export (opt-in)
+# =============================================================================
+- name: Configure proxy log export
+  import_tasks: alloy.yaml
+  when: proxy_enable_logs_export | bool

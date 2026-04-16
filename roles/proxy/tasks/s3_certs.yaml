@@ -1,0 +1,159 @@
+---
+# Restore Let's Encrypt state from S3 so a replacement proxy boots straight into
+# HTTPS. Validates freshness (>= proxy_cert_expiry_threshold_days remaining) and
+# that the cert covers all expected SANs; otherwise deletes the stale live/ dir
+# so certbot re-issues and uploads the fresh result.
+
+- name: Initialize cert restored flag
+  set_fact:
+    proxy_cert_restored: false
+
+- name: Ensure /etc/letsencrypt exists
+  become: true
+  file:
+    path: /etc/letsencrypt
+    state: directory
+    mode: '0755'
+
+- name: Stat local cert.pem (pre-sync)
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+  register: _pre_cert
+
+- name: Stat local fullchain.pem (pre-sync)
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: _pre_fullchain
+
+- name: Stat local privkey.pem (pre-sync)
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+  register: _pre_privkey
+
+- name: Inspect local cert (pre-sync)
+  become: true
+  community.crypto.x509_certificate_info:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    valid_at:
+      threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
+  register: _pre_cert_info
+  when: _pre_cert.stat.exists
+
+- name: Decide whether local cert is already good enough to skip S3 sync
+  set_fact:
+    _local_cert_ok: >-
+      {{
+        _pre_cert.stat.exists
+        and _pre_fullchain.stat.exists
+        and _pre_privkey.stat.exists
+        and (_pre_cert_info.valid_at.threshold | default(false))
+        and (
+          ([proxy_domain_name] + proxy_unlimited_domains)
+          | difference(
+              _pre_cert_info.subject_alt_name | default([])
+              | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+            )
+          | length == 0
+        )
+      }}
+
+- name: Sync certs from S3 (local cert missing or stale)
+  become: true
+  command: >
+    aws s3 sync
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
+    /etc/letsencrypt/
+    --region {{ proxy_cert_s3_region }}
+    --quiet
+  register: _s3_restore
+  changed_when: _s3_restore.stdout | default('') | length > 0
+  failed_when: false
+  when: not _local_cert_ok
+
+# Missing bucket / empty prefix is fine (first-time setup); surface anything else
+# so operators see auth or network failures instead of falling through to certbot
+# with no hint why.
+- name: Warn on S3 cert sync failure
+  ansible.builtin.debug:
+    msg: |
+      S3 cert restore failed (rc={{ _s3_restore.rc }}). Proceeding to certbot.
+      stderr: {{ _s3_restore.stderr | default('') }}
+  when:
+    - not _local_cert_ok
+    - _s3_restore.rc | default(0) != 0
+
+- name: Stat restored cert.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+  register: _restored_cert
+  when: not _local_cert_ok
+
+- name: Stat restored fullchain.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+  register: _restored_fullchain
+  when: not _local_cert_ok
+
+- name: Stat restored privkey.pem
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+  register: _restored_privkey
+  when: not _local_cert_ok
+
+- name: Stat restored live cert directory
+  become: true
+  stat:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+  register: _restored_live_dir
+  when: not _local_cert_ok
+
+- name: Inspect restored cert
+  become: true
+  community.crypto.x509_certificate_info:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    valid_at:
+      threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
+  register: _restored_cert_info
+  when:
+    - not _local_cert_ok
+    - _restored_cert.stat.exists
+
+- name: Decide whether restored cert is usable for HTTPS
+  set_fact:
+    _restored_cert_ok: >-
+      {{
+        (_restored_cert.stat.exists | default(false))
+        and (_restored_fullchain.stat.exists | default(false))
+        and (_restored_privkey.stat.exists | default(false))
+        and (_restored_cert_info.valid_at.threshold | default(false))
+        and (
+          ([proxy_domain_name] + proxy_unlimited_domains)
+          | difference(
+              _restored_cert_info.subject_alt_name | default([])
+              | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+            )
+          | length == 0
+        )
+      }}
+  when: not _local_cert_ok
+
+- name: Remove stale restored cert if invalid or TLS bundle is incomplete
+  become: true
+  file:
+    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+    state: absent
+  when:
+    - not _local_cert_ok
+    - _restored_live_dir.stat.exists | default(false)
+    - not (_restored_cert_ok | default(false))
+
+- name: Mark cert restored
+  set_fact:
+    proxy_cert_restored: true
+  when: _local_cert_ok or (_restored_cert_ok | default(false))

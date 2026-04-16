@@ -55,11 +55,11 @@
 
 # Collectors
 [[inputs.socket_listener]]
-  service_address = "udp4://127.0.0.1:8094"
+  service_address = "udp4://127.0.0.1:{{ telegraf_port }}"
   data_format = "influx"
 
 [[inputs.socket_listener]]
-  service_address = "tcp4://127.0.0.1:8094"
+  service_address = "tcp4://127.0.0.1:{{ telegraf_port }}"
   data_format = "influx"
 
 # Basic

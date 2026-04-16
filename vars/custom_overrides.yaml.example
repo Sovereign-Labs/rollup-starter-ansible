@@ -52,7 +52,6 @@
 
 # Ports
 # rollup_http_port: 12346
-# nginx_port: 8081
 
 # Wipe data on deployment (DANGEROUS!)
 # wipe: false

@@ -1,0 +1,7 @@
+# Proxy (OpenResty/nginx) Telegraf inputs
+
+[[inputs.nginx]]
+  urls = ["http://127.0.0.1:{{ proxy_listen_port }}/nginx_status"]
+  response_timeout = "5s"
+  [inputs.nginx.tags]
+    source = "openresty-proxy"
