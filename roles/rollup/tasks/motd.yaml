@@ -1,6 +1,15 @@
 ---
 - name: Deploy MOTD banner
   become: true
+  vars:
+    last_version_id: >-
+      {{
+        (version_spec.rollup_versions | last).version_id
+        if version_spec is defined and
+           version_spec.rollup_versions is defined and
+           version_spec.rollup_versions | length > 0
+        else '<version id>'
+      }}
   ansible.builtin.template:
     src: motd.sh.j2
     dest: /etc/profile.d/motd.sh
