@@ -132,3 +132,11 @@ publish_reverted_evm_txs: false
 # rollup_custom_gas_token_id: "token_1nyl0e0yweragfsatygt24zmd8jrr2vqtvdfptzjhxkguz2xxx3vs0y07u7"
 # rollup_evm_max_fee_check_height: 0
 # rollup_hyperlane_meter_delivery_counter_after_height: 0
+# Chain hash overrides (list of objects)
+# Example:
+#   rollup_chain_hash_overrides:
+#     - start_height: 0
+#       end_height: 1000
+#       chain_hash: "0xabc...32_bytes_hex"
+#       grace_period: 100
+rollup_chain_hash_overrides: []
