@@ -1,0 +1,109 @@
+---
+# Build and run the node-discovery Rust service.
+#
+# The service polls PostgreSQL for cluster topology, writes the current
+# leader/followers into {{ proxy_node_discovery_output_file }} as Lua, and
+# triggers `nginx -s reload` — so OpenResty picks up new backends without
+# Ansible re-running. Mirrors ubuntu-evm-starter-script/setup_node_discovery.sh
+# but uses this repo's existing Rust toolchain from the common role.
+
+- name: Validate rollup_sequencer_postgres_connection_string is set
+  assert:
+    that:
+      - rollup_sequencer_postgres_connection_string is defined
+      - rollup_sequencer_postgres_connection_string | length > 0
+    fail_msg: >-
+      node-discovery uses `rollup_sequencer_postgres_connection_string`. Run the
+      rollup role on this host (it sets the fact via roles/rollup/tasks/postgres.yaml),
+      or set the variable explicitly in runtime_vars.yaml.
+
+- name: Validate rollup git vars are set
+  assert:
+    that:
+      - rollup_repo is defined and rollup_repo | length > 0
+      - rollup_repo_dir is defined and rollup_repo_dir | length > 0
+      - (rollup_commit_hash is defined and rollup_commit_hash | length > 0)
+        or (rollup_branch is defined and rollup_branch | length > 0)
+    fail_msg: >-
+      node-discovery builds from the rollup-starter checkout and reuses
+      `rollup_repo`, `rollup_repo_dir`, and `rollup_commit_hash` (or
+      `rollup_branch`). Set these in runtime_vars.yaml when running the
+      proxy role standalone.
+
+- name: Verify cargo is available for the ubuntu user
+  become: true
+  become_user: ubuntu
+  shell: test -f /home/ubuntu/.cargo/env && source /home/ubuntu/.cargo/env && command -v cargo
+  args:
+    executable: /bin/bash
+  register: _nd_cargo
+  changed_when: false
+
+- name: Checkout rollup-starter for node-discovery
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ rollup_repo }}"
+    dest: "/home/ubuntu/{{ rollup_repo_dir }}"
+    version: "{{ rollup_commit_hash if (rollup_commit_hash is defined and rollup_commit_hash | length > 0) else rollup_branch }}"
+    accept_hostkey: yes
+    force: yes
+
+- name: Build node-discovery binary (cargo release)
+  become: true
+  become_user: ubuntu
+  shell: source /home/ubuntu/.cargo/env && cargo build --release --manifest-path crates/utils/node-discovery/Cargo.toml
+  args:
+    chdir: "/home/ubuntu/{{ rollup_repo_dir }}"
+    executable: /bin/bash
+  register: _nd_build
+  async: 3600
+  poll: 5
+
+- name: Verify node-discovery binary was produced
+  stat:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
+  register: _nd_bin
+  become: true
+
+- name: Fail if node-discovery binary is missing
+  fail:
+    msg: "node-discovery build did not produce a binary at /home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
+  when: not _nd_bin.stat.exists
+
+- name: Install node-discovery binary to /usr/local/bin
+  become: true
+  copy:
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
+    dest: /usr/local/bin/node-discovery
+    remote_src: true
+    mode: '0755'
+  notify: restart node-discovery
+
+- name: Render node-discovery environment file (contains DB password)
+  become: true
+  template:
+    src: node-discovery.env.j2
+    dest: /etc/node-discovery.env
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart node-discovery
+
+- name: Render node-discovery systemd unit
+  become: true
+  template:
+    src: node-discovery.service.j2
+    dest: /etc/systemd/system/node-discovery.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart node-discovery
+
+- name: Enable and start node-discovery
+  become: true
+  systemd:
+    name: node-discovery
+    state: started
+    enabled: yes
+    daemon_reload: yes
