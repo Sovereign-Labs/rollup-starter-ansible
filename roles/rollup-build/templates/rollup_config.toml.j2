@@ -4,6 +4,7 @@
 path = "{{ rollup_storage_dir }}"
 state_cache_size = {{ rollup_state_cache_size }}
 user_commit_concurrency = {{ rollup_state_user_commit_concurrency }}
+kernel_hashtable_buckets = 1024000 # Hashtable buckets for kernel db. 4GB
 user_hashtable_buckets = {{ rollup_state_user_hashtable_buckets }}
 user_preallocate_ht = {{ rollup_state_user_preallocate_ht | lower }}
 kernel_commit_concurrency = 2
