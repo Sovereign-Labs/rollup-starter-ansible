@@ -17,4 +17,11 @@ Logs (range, example):    sudo journalctl -u rollup --since "1 hour ago" --until
 Sequencer readiness:      curl http://127.0.0.1:{{ rollup_http_port }}/sequencer/ready
 
 If you need to restore this node to a previous snapshot, run `/home/ubuntu/restore-from-snapshot.sh <snapshot-id|volume-id>`, passing an EBS snapshot or volume ID. A standard CDK deployment will save hourly snapshots using a backup node, which can be used for this. This will **wipe all rollup state** on this node.
+{% if is_backup_node | default(false) | bool %}
+
+This is a backup node. It creates hourly EBS snapshots from the `ubuntu` user's crontab.
+To temporarily suspend snapshots, run `sudo crontab -u ubuntu -e` and comment out this line:
+`0 * * * * /home/ubuntu/snapshot-rollup-data.sh`
+Uncomment the same line to resume snapshots. You can inspect the installed job with `sudo crontab -u ubuntu -l`.
+{% endif %}
 EOF
