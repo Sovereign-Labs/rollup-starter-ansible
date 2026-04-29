@@ -112,6 +112,11 @@ address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{
 ["0x1967d8af5bd86a497fb3dd7899a020e47560daaf", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x39D908dac893CBCB53Cc86e0ECc369aA4DeF1A29", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c", {resources_per_bucket = 0, refill_rate = 0}],
+["0xd04E33461FEA8302c5E1e13895b60cEe8AEfda7F", {resources_per_bucket = 0, refill_rate = 0}],
+["0x76EA76CA4Eb727f18956aB93445a94c5280412B9", {resources_per_bucket = 0, refill_rate = 0}],
+["0xFb3eFf152ea55D1BfA04Dbdd509A80fD7b72cdEB", {resources_per_bucket = 0, refill_rate = 0}],
+["0xFda1Ec4A6178d4916b001a065422D31EBE5F62FF", {resources_per_bucket = 0, refill_rate = 0}],
+["0x747AFB5c7A7fc34B547cD0FDEbf9b91759C5a52b", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x38735f03b30FbC022DdD06ABED01F0Ca823C6a94", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x97b1043abd9e6fc31681635166d430a458d14f9c", {resources_per_bucket = 0, refill_rate = 0}],
 ["0xb6f5ec1a0a9cd1526536d3f0426c429529471f40", {resources_per_bucket = 0, refill_rate = 0}],
@@ -143,7 +148,12 @@ address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{
 ["0x532b77b33a040587e9fd1800088225f99b8b0e8a", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x5d5b5dafecbf31bdb08bfd3edad4f2694372d0ef", {resources_per_bucket = 0, refill_rate = 0}],
 ["0xc103b7dc095c904b92081eef0c1640081ec01c10", {resources_per_bucket = 0, refill_rate = 0}],
-["0xe1e4c5e5ed8f03ae61b581e2def126025f2b9401", {resources_per_bucket = 0, refill_rate = 0}]]
+["0xe1e4c5e5ed8f03ae61b581e2def126025f2b9401", {resources_per_bucket = 0, refill_rate = 0}],
+["0xb637f84b66876ebf609c2a4208905f9ddac9d075", {resources_per_bucket = 0, refill_rate = 0}],
+["0x95584C303FCd48AF5c6B9873015f2AD0ca84EaE3", {resources_per_bucket = 0, refill_rate = 0}],
+["0xcB74874f1e06Fcf80A306e06e5379A44B488bA2D", {resources_per_bucket = 0, refill_rate = 0}],
+["0x0330070FD38Ec3bB94F58FA55D40368271E9e54A", {resources_per_bucket = 0, refill_rate = 0}],
+["0x9Be599d7867f5E1a2D7Ec6dB9710dF2b98A15573", {resources_per_bucket = 0, refill_rate = 0}]]
 {% if rollup_rate_limiter_ip_limits | length > 0 %}
 ip_custom_limits = [{% for item in rollup_rate_limiter_ip_limits %}["{{ item.ip }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }]{% if not loop.last %}, {% endif %}{% endfor %}]
 {% endif %}
