@@ -1,0 +1,217 @@
+---
+# GeoIP2 country blocking for the proxy role.
+# Triggered from tasks/main.yaml when proxy_geoip_enabled.
+#
+# Builds ngx_http_geoip2_module as a dynamic .so against OpenResty source
+# matching the installed apt-package version, seeds the GeoLite2-Country mmdb
+# from MaxMind, and installs a daily cron refresh helper. The apt-package
+# OpenResty install is kept; only one .so is added via `load_module`.
+
+# =============================================================================
+# Validation
+# =============================================================================
+- name: Validate MaxMind credentials are set
+  assert:
+    that:
+      - proxy_geoip_account_id | length > 0
+      - proxy_geoip_license_key | length > 0
+    fail_msg: "proxy_geoip_account_id and proxy_geoip_license_key are required when proxy_geoip_enabled is true"
+
+- name: Validate proxy_geoip_blocked_countries are ISO 3166-1 alpha-2
+  assert:
+    that: item is match('^[A-Z]{2}$')
+    fail_msg: "proxy_geoip_blocked_countries entry {{ item | to_json }} is not a 2-letter uppercase ISO 3166-1 alpha-2 code"
+  loop: "{{ proxy_geoip_blocked_countries }}"
+
+# =============================================================================
+# Build ngx_http_geoip2_module as a dynamic .so
+# =============================================================================
+- name: Install GeoIP build dependencies
+  become: true
+  apt:
+    name:
+      - libmaxminddb-dev
+      - libmaxminddb0
+      - build-essential
+      - libpcre3-dev
+      - libssl-dev
+      - zlib1g-dev
+      - wget
+      - tar
+      - git
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Check if geoip2 dynamic module is already installed
+  become: true
+  stat:
+    path: /usr/local/openresty/nginx/modules/ngx_http_geoip2_module.so
+  register: _geoip2_so_installed
+
+- name: Detect installed OpenResty version
+  command: openresty -v
+  register: _openresty_v
+  changed_when: false
+  when: not _geoip2_so_installed.stat.exists
+
+# `openresty -v` writes `nginx version: openresty/X.Y.Z.W` to stderr.
+- name: Parse OpenResty version
+  set_fact:
+    _openresty_ver: "{{ (_openresty_v.stderr | regex_search('openresty/([0-9.]+)', '\\1'))[0] }}"
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Ensure /usr/local/src exists
+  become: true
+  file:
+    path: /usr/local/src
+    state: directory
+    mode: '0755'
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Download OpenResty source tarball
+  become: true
+  get_url:
+    url: "https://openresty.org/download/openresty-{{ _openresty_ver }}.tar.gz"
+    dest: "/usr/local/src/openresty-{{ _openresty_ver }}.tar.gz"
+    mode: '0644'
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Extract OpenResty source
+  become: true
+  unarchive:
+    src: "/usr/local/src/openresty-{{ _openresty_ver }}.tar.gz"
+    dest: /usr/local/src/
+    remote_src: yes
+    creates: "/usr/local/src/openresty-{{ _openresty_ver }}/configure"
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Clone ngx_http_geoip2_module
+  become: true
+  git:
+    repo: "{{ proxy_geoip_module_repo }}"
+    dest: /usr/local/src/ngx_http_geoip2_module
+    version: "{{ proxy_geoip_module_version }}"
+    force: yes
+  when: not _geoip2_so_installed.stat.exists
+
+# Build the .so only. OpenResty's bundle structure puts the nginx Makefile under
+# build/nginx-*/, so we cd into it after configure and run only `make modules`.
+- name: Configure and build geoip2 dynamic module
+  become: true
+  shell: |
+    set -e
+    cd /usr/local/src/openresty-{{ _openresty_ver }}
+    ./configure --with-compat --add-dynamic-module=/usr/local/src/ngx_http_geoip2_module
+    cd build/nginx-*
+    make modules
+  args:
+    executable: /bin/bash
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Locate built ngx_http_geoip2_module.so
+  become: true
+  find:
+    paths: "/usr/local/src/openresty-{{ _openresty_ver }}/build"
+    patterns: "ngx_http_geoip2_module.so"
+    recurse: yes
+  register: _geoip2_so_built
+  when: not _geoip2_so_installed.stat.exists
+
+- name: Install ngx_http_geoip2_module.so
+  become: true
+  copy:
+    src: "{{ _geoip2_so_built.files[0].path }}"
+    dest: /usr/local/openresty/nginx/modules/ngx_http_geoip2_module.so
+    mode: '0755'
+    owner: root
+    group: root
+    remote_src: yes
+  when: not _geoip2_so_installed.stat.exists
+  notify: reload openresty
+
+# =============================================================================
+# Seed GeoLite2-Country.mmdb from MaxMind
+# =============================================================================
+- name: Ensure /usr/share/GeoIP exists
+  become: true
+  file:
+    path: "{{ proxy_geoip_mmdb_path | dirname }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Check whether mmdb already present
+  become: true
+  stat:
+    path: "{{ proxy_geoip_mmdb_path }}"
+  register: _mmdb_stat
+
+# Only seed in-role if missing. Daily refresh is owned by the cron helper, so
+# rerunning Ansible does not burn MaxMind's free-tier daily download quota.
+- name: Seed MaxMind GeoLite2-Country mmdb
+  when: not _mmdb_stat.stat.exists
+  become: true
+  block:
+    - name: Download GeoLite2-Country.tar.gz
+      get_url:
+        url: "https://download.maxmind.com/geoip/databases/GeoLite2-Country/download?suffix=tar.gz"
+        url_username: "{{ proxy_geoip_account_id }}"
+        url_password: "{{ proxy_geoip_license_key }}"
+        dest: /tmp/GeoLite2-Country.tar.gz
+        mode: '0600'
+
+    - name: Extract GeoLite2-Country.tar.gz
+      unarchive:
+        src: /tmp/GeoLite2-Country.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Locate extracted mmdb
+      find:
+        paths: /tmp
+        patterns: GeoLite2-Country.mmdb
+        recurse: yes
+      register: _mmdb_extracted
+
+    - name: Install mmdb
+      copy:
+        src: "{{ _mmdb_extracted.files[0].path }}"
+        dest: "{{ proxy_geoip_mmdb_path }}"
+        mode: '0644'
+        owner: root
+        group: root
+        remote_src: yes
+
+    - name: Clean up extracted GeoLite2-Country files in /tmp
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/GeoLite2-Country.tar.gz
+        - "{{ _mmdb_extracted.files[0].path | dirname }}"
+
+# =============================================================================
+# Daily cron refresh
+# =============================================================================
+# Templated bash (same precedent as templates/s3-upload-hook.sh.j2). Mode 0700
+# because the file embeds the MaxMind license key at template time.
+- name: Render update-geoip-dbs.sh
+  become: true
+  template:
+    src: update-geoip-dbs.sh.j2
+    dest: /usr/local/bin/update-geoip-dbs.sh
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Install daily mmdb refresh cron
+  become: true
+  cron:
+    name: "Refresh GeoIP2 country mmdb"
+    minute: "0"
+    hour: "3"
+    user: root
+    job: "/usr/local/bin/update-geoip-dbs.sh"
+    cron_file: update-geoip-dbs

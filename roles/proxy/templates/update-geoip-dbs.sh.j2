@@ -1,0 +1,27 @@
+#!/bin/bash
+# Managed by Ansible (roles/proxy). Refreshes MaxMind GeoLite2-Country.mmdb.
+# Same pattern as the existing templates/s3-upload-hook.sh.j2 — small
+# role-managed helpers triggered by periodic system events are kept here.
+# Idempotent and intended for a daily cron; the OpenResty `auto_reload 5m;`
+# directive picks up the new mmdb without a reload.
+# Mind MaxMind's daily download limits on the free tier.
+set -euo pipefail
+
+ACCOUNT_ID='{{ proxy_geoip_account_id }}'
+LICENSE_KEY='{{ proxy_geoip_license_key }}'
+DEST='{{ proxy_geoip_mmdb_path }}'
+URL='https://download.maxmind.com/geoip/databases/GeoLite2-Country/download?suffix=tar.gz'
+
+workdir="$(mktemp -d -t geoip-XXXXXXXX)"
+trap 'rm -rf "$workdir"' EXIT
+
+cd "$workdir"
+wget --quiet --content-disposition --user="$ACCOUNT_ID" --password="$LICENSE_KEY" \
+    "$URL" -O GeoLite2-Country.tar.gz
+
+tar xzf GeoLite2-Country.tar.gz
+mkdir -p "$(dirname "$DEST")"
+# Atomic replace so OpenResty's mmap'd fd isn't pulled out from under it.
+extracted="$(find "$workdir" -name 'GeoLite2-Country.mmdb' -print -quit)"
+install -m 0644 "$extracted" "$DEST.new"
+mv -f "$DEST.new" "$DEST"
