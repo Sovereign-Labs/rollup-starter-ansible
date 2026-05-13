@@ -3,6 +3,11 @@
 # Included in the http {} block of main OpenResty config
 # =============================================================================
 
+# GeoIP setup: real geoip2 directive when proxy_geoip_enabled, otherwise a stub
+# that keeps $geoip_country_blocked defined so conf.d/geoip-block.conf is a
+# safe no-op even with the feature off.
+include conf.d/geoip-setup.conf;
+
 {% if proxy_cloudflare_real_ip | bool %}
 # -----------------------------------------------------------------------------
 # Cloudflare Real IP
@@ -29,7 +34,12 @@ default_type application/json;
 # -----------------------------------------------------------------------------
 # Logging
 # -----------------------------------------------------------------------------
-log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+map $request_uri $logged_request_uri {
+    ~^/rpc/[A-Za-z0-9_-]+(?:(/)?(\?.*)?)$ /rpc/[redacted]$1$2;
+    default $request_uri;
+}
+
+log_format main '$remote_addr - $remote_user [$time_local] "$request_method $logged_request_uri $server_protocol" '
                 '$status $body_bytes_sent "$http_referer" '
                 '"$http_user_agent" "$http_x_forwarded_for" '
                 'rt=$request_time backend=$upstream_addr';

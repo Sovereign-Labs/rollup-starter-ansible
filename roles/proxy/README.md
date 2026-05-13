@@ -46,6 +46,14 @@ required from `proxy-location.conf` and `secure-rpc-locations.conf`):
   on the secure domains; everything else returns 401. The cert (if SSL is
   on) is extended to cover the secure domains.
 - `proxy_node_discovery_enabled` — opt in to dynamic backends.
+- `proxy_geoip_enabled` — opt in to GeoIP2 country blocking. When true, the
+  role builds `ngx_http_geoip2_module` as a dynamic `.so` against the
+  matching OpenResty source, seeds the MaxMind GeoLite2-Country mmdb, and
+  installs a daily cron refresh. Requires `proxy_geoip_account_id` and
+  `proxy_geoip_license_key`; pair with `proxy_geoip_blocked_countries`
+  (list of ISO 3166-1 alpha-2 codes). Public server blocks return 403 for
+  blocked countries; API-key-protected (`proxy_secure_domain_names`) blocks
+  deliberately bypass GeoIP.
 
 See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the
 full list.
@@ -61,16 +69,14 @@ validation.)
 
 ## Known gaps vs. the bash repo
 
-Two features in `ubuntu-evm-starter-script` require building OpenResty
-from source with extra C modules. This role keeps the apt-package install
-deliberately, so those features are **not** ported here:
+The apt-package OpenResty install doesn't include `nginx-module-vts`, so:
 
-- **VTS metrics** (`nginx-module-vts`). Telegraf scrapes `/nginx_status`
+- **VTS metrics** are not available. Telegraf scrapes `/nginx_status`
   (stub_status) only, so per-vhost / per-upstream / per-status-code
-  metrics aren't available. Dashboards built on bash's `nginx_vts` input
-  will show empty panels.
-- **GeoIP2 country blocking** (`ngx_http_geoip2_module` +
-  `libmaxminddb`). No country-level access control.
+  metrics aren't exposed. Dashboards built on bash's `nginx_vts` input
+  will show empty panels. Adding it would require either a source-build
+  path for OpenResty or a separate dynamic-module build like the one
+  `tasks/geoip.yaml` does for `ngx_http_geoip2_module`.
 
-If either becomes necessary, plan it as a separate change that introduces
-a source-build path — don't bolt it onto the apt path.
+GeoIP2 country blocking *is* ported (opt-in via `proxy_geoip_enabled`,
+implemented as a dynamic module build — see `tasks/geoip.yaml`).

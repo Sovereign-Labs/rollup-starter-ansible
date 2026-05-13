@@ -177,6 +177,16 @@
     mode: '0644'
 
 # =============================================================================
+# GeoIP2 country blocking (opt-in, dynamic module build)
+# =============================================================================
+# Builds and installs ngx_http_geoip2_module.so + seeds the MaxMind mmdb +
+# installs a daily refresh cron. Runs before config templates so the
+# `load_module` line in openresty-{http,https}.conf can reference a present .so.
+- name: Configure GeoIP2 country blocking
+  import_tasks: geoip.yaml
+  when: proxy_geoip_enabled | bool
+
+# =============================================================================
 # Node-Discovery Pre-Start Stub
 # =============================================================================
 # If dynamic backend discovery is enabled, http-base.conf references
@@ -206,6 +216,26 @@
 # =============================================================================
 # Render Configuration Templates
 # =============================================================================
+# geoip-setup.conf is always rendered (live geoip2 directive when enabled,
+# stub `$geoip_country_blocked = 0` map otherwise) so http-base.conf's
+# `include conf.d/geoip-setup.conf;` stays valid and geoip-block.conf's
+# `if` is a safe no-op when the feature is off.
+- name: Render geoip-setup.conf (stub or live)
+  become: true
+  template:
+    src: conf.d/geoip-setup.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/geoip-setup.conf
+    mode: '0644'
+  notify: reload openresty
+
+- name: Render geoip-block.conf
+  become: true
+  template:
+    src: conf.d/geoip-block.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/geoip-block.conf
+    mode: '0644'
+  notify: reload openresty
+
 - name: Render http-base.conf
   become: true
   template:
@@ -256,6 +286,12 @@
     name: openresty
     state: started
     enabled: yes
+
+- name: Apply OpenResty HTTP config before certificate checks
+  become: true
+  systemd:
+    name: openresty
+    state: reloaded
 
 # =============================================================================
 # S3 Certificate Restore (zero-downtime proxy replacement)

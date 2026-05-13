@@ -49,6 +49,9 @@ wipe: false
 
 # Rollup ports
 rollup_http_port: 12346
+# Optional override for the rollup bind host.
+# Default: "127.0.0.1" when "p" is in switches, otherwise "0.0.0.0"
+# rollup_http_host: "0.0.0.0"
 
 # Genesis addresses
 

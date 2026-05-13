@@ -59,6 +59,20 @@ proxy_cert_s3_region: ""                # required when bucket set
 proxy_cert_s3_prefix: "letsencrypt/"    # keep trailing slash
 proxy_cert_expiry_threshold_days: 30    # re-issue if restored cert expires sooner
 
+# GeoIP2 country blocking (opt-in).
+# When enabled, the role builds ngx_http_geoip2_module as a dynamic .so against
+# OpenResty source matching the installed apt version, downloads the
+# GeoLite2-Country mmdb from MaxMind, and installs a daily cron to refresh it.
+# Every server block then includes a 403-on-blocked-country snippet.
+# Deployments that don't set MaxMind credentials see no change.
+proxy_geoip_enabled: false
+proxy_geoip_account_id: ""              # MaxMind account ID (required when enabled)
+proxy_geoip_license_key: ""             # MaxMind license key (required when enabled)
+proxy_geoip_blocked_countries: []       # ISO 3166-1 alpha-2 codes, e.g. ["CH", "CN"]
+proxy_geoip_module_repo: "https://github.com/leev/ngx_http_geoip2_module.git"
+proxy_geoip_module_version: "3.4"       # tag — bump deliberately
+proxy_geoip_mmdb_path: "/usr/share/GeoIP/GeoLite2-Country.mmdb"
+
 # Dynamic Backend Discovery (node-discovery Rust service)
 # When enabled, a systemd service builds and runs node-discovery, which
 # subscribes to PostgreSQL for cluster topology changes, writes Lua to

@@ -11,6 +11,15 @@
     mode: '0755'
   become: true
 
+- name: Derive rollup HTTP bind host
+  set_fact:
+    rollup_http_bind_host: >-
+      {{
+        rollup_http_host
+        if (rollup_http_host | default('') | string | length > 0)
+        else ('127.0.0.1' if 'p' in (switches | default('')) else '0.0.0.0')
+      }}
+
 - name: render rollup_config.toml
   become: true
   become_user: sovereign

@@ -37,6 +37,9 @@ versions_output_dir: "/home/sovereign/versions"
 rollup_bin: "rollup"
 
 # Network ports
+# Leave empty to keep the backend private when the proxy role is enabled and
+# public otherwise.
+rollup_http_host: ""
 rollup_http_port: 12346
 
 # Sequencer address - used for telegraf monitoring

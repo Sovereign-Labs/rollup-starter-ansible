@@ -1,15 +1,8 @@
--- Shared backend-selection module.
--- Required from both proxy-location.conf (public) and
--- secure-rpc-locations.conf (API-key-protected). Mirrors
--- ubuntu-evm-starter-script/conf.d/backend-select.lua, with the static
--- fallback IPs baked in at template-render time so the lua module is usable
--- before the node-discovery service writes its first update.
+-- Shared backend-selection module for /rpc and /sequencer routes.
+-- Static fallback IPs are baked in at template-render time so this works before
+-- node-discovery writes its first update.
 
 local _M = {}
-
-local function is_empty(value)
-    return not value or value == ""
-end
 
 local function pick_backend(use_leader, backend_cache)
     if use_leader then
@@ -24,9 +17,6 @@ local function pick_backend(use_leader, backend_cache)
         or backend_cache:get("leader")
         or "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ rollup_http_port }}"
 end
-
--- Exposed for unit tests.
-_M.pick_backend = pick_backend
 
 function _M.select(path)
     local method = ngx.var.request_method
