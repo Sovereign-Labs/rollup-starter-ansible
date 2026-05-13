@@ -195,14 +195,24 @@
 # =============================================================================
 # Daily cron refresh
 # =============================================================================
-# Templated bash (same precedent as templates/s3-upload-hook.sh.j2). Mode 0700
-# because the file embeds the MaxMind license key at template time.
-- name: Render update-geoip-dbs.sh
+# The refresh helper is a templated Ansible playbook (not bash), invoked from
+# cron via `ansible-playbook -c local`. Mode 0600 because the rendered file
+# embeds the MaxMind license key at template time.
+- name: Ensure proxy share directory exists
+  become: true
+  file:
+    path: /usr/local/share/proxy
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Render geoip-refresh.yml playbook
   become: true
   template:
-    src: update-geoip-dbs.sh.j2
-    dest: /usr/local/bin/update-geoip-dbs.sh
-    mode: '0700'
+    src: geoip-refresh.yml.j2
+    dest: /usr/local/share/proxy/geoip-refresh.yml
+    mode: '0600'
     owner: root
     group: root
 
@@ -213,5 +223,5 @@
     minute: "0"
     hour: "3"
     user: root
-    job: "/usr/local/bin/update-geoip-dbs.sh"
+    job: "/usr/bin/ansible-playbook -i 'localhost,' -c local /usr/local/share/proxy/geoip-refresh.yml"
     cron_file: update-geoip-dbs

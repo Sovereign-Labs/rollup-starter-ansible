@@ -3,6 +3,11 @@
 # Requires $valid_api_key map, failed_auth_limit, and backend_cache shared
 # dicts (set up in http-base.conf), and the conf.d/backend-select.lua module.
 
+# Server-scope GeoIP block: short-circuits to 403 before location matching, so
+# blocked countries can't reach the API-key auth check. No-op when
+# proxy_geoip_enabled is false (stub map in geoip-setup.conf).
+include conf.d/geoip-block.conf;
+
 # Only /rpc/<key> (optionally trailing slash) is allowed.
 location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
 {% if proxy_rate_limit_enabled %}

@@ -1,9 +1,9 @@
-# Main proxy location with dynamic backend selection
-# Included in server {} blocks (public servers only — secure-rpc-locations.conf
-# is deliberately exempt so API-key users bypass GeoIP blocking).
+# Main proxy location with dynamic backend selection.
+# Included in the public server block.
 
 # Server-scope GeoIP block: short-circuits to 403 before location matching.
-# No-op when proxy_geoip_enabled is false (stub map in geoip-setup.conf).
+# Applied to every server block (public AND API-key-protected); no-op when
+# proxy_geoip_enabled is false (stub map in geoip-setup.conf).
 include conf.d/geoip-block.conf;
 
 location / {

@@ -49,11 +49,13 @@ required from `proxy-location.conf` and `secure-rpc-locations.conf`):
 - `proxy_geoip_enabled` — opt in to GeoIP2 country blocking. When true, the
   role builds `ngx_http_geoip2_module` as a dynamic `.so` against the
   matching OpenResty source, seeds the MaxMind GeoLite2-Country mmdb, and
-  installs a daily cron refresh. Requires `proxy_geoip_account_id` and
-  `proxy_geoip_license_key`; pair with `proxy_geoip_blocked_countries`
-  (list of ISO 3166-1 alpha-2 codes). Public server blocks return 403 for
-  blocked countries; API-key-protected (`proxy_secure_domain_names`) blocks
-  deliberately bypass GeoIP.
+  installs a daily refresh playbook (`/usr/local/share/proxy/geoip-refresh.yml`)
+  invoked from cron via `ansible-playbook -c local`. Requires
+  `proxy_geoip_account_id` and `proxy_geoip_license_key`; pair with
+  `proxy_geoip_blocked_countries` (list of ISO 3166-1 alpha-2 codes).
+  Blocked countries get a 403 on every server block — both public and the
+  API-key-protected `proxy_secure_domain_names` blocks — short-circuited
+  before authentication.
 
 See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the
 full list.

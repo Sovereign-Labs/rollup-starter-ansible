@@ -1,0 +1,70 @@
+---
+# Managed by Ansible (roles/proxy). Daily refresh of the MaxMind
+# GeoLite2-Country.mmdb that ngx_http_geoip2_module reads. Triggered by the
+# /etc/cron.d/update-geoip-dbs entry installed by roles/proxy/tasks/geoip.yaml.
+#
+# This file replaces the earlier templates/update-geoip-dbs.sh.j2: the cron
+# trigger is still a system thing, but the actual download/install steps are
+# kept in Ansible to match the rest of the role.
+#
+# Credentials and proxy_geoip_mmdb_path are baked in at template-render time
+# (Jinja `{{ ... }}`). Runtime register references stay raw so they execute at
+# ansible-playbook time, not at template render time.
+#
+# OpenResty's `auto_reload 5m;` in conf.d/geoip-setup.conf picks up the new
+# mmdb without a service reload. Mind MaxMind's free-tier daily download limit.
+
+- hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+  vars:
+    _geoip_workdir: /tmp/geoip-refresh
+  tasks:
+    - name: Ensure clean workdir
+      ansible.builtin.file:
+        path: "{% raw %}{{ _geoip_workdir }}{% endraw %}"
+        state: absent
+
+    - name: Recreate workdir
+      ansible.builtin.file:
+        path: "{% raw %}{{ _geoip_workdir }}{% endraw %}"
+        state: directory
+        mode: '0700'
+
+    - name: Download GeoLite2-Country.tar.gz
+      ansible.builtin.get_url:
+        url: "https://download.maxmind.com/geoip/databases/GeoLite2-Country/download?suffix=tar.gz"
+        url_username: "{{ proxy_geoip_account_id }}"
+        url_password: "{{ proxy_geoip_license_key }}"
+        dest: "{% raw %}{{ _geoip_workdir }}/GeoLite2-Country.tar.gz{% endraw %}"
+        mode: '0600'
+
+    - name: Extract tarball
+      ansible.builtin.unarchive:
+        src: "{% raw %}{{ _geoip_workdir }}/GeoLite2-Country.tar.gz{% endraw %}"
+        dest: "{% raw %}{{ _geoip_workdir }}{% endraw %}"
+        remote_src: yes
+
+    - name: Locate extracted mmdb
+      ansible.builtin.find:
+        paths: "{% raw %}{{ _geoip_workdir }}{% endraw %}"
+        patterns: GeoLite2-Country.mmdb
+        recurse: yes
+      register: _mmdb_extracted
+
+    # ansible.builtin.copy writes to a temp file and renames atomically, so the
+    # mmap'd fd OpenResty holds isn't pulled out from under it mid-read.
+    - name: Install mmdb atomically
+      ansible.builtin.copy:
+        src: "{% raw %}{{ _mmdb_extracted.files[0].path }}{% endraw %}"
+        dest: "{{ proxy_geoip_mmdb_path }}"
+        mode: '0644'
+        owner: root
+        group: root
+        remote_src: yes
+
+    - name: Cleanup workdir
+      ansible.builtin.file:
+        path: "{% raw %}{{ _geoip_workdir }}{% endraw %}"
+        state: absent
