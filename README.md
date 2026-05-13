@@ -68,6 +68,9 @@ This setup supports multiple deployment configurations:
 ```bash
 brew install ansible
 ansible --version  # Should be ansible [core 2.16+]
+
+# Install required collections (community.crypto for the proxy role's cert checks)
+ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Configuration

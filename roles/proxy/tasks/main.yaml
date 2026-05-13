@@ -154,6 +154,13 @@
     state: directory
     mode: '0755'
 
+- name: Install nginx logrotate config
+  become: true
+  template:
+    src: openresty.logrotate.j2
+    dest: /etc/logrotate.d/openresty
+    mode: '0644'
+
 # =============================================================================
 # Node-Discovery Pre-Start Stub
 # =============================================================================

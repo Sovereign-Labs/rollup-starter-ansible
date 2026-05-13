@@ -8,6 +8,10 @@ location / {
     limit_req_status 429;
 {% endif %}
 
+    # Bare `/` is the JSON-RPC endpoint for standard ETH clients; route it
+    # exactly like /rpc so the eth_sendRawTransaction* leader check applies.
+    rewrite ^/$ /rpc break;
+
     set $backend '';
 
     access_by_lua_block {
@@ -23,6 +27,9 @@ location / {
 
         -- Route /sequencer/txs POSTs to leader
         if uri == "/sequencer/txs" and method == "POST" then
+            use_leader = true
+        -- Route /sequencer/ready (leader health check) to leader
+        elseif uri == "/sequencer/ready" and method == "GET" then
             use_leader = true
         -- Route WebSocket connections to leader for consistency
         elseif is_websocket then
