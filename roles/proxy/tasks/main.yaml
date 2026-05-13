@@ -9,6 +9,20 @@
     that: proxy_rollup_leader_ip is defined and proxy_rollup_leader_ip | length > 0
     fail_msg: "proxy_rollup_leader_ip is required when using the proxy role"
 
+# rollup_http_port is consumed by backend-select.lua.j2 and http-base.conf.j2
+# templates. Normally comes from the rollup role's defaults (12346); assert
+# explicitly so a proxy-only run (`switches=p`) fails loudly instead of
+# rendering `proxy_pass http://ip:` and failing at request time.
+- name: Validate rollup_http_port is defined
+  assert:
+    that:
+      - rollup_http_port is defined
+      - rollup_http_port | string | length > 0
+    fail_msg: >-
+      rollup_http_port is required (consumed by proxy backend templates). It is
+      defined by the rollup role's defaults; set it in runtime_vars.yaml when
+      running the proxy role standalone (`switches=p`).
+
 - name: Validate SSL requirements
   assert:
     that:
@@ -302,31 +316,23 @@
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
 
-- name: Initialize HTTPS readiness flag
-  set_fact:
-    proxy_https_ready: false
-  when: proxy_ssl_enabled | bool
-
 # =============================================================================
 # SSL Certificate Acquisition
 # =============================================================================
-- name: Build certbot domain arguments
-  set_fact:
-    _certbot_domains: "{{ _proxy_all_cert_domains }}"
-  when: proxy_ssl_enabled | bool
-
+# Failure here (rate limit, DNS not propagated, etc.) is non-fatal: the stat
+# checks below set proxy_https_ready=false and the play continues on HTTP.
 - name: Obtain SSL certificate for all domains (single cert with SANs)
   become: true
   shell: |
     certbot certonly --webroot \
       -w {{ proxy_certbot_webroot }} \
-      {% for domain in _certbot_domains %}-d {{ domain }} {% endfor %} \
+      {% for domain in _proxy_all_cert_domains %}-d {{ domain }} {% endfor %} \
       --non-interactive \
       --agree-tos \
       --email {{ proxy_certbot_email }} \
       --keep-until-expiring
   register: certbot_result
-  ignore_errors: yes
+  failed_when: false
   changed_when: "'Successfully received certificate' in (certbot_result.stdout | default(''))"
   when:
     - proxy_ssl_enabled | bool
@@ -362,7 +368,9 @@
     aws s3 sync /etc/letsencrypt/
     s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
     --region {{ proxy_cert_s3_region }}
-    --quiet --exclude "*.log"
+    --exclude "*.log"
+  register: _s3_cert_upload
+  changed_when: _s3_cert_upload.stdout | default('') | length > 0
   when:
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0

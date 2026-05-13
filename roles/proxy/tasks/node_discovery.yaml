@@ -30,6 +30,20 @@
       `rollup_branch`). Set these in runtime_vars.yaml when running the
       proxy role standalone.
 
+# telegraf_port is the local metrics socket the node-discovery service writes
+# to (see node-discovery.service.j2). Comes from the common role's defaults
+# (8094); assert explicitly so a proxy-only run fails loudly instead of
+# rendering `--metrics-port ` (empty arg).
+- name: Validate telegraf_port is defined
+  assert:
+    that:
+      - telegraf_port is defined
+      - telegraf_port | string | length > 0
+    fail_msg: >-
+      telegraf_port is required (used by node-discovery's --metrics-port). It
+      is defined by the common role's defaults; set it in runtime_vars.yaml
+      when running the proxy role standalone (`switches=p`).
+
 - name: Verify cargo is available for the ubuntu user
   become: true
   become_user: ubuntu
@@ -39,6 +53,9 @@
   register: _nd_cargo
   changed_when: false
 
+# force: yes discards local mods under /home/ubuntu/{{ rollup_repo_dir }} so
+# re-runs converge on the pinned commit/branch. Operators editing this checkout
+# in place should expect their changes to be wiped.
 - name: Checkout rollup-starter for node-discovery
   become: true
   become_user: ubuntu

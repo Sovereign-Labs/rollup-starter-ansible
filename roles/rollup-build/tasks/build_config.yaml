@@ -11,6 +11,11 @@
     mode: '0755'
   become: true
 
+# When invoked from roles/rollup/tasks/build_single_version.yaml the sub-play
+# runs with `switches=b`, so rollup_http_host is passed pre-resolved by the
+# parent. When operators invoke rollup-build directly, the switches-based
+# fallback handles the derivation here. Keep this expression in sync with the
+# parent in build_single_version.yaml.
 - name: Derive rollup HTTP bind host
   set_fact:
     rollup_http_bind_host: >-

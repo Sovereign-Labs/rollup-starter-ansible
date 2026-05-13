@@ -1,7 +1,8 @@
 {% if proxy_geoip_enabled | bool %}
 # GeoIP2 country lookup. Reads the mmdb seeded by tasks/geoip.yaml and refreshed
-# daily by /usr/local/bin/update-geoip-dbs.sh; auto_reload picks up new files
-# within 5 minutes without an openresty reload.
+# daily by /usr/local/share/proxy/geoip-refresh.yml (an Ansible playbook
+# invoked from /etc/cron.d/update-geoip-dbs via `ansible-playbook -c local`);
+# auto_reload picks up new files within 5 minutes without an openresty reload.
 geoip2 {{ proxy_geoip_mmdb_path }} {
     auto_reload 5m;
     $geoip2_data_country_iso_code country iso_code;
