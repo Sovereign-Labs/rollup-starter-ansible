@@ -24,6 +24,12 @@ proxy_rate_limit_exempt_ips: []
 # DNS Resolver (empty = system default)
 proxy_dns_resolver: ""
 
+# Cloudflare front: when true, trust CF-Connecting-IP from the Cloudflare edge
+# CIDRs (defined in roles/proxy/vars/main.yaml) so $remote_addr — and therefore
+# rate limiting + access logs — reflect the real client IP. Leave false when
+# the proxy is exposed directly to the internet.
+proxy_cloudflare_real_ip: false
+
 # Timeouts
 proxy_websocket_timeout: "3600s"
 proxy_connect_timeout: "5s"

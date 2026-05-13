@@ -3,6 +3,23 @@
 # Included in the http {} block of main OpenResty config
 # =============================================================================
 
+{% if proxy_cloudflare_real_ip | bool %}
+# -----------------------------------------------------------------------------
+# Cloudflare Real IP
+# Trust CF-Connecting-IP only from Cloudflare edge CIDRs so $remote_addr (and
+# therefore rate limiting + access logs) reflect the real client IP.
+# CIDR lists are role constants; see roles/proxy/vars/main.yaml.
+# -----------------------------------------------------------------------------
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
+{% for cidr in proxy_cloudflare_cidrs_v4 %}
+set_real_ip_from {{ cidr }};
+{% endfor %}
+{% for cidr in proxy_cloudflare_cidrs_v6 %}
+set_real_ip_from {{ cidr }};
+{% endfor %}
+
+{% endif %}
 # -----------------------------------------------------------------------------
 # MIME Types and Defaults
 # -----------------------------------------------------------------------------
