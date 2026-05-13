@@ -12,7 +12,7 @@ ExecStart=/usr/local/bin/node-discovery \
   --output-file ${OUTPUT_FILE} \
   --max-age-millis {{ proxy_node_discovery_max_age_millis }} \
   --nginx-binary /usr/local/openresty/nginx/sbin/nginx \
-  --metrics-port {{ telegraf_port }}
+  --metrics-port {{ telegraf_port | default(8094, true) }}
 Restart=always
 RestartSec=5
 StandardOutput=journal

@@ -106,7 +106,7 @@ rollup_http_port: 12346
 # GeoIP2 country blocking. When enabled, the role builds
 # ngx_http_geoip2_module from source against the matching OpenResty, seeds
 # the GeoLite2-Country mmdb from MaxMind, and installs a daily refresh
-# playbook. Applies to every server block (public AND API-key-protected).
+# helper. Applies to every server block (public AND API-key-protected).
 # proxy_geoip_enabled: true
 # proxy_geoip_account_id: "12345"
 # proxy_geoip_license_key: "abcdef..."
