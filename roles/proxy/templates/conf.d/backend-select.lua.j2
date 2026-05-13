@@ -1,0 +1,64 @@
+-- Shared backend-selection module.
+-- Required from both proxy-location.conf (public) and
+-- secure-rpc-locations.conf (API-key-protected). Mirrors
+-- ubuntu-evm-starter-script/conf.d/backend-select.lua, with the static
+-- fallback IPs baked in at template-render time so the lua module is usable
+-- before the node-discovery service writes its first update.
+
+local _M = {}
+
+local function is_empty(value)
+    return not value or value == ""
+end
+
+local function pick_backend(use_leader, backend_cache)
+    if use_leader then
+        return backend_cache:get("leader")
+            or "{{ proxy_rollup_leader_ip }}:{{ rollup_http_port }}"
+    end
+
+    -- Reads: prefer follower_1 (node-discovery output), then follower,
+    -- then leader, then the static template fallback.
+    return backend_cache:get("follower_1")
+        or backend_cache:get("follower")
+        or backend_cache:get("leader")
+        or "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ rollup_http_port }}"
+end
+
+-- Exposed for unit tests.
+_M.pick_backend = pick_backend
+
+function _M.select(path)
+    local method = ngx.var.request_method
+    local backend_cache = ngx.shared.backend_cache
+    local use_leader = false
+
+    -- WebSocket upgrades go to the leader for consistency.
+    local is_websocket = ngx.var.http_upgrade
+        and ngx.var.http_upgrade:lower() == "websocket"
+
+    if path == "/sequencer/txs" and method == "POST" then
+        use_leader = true
+    elseif path == "/sequencer/ready" and method == "GET" then
+        -- Leader health check.
+        use_leader = true
+    elseif is_websocket then
+        use_leader = true
+    elseif path == "/rpc" and method == "POST" then
+        -- Inspect the JSON-RPC body for leader-required methods.
+        ngx.req.read_body()
+        local body = ngx.req.get_body_data()
+        if body then
+            local rpc_method = body:match('"method"%s*:%s*"([^"]+)"')
+            if rpc_method == "eth_sendRawTransaction"
+                or rpc_method == "eth_sendRawTransactionSync"
+                or rpc_method == "realtime_sendRawTransaction" then
+                use_leader = true
+            end
+        end
+    end
+
+    ngx.var.backend = pick_backend(use_leader, backend_cache)
+end
+
+return _M

@@ -51,7 +51,7 @@
         and _pre_privkey.stat.exists
         and (_pre_cert_info.valid_at.threshold | default(false))
         and (
-          ([proxy_domain_name] + proxy_unlimited_domains)
+          _proxy_all_cert_domains
           | difference(
               _pre_cert_info.subject_alt_name | default([])
               | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
@@ -133,7 +133,7 @@
         and (_restored_privkey.stat.exists | default(false))
         and (_restored_cert_info.valid_at.threshold | default(false))
         and (
-          ([proxy_domain_name] + proxy_unlimited_domains)
+          _proxy_all_cert_domains
           | difference(
               _restored_cert_info.subject_alt_name | default([])
               | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list

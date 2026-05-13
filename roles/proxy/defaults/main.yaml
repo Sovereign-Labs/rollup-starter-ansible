@@ -30,6 +30,14 @@ proxy_dns_resolver: ""
 # the proxy is exposed directly to the internet.
 proxy_cloudflare_real_ip: false
 
+# API-key-protected RPC endpoint on a separate set of domains. When enabled,
+# clients must use https://<secure-domain>/rpc/<api_key>; any other path on
+# those domains returns 401. The cert (when SSL is on) covers all public
+# AND secure domains as SANs.
+proxy_api_key_auth_enabled: false
+proxy_api_keys: []                # list of API key strings
+proxy_secure_domain_names: []     # list of domain strings (server_name)
+
 # Timeouts
 proxy_websocket_timeout: "3600s"
 proxy_connect_timeout: "5s"

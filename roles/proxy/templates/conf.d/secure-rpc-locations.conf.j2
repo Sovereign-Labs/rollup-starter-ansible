@@ -1,0 +1,78 @@
+# API-key-protected RPC locations.
+# Included by the secure server block when proxy_api_key_auth_enabled is true.
+# Requires $valid_api_key map, failed_auth_limit, and backend_cache shared
+# dicts (set up in http-base.conf), and the conf.d/backend-select.lua module.
+
+# Only /rpc/<key> (optionally trailing slash) is allowed.
+location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
+{% if proxy_rate_limit_enabled %}
+    limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
+    limit_req_status 429;
+{% endif %}
+
+    set $backend '';
+
+    access_by_lua_block {
+        -- Rate limit failed API-key attempts per source IP.
+        local fail_cache = ngx.shared.failed_auth_limit
+        local fail_key = "fail:" .. ngx.var.binary_remote_addr
+        local fail_count = fail_cache:get(fail_key) or 0
+
+        if fail_count > 10 then
+            ngx.status = 429
+            ngx.header["Content-Type"] = "application/json"
+            ngx.say('{"error": "Too many invalid API key attempts"}')
+            return ngx.exit(429)
+        end
+
+        if ngx.var.valid_api_key == "0" then
+            fail_cache:incr(fail_key, 1, 0, 5)
+            ngx.status = 401
+            ngx.header["Content-Type"] = "application/json"
+            ngx.say('{"error": "Invalid API key"}')
+            return ngx.exit(401)
+        end
+
+        -- Valid key — pick a backend. Pass "/rpc" explicitly since the
+        -- rewrite below hasn't run yet in the access phase ordering.
+        require("backend-select").select("/rpc")
+    }
+
+    rewrite ^ /rpc break;
+
+    proxy_pass http://$backend;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+
+    proxy_connect_timeout {{ proxy_connect_timeout }};
+    proxy_send_timeout {{ proxy_websocket_timeout }};
+    proxy_read_timeout {{ proxy_websocket_timeout }};
+}
+
+# Anything else on a secure domain is rejected.
+location / {
+    access_by_lua_block {
+        local cache = ngx.shared.failed_auth_limit
+        local key = "nokey:" .. ngx.var.binary_remote_addr
+        local count = cache:get(key) or 0
+
+        if count > 10 then
+            ngx.status = 429
+            ngx.header["Content-Type"] = "application/json"
+            ngx.say('{"error": "Too many requests without API key"}')
+            return ngx.exit(429)
+        end
+
+        cache:incr(key, 1, 0, 5)
+
+        ngx.status = 401
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error": "API key required. Use /rpc/<api_key>"}')
+        return ngx.exit(401)
+    }
+}

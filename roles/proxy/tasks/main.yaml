@@ -25,9 +25,24 @@
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
 
+- name: Validate API key auth requirements
+  assert:
+    that:
+      - proxy_api_keys | length > 0
+      - proxy_secure_domain_names | length > 0
+    fail_msg: "proxy_api_keys and proxy_secure_domain_names are required when proxy_api_key_auth_enabled is true"
+  when: proxy_api_key_auth_enabled | bool
+
 - name: Set follower IP to leader if not specified
   set_fact:
     proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
+
+# Domain list for the SSL cert (public + secure). Used by certbot and by the
+# S3 cert restore SAN check, so they stay in sync.
+- name: Compute all cert domains
+  set_fact:
+    _proxy_all_cert_domains: "{{ [proxy_domain_name] + proxy_unlimited_domains + (proxy_secure_domain_names if proxy_api_key_auth_enabled | bool else []) }}"
+  when: proxy_ssl_enabled | bool
 
 # =============================================================================
 # OpenResty Installation (using modern GPG keyring approach)
@@ -199,12 +214,29 @@
     mode: '0644'
   notify: reload openresty
 
+- name: Render backend-select.lua
+  become: true
+  template:
+    src: conf.d/backend-select.lua.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/backend-select.lua
+    mode: '0644'
+  notify: reload openresty
+
 - name: Render proxy-location.conf
   become: true
   template:
     src: conf.d/proxy-location.conf.j2
     dest: /usr/local/openresty/nginx/conf/conf.d/proxy-location.conf
     mode: '0644'
+  notify: reload openresty
+
+- name: Render secure-rpc-locations.conf
+  become: true
+  template:
+    src: conf.d/secure-rpc-locations.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/secure-rpc-locations.conf
+    mode: '0644'
+  when: proxy_api_key_auth_enabled | bool
   notify: reload openresty
 
 # =============================================================================
@@ -244,7 +276,7 @@
 # =============================================================================
 - name: Build certbot domain arguments
   set_fact:
-    _certbot_domains: "{{ [proxy_domain_name] + proxy_unlimited_domains }}"
+    _certbot_domains: "{{ _proxy_all_cert_domains }}"
   when: proxy_ssl_enabled | bool
 
 - name: Obtain SSL certificate for all domains (single cert with SANs)

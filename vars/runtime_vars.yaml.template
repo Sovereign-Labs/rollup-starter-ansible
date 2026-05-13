@@ -84,6 +84,22 @@ rollup_http_port: 12346
 # above (same checkout as the rollup-build role).
 # proxy_node_discovery_enabled: true
 
+# Cloudflare front (set to true when this proxy sits behind Cloudflare).
+# Trusts CF-Connecting-IP from the Cloudflare edge CIDRs so $remote_addr —
+# and therefore rate limiting and access logs — reflect the real client IP.
+# proxy_cloudflare_real_ip: true
+
+# API-key-protected RPC endpoint on a separate set of domains.
+# Clients must use https://<secure-domain>/rpc/<api_key>; any other path on
+# those domains returns 401. The cert (when SSL is on) covers all public AND
+# secure domains as SANs.
+# proxy_api_key_auth_enabled: true
+# proxy_api_keys:
+#   - "abc123_key_1"
+#   - "def456_key_2"
+# proxy_secure_domain_names:
+#   - "secure-rpc.example.com"
+
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
 # ============================================================================

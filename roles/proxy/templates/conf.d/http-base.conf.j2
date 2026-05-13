@@ -95,6 +95,13 @@ map $http_upgrade $connection_upgrade {
 # Backend Configuration (Lua)
 # -----------------------------------------------------------------------------
 lua_shared_dict backend_cache 1m;
+{% if proxy_api_key_auth_enabled | bool %}
+# Per-IP counter for failed API-key auth attempts (used by secure-rpc-locations.conf).
+lua_shared_dict failed_auth_limit 10m;
+{% endif %}
+
+# Make conf.d/*.lua importable via `require(...)` (e.g. backend-select).
+lua_package_path "/usr/local/openresty/nginx/conf/conf.d/?.lua;;";
 
 {% if proxy_node_discovery_enabled | bool %}
 # Dynamic backends: node-discovery service writes this file from PostgreSQL
@@ -109,6 +116,20 @@ init_worker_by_lua_block {
     -- proxy_rollup_follower_ip is guaranteed non-empty by the set_fact in
     -- roles/proxy/tasks/main.yaml (defaults to leader when operator leaves it blank).
     cache:set("follower_1", "{{ proxy_rollup_follower_ip }}:{{ rollup_http_port }}")
+}
+{% endif %}
+
+{% if proxy_api_key_auth_enabled | bool %}
+# -----------------------------------------------------------------------------
+# API Key Validation Map
+# -----------------------------------------------------------------------------
+# Uses $request_uri (not $uri) because $uri gets rewritten before the access
+# phase. Keys are validated by matching the path prefix /rpc/<key>.
+map $request_uri $valid_api_key {
+{% for key in proxy_api_keys %}
+    ~^/rpc/{{ key }}(/|\?|$) 1;
+{% endfor %}
+    default 0;
 }
 {% endif %}
 

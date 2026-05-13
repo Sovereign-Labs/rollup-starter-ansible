@@ -38,4 +38,24 @@ http {
 
         include conf.d/proxy-location.conf;
     }
+
+{% if proxy_api_key_auth_enabled | bool %}
+    # Secure server: API-key-protected /rpc/<key> for proxy_secure_domain_names.
+    server {
+        listen {{ proxy_listen_port }};
+        server_name{% for domain in proxy_secure_domain_names %} {{ domain }}{% endfor %};
+
+        location /health {
+            access_log off;
+            default_type text/plain;
+            return 200 "healthy\n";
+        }
+
+        location /.well-known/acme-challenge/ {
+            root {{ proxy_certbot_webroot }};
+        }
+
+        include conf.d/secure-rpc-locations.conf;
+    }
+{% endif %}
 }
