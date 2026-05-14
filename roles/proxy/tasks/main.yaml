@@ -174,11 +174,11 @@
     mode: '0755'
   when: proxy_ssl_enabled | bool
 
-- name: Install AWS CLI (for S3 cert sync)
+- name: Install AWS CLI via snap (for S3 cert sync)
   become: true
-  apt:
-    name: awscli
-    state: present
+  command: snap install aws-cli --classic
+  args:
+    creates: /snap/bin/aws
   when:
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
