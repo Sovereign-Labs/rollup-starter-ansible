@@ -1,0 +1,35 @@
+# One-time cleanup: remove entries from /etc/sysctl.conf that the common role
+# used to manage before sysctl tuning was split into per-role drop-ins under
+# /etc/sysctl.d/. Idempotent — no-op once a host has been migrated.
+#
+# Note: sysctl state=absent removes the line from the file but does not reset
+# the running kernel value. Migrated hosts may need a reboot for any key that
+# is no longer managed by any role on this host (e.g. vm.dirty_bytes on a
+# proxy-only host) to return to the kernel default.
+- name: remove legacy sysctl entries from /etc/sysctl.conf
+  become: true
+  ansible.builtin.sysctl:
+    name: "{{ item }}"
+    state: absent
+    sysctl_file: /etc/sysctl.conf
+    reload: no
+  loop:
+    - net.ipv4.tcp_rmem
+    - net.ipv4.tcp_wmem
+    - net.ipv4.tcp_fastopen
+    - net.ipv4.tcp_timestamps
+    - net.ipv4.tcp_sack
+    - net.ipv4.tcp_moderate_rcvbuf
+    - kernel.timer_migration
+    - kernel.hung_task_timeout_secs
+    - vm.swappiness
+    - vm.max_map_count
+    - vm.stat_interval
+    - vm.dirty_bytes
+    - vm.dirty_background_bytes
+    - vm.min_free_kbytes
+    - vm.dirty_expire_centisecs
+    - vm.dirty_writeback_centisecs
+    - vm.dirtytime_expire_seconds
+    - net.core.rmem_max
+    - net.core.wmem_max

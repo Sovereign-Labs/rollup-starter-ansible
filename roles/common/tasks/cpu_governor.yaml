@@ -1,17 +1,15 @@
-- name: set performance governor
-  become: true
-  become_user: root
-  shell: |
-    echo 'GOVERNOR="performance"' | tee /etc/default/cpufrequtils
-    echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-  args:
-    executable: /bin/bash
+- name: detect cpufreq governor support
+  ansible.builtin.stat:
+    path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+  register: cpufreq_governor
 
-- name: set performance governor bare metal
+- name: set CPU governor to performance
   become: true
-  become_user: root
-  shell: |
-    echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+  ansible.builtin.shell: |
+    for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+      echo performance > "$f"
+    done
   args:
     executable: /bin/bash
-  ignore_errors: True
+  when: cpufreq_governor.stat.exists
+  changed_when: true

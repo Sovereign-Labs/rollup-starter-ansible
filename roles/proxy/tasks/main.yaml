@@ -59,6 +59,23 @@
   when: proxy_ssl_enabled | bool
 
 # =============================================================================
+# Kernel tuning for nginx proxy workload
+# =============================================================================
+# Mixed-host case: rollup tuning takes precedence over proxy tuning. If a host
+# previously ran proxy-only and now also runs rollup, the leftover proxy
+# drop-in would still load at boot — remove it.
+- name: remove stale proxy sysctl drop-in when rollup is also active
+  become: true
+  ansible.builtin.file:
+    path: /etc/sysctl.d/20-proxy.conf
+    state: absent
+  when: "'r' in (switches | default('p'))"
+
+- name: tune kernel for nginx proxy workload
+  import_tasks: system_tuner.yaml
+  when: "'r' not in (switches | default('p'))"
+
+# =============================================================================
 # OpenResty Installation (using modern GPG keyring approach)
 # =============================================================================
 - name: Install OpenResty dependencies
