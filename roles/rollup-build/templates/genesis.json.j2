@@ -112,10 +112,6 @@
       "limit_contract_code_size": 524288,
       "coinbase": "0x0000000000000000000000000000000000000000",
       "block_gas_limit": {{ rollup_genesis_evm_block_gas_limit }},
-      "base_fee_params": {
-        "max_change_denominator": 8,
-        "elasticity_multiplier": 2
-      },
       "hardforks": [[0, "CANCUN"]]
     },
     "admin": "{{ rollup_sequencer_address }}"
