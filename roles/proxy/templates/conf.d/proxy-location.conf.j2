@@ -7,7 +7,7 @@
 include conf.d/geoip-block.conf;
 
 location / {
-{% if proxy_rate_limit_enabled %}
+{% if proxy_rate_limit_enabled | bool %}
     # Apply conditional rate limiting
     limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
     limit_req_status 429;

@@ -63,7 +63,7 @@
 - name: Sync certs from S3 (local cert missing or stale)
   become: true
   command: >
-    aws s3 sync
+    {{ proxy_aws_cli_bin }} s3 sync
     s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
     /etc/letsencrypt/
     --region {{ proxy_cert_s3_region }}

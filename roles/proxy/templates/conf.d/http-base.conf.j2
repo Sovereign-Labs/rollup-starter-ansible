@@ -149,7 +149,7 @@ map $request_uri $valid_api_key {
 }
 {% endif %}
 
-{% if proxy_rate_limit_enabled %}
+{% if proxy_rate_limit_enabled | bool %}
 # -----------------------------------------------------------------------------
 # Rate Limiting
 # -----------------------------------------------------------------------------

@@ -65,6 +65,9 @@ proxy_vts_status_port: 8080             # 127.0.0.1:<port>/vts_status; Telegraf 
 # replacement proxy instance boots straight into HTTPS (zero-downtime replacement).
 # The instance must have IAM permissions on the bucket:
 #   s3:GetObject, s3:ListBucket, s3:PutObject, s3:DeleteObject
+# Use the snap path explicitly because Ansible `command`, sudo, and certbot
+# renewal hooks do not reliably include /snap/bin in PATH.
+proxy_aws_cli_bin: "/snap/bin/aws"
 proxy_cert_s3_bucket: ""                # empty = S3 sync disabled
 proxy_cert_s3_region: ""                # required when bucket set
 proxy_cert_s3_prefix: "letsencrypt/"    # keep trailing slash

@@ -413,7 +413,7 @@
 - name: Upload current Let's Encrypt state to S3
   become: true
   command: >
-    aws s3 sync /etc/letsencrypt/
+    {{ proxy_aws_cli_bin }} s3 sync /etc/letsencrypt/
     s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
     --region {{ proxy_cert_s3_region }}
     --exclude "*.log"

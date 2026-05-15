@@ -22,7 +22,7 @@
 - name: Attempt legacy letsencrypt.tar.gz download
   become: true
   command: >
-    aws s3 cp
+    {{ proxy_aws_cli_bin }} s3 cp
     s3://{{ proxy_cert_s3_bucket }}/letsencrypt.tar.gz
     /tmp/letsencrypt.tar.gz
     --region {{ proxy_cert_s3_region }}

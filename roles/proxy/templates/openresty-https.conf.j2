@@ -56,7 +56,7 @@ http {
 
         # Redirect all other HTTP traffic to HTTPS
         location / {
-            return 301 https://$host$request_uri;
+            return 301 https://$host{% if proxy_listen_port_ssl | int != 443 %}:{{ proxy_listen_port_ssl }}{% endif %}$request_uri;
         }
     }
 

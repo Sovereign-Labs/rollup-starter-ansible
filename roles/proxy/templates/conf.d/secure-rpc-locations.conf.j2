@@ -10,7 +10,7 @@ include conf.d/geoip-block.conf;
 
 # Only /rpc/<key> (optionally trailing slash) is allowed.
 location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
-{% if proxy_rate_limit_enabled %}
+{% if proxy_rate_limit_enabled | bool %}
     limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
     limit_req_status 429;
 {% endif %}
