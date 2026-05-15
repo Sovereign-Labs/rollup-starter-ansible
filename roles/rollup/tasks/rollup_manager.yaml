@@ -38,19 +38,14 @@
 - name: copy rollup manager binary to sovereign's home directory
   vars:
     build_profile_path: "{{ 'release' if not debug else 'debug' }}"
-  ansible.builtin.shell:
-    cmd: cp /home/ubuntu/{{ rollup_manager_repo_dir }}/target/{{ build_profile_path }}/sov-rollup-manager /home/sovereign/{{ rollup_manager_bin }}
-  become: true
-  become_user: root
-
-- name: set owner, group, and permissions on the rollup manager binary
-  ansible.builtin.file:
-    path: /home/sovereign/{{ rollup_manager_bin }}
+  ansible.builtin.copy:
+    src: "/home/ubuntu/{{ rollup_manager_repo_dir }}/target/{{ build_profile_path }}/sov-rollup-manager"
+    dest: "/home/sovereign/{{ rollup_manager_bin }}"
+    remote_src: yes
     owner: sovereign
     group: sovereign
     mode: '0755'
   become: true
-  become_user: root
 
 - name: render rollup-manager-config.json
   become: true
