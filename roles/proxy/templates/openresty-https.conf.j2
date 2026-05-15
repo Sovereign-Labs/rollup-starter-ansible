@@ -1,3 +1,5 @@
+{%- set _public_domains = [proxy_domain_name] + proxy_unlimited_domains %}
+{%- set _http_redirect_domains = _public_domains + (proxy_secure_domain_names if proxy_api_key_auth_enabled | bool else []) %}
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
 pid /usr/local/openresty/nginx/logs/nginx.pid;
@@ -35,7 +37,7 @@ http {
     # HTTP server - redirect to HTTPS and handle ACME challenges
     server {
         listen {{ proxy_listen_port }};
-        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %}{% if proxy_api_key_auth_enabled | bool %}{% for domain in proxy_secure_domain_names %} {{ domain }}{% endfor %}{% endif %};
+        server_name {{ _http_redirect_domains | join(' ') }};
 
         location /health {
             access_log off;
@@ -64,7 +66,7 @@ http {
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
         http2 on;
-        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %};
+        server_name {{ _public_domains | join(' ') }};
 
         include conf.d/ssl.conf;
         include conf.d/security-headers.conf;
@@ -83,7 +85,7 @@ http {
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
         http2 on;
-        server_name{% for domain in proxy_secure_domain_names %} {{ domain }}{% endfor %};
+        server_name {{ proxy_secure_domain_names | join(' ') }};
 
         include conf.d/ssl.conf;
         include conf.d/security-headers.conf;

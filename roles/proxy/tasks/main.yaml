@@ -314,6 +314,14 @@
     mode: '0644'
   notify: reload openresty
 
+- name: Render proxy-headers.conf
+  become: true
+  template:
+    src: conf.d/proxy-headers.conf.j2
+    dest: /usr/local/openresty/nginx/conf/conf.d/proxy-headers.conf
+    mode: '0644'
+  notify: reload openresty
+
 - name: Render proxy-location.conf
   become: true
   template:
@@ -349,11 +357,11 @@
     state: started
     enabled: yes
 
-- name: Apply OpenResty HTTP config before certificate checks
-  become: true
-  systemd:
-    name: openresty
-    state: reloaded
+# Cert acquisition needs the .well-known/acme-challenge/ location active now,
+# but `notify: reload openresty` above defers until end of play. Flush handlers
+# here so the reload happens (only if a template actually changed).
+- name: Flush handlers so config changes apply before certbot runs
+  meta: flush_handlers
 
 # =============================================================================
 # S3 Certificate Restore (zero-downtime proxy replacement)
@@ -390,14 +398,14 @@
 - name: Stat OpenResty fullchain.pem
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/fullchain.pem"
   register: _proxy_fullchain
   when: proxy_ssl_enabled | bool
 
 - name: Stat OpenResty privkey.pem
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/privkey.pem"
   register: _proxy_privkey
   when: proxy_ssl_enabled | bool
 

@@ -16,7 +16,7 @@
 - name: Stat live cert dir to decide if legacy tarball migration is needed
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/fullchain.pem"
   register: _legacy_post_sync_fullchain
 
 - name: Attempt legacy letsencrypt.tar.gz download

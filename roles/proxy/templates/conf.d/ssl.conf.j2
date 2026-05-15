@@ -2,8 +2,8 @@
 # Included in HTTPS server {} blocks
 
 # SSL certificate paths (created by certbot)
-ssl_certificate /etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem;
-ssl_certificate_key /etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem;
+ssl_certificate {{ proxy_letsencrypt_live_dir }}/fullchain.pem;
+ssl_certificate_key {{ proxy_letsencrypt_live_dir }}/privkey.pem;
 
 # Modern SSL configuration
 ssl_protocols TLSv1.2 TLSv1.3;

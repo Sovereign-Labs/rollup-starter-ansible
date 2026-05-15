@@ -1,3 +1,4 @@
+{%- set _public_domains = ([proxy_domain_name] + proxy_unlimited_domains) if (proxy_domain_name | length > 0) else ['_'] %}
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
 pid /usr/local/openresty/nginx/logs/nginx.pid;
@@ -34,11 +35,7 @@ http {
 {% endif %}
     server {
         listen {{ proxy_listen_port }};
-{% if proxy_domain_name | length > 0 %}
-        server_name {{ proxy_domain_name }}{% for domain in proxy_unlimited_domains %} {{ domain }}{% endfor %};
-{% else %}
-        server_name _;
-{% endif %}
+        server_name {{ _public_domains | join(' ') }};
 
         location /health {
             access_log off;
@@ -64,7 +61,7 @@ http {
     # Secure server: API-key-protected /rpc/<key> for proxy_secure_domain_names.
     server {
         listen {{ proxy_listen_port }};
-        server_name{% for domain in proxy_secure_domain_names %} {{ domain }}{% endfor %};
+        server_name {{ proxy_secure_domain_names | join(' ') }};
 
         location /health {
             access_log off;

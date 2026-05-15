@@ -3,145 +3,17 @@
 # Triggered from tasks/main.yaml when proxy_vts_enabled.
 #
 # Builds ngx_http_vhost_traffic_status_module as a dynamic .so against OpenResty
-# source matching the installed apt-package version. Mirrors the layout of
-# tasks/geoip.yaml so the apt-package OpenResty install is kept; only one .so
-# is added via `load_module`. With this in place:
+# source matching the installed apt-package version. The apt-package OpenResty
+# install is kept; only one .so is added via `load_module`. With this in place:
 #   - openresty-{http,https}.conf.j2 emits `vhost_traffic_status_zone;` (http
 #     scope) and a 127.0.0.1:{{ proxy_vts_status_port }}/vts_status server.
 #   - telegraf-proxy.conf.j2 swaps `inputs.nginx` for `inputs.nginx_vts`.
 
-- name: Install VTS build dependencies
-  become: true
-  apt:
-    name:
-      - build-essential
-      - libpcre3-dev
-      - libssl-dev
-      - zlib1g-dev
-      - wget
-      - tar
-      - git
-    state: present
-    update_cache: yes
-    cache_valid_time: 3600
-
-- name: Check if VTS dynamic module is already installed
-  become: true
-  stat:
-    path: /usr/local/openresty/nginx/modules/ngx_http_vhost_traffic_status_module.so
-  register: _vts_so_installed
-
-- name: Check recorded VTS build metadata
-  become: true
-  stat:
-    path: /usr/local/openresty/nginx/modules/ngx_http_vhost_traffic_status_module.buildinfo
-  register: _vts_buildinfo_stat
-
-- name: Detect installed OpenResty version
-  command: openresty -v
-  register: _vts_openresty_v
-  changed_when: false
-
-# `openresty -v` writes `nginx version: openresty/X.Y.Z.W` to stderr.
-- name: Parse OpenResty version
-  set_fact:
-    _vts_openresty_ver: "{{ (_vts_openresty_v.stderr | regex_search('openresty/([0-9.]+)', '\\1'))[0] }}"
-
-- name: Compute desired VTS build metadata
-  set_fact:
-    _vts_build_key: "openresty={{ _vts_openresty_ver }};repo={{ proxy_vts_module_repo }};version={{ proxy_vts_module_version }}"
-
-- name: Read recorded VTS build metadata
-  become: true
-  slurp:
-    path: /usr/local/openresty/nginx/modules/ngx_http_vhost_traffic_status_module.buildinfo
-  register: _vts_buildinfo_raw
-  when: _vts_buildinfo_stat.stat.exists
-
-- name: Decide whether VTS rebuild is needed
-  set_fact:
-    _vts_rebuild_needed: >-
-      {{
-        (not _vts_so_installed.stat.exists)
-        or (not _vts_buildinfo_stat.stat.exists)
-        or ((_vts_buildinfo_raw.content | default('') | b64decode | trim) != _vts_build_key)
-      }}
-
-- name: Ensure /usr/local/src exists
-  become: true
-  file:
-    path: /usr/local/src
-    state: directory
-    mode: '0755'
-  when: _vts_rebuild_needed
-
-- name: Download OpenResty source tarball
-  become: true
-  get_url:
-    url: "https://openresty.org/download/openresty-{{ _vts_openresty_ver }}.tar.gz"
-    dest: "/usr/local/src/openresty-{{ _vts_openresty_ver }}.tar.gz"
-    mode: '0644'
-  when: _vts_rebuild_needed
-
-- name: Extract OpenResty source
-  become: true
-  unarchive:
-    src: "/usr/local/src/openresty-{{ _vts_openresty_ver }}.tar.gz"
-    dest: /usr/local/src/
-    remote_src: yes
-    creates: "/usr/local/src/openresty-{{ _vts_openresty_ver }}/configure"
-  when: _vts_rebuild_needed
-
-- name: Clone nginx-module-vts
-  become: true
-  git:
-    repo: "{{ proxy_vts_module_repo }}"
-    dest: /usr/local/src/nginx-module-vts
-    version: "{{ proxy_vts_module_version }}"
-    force: yes
-  when: _vts_rebuild_needed
-
-# Build the .so only. OpenResty's bundle structure puts the nginx Makefile under
-# build/nginx-*/, so we cd into it after configure and run only `make modules`.
-- name: Configure and build VTS dynamic module
-  become: true
-  shell: |
-    set -e
-    cd /usr/local/src/openresty-{{ _vts_openresty_ver }}
-    ./configure --with-compat --add-dynamic-module=/usr/local/src/nginx-module-vts
-    cd build/nginx-*
-    make modules
-  args:
-    executable: /bin/bash
-  when: _vts_rebuild_needed
-
-- name: Locate built ngx_http_vhost_traffic_status_module.so
-  become: true
-  find:
-    paths: "/usr/local/src/openresty-{{ _vts_openresty_ver }}/build"
-    patterns: "ngx_http_vhost_traffic_status_module.so"
-    recurse: yes
-  register: _vts_so_built
-  when: _vts_rebuild_needed
-
-- name: Install ngx_http_vhost_traffic_status_module.so
-  become: true
-  copy:
-    src: "{{ _vts_so_built.files[0].path }}"
-    dest: /usr/local/openresty/nginx/modules/ngx_http_vhost_traffic_status_module.so
-    mode: '0755'
-    owner: root
-    group: root
-    remote_src: yes
-  when: _vts_rebuild_needed
-  notify: reload openresty
-
-- name: Record VTS build metadata
-  become: true
-  copy:
-    content: "{{ _vts_build_key }}\n"
-    dest: /usr/local/openresty/nginx/modules/ngx_http_vhost_traffic_status_module.buildinfo
-    mode: '0644'
-    owner: root
-    group: root
-  when: _vts_rebuild_needed
+- name: Build VTS dynamic module
+  include_tasks: _build_dynamic_module.yaml
+  vars:
+    module_name: vts
+    module_so_name: ngx_http_vhost_traffic_status_module.so
+    module_src_dir: nginx-module-vts
+    module_repo: "{{ proxy_vts_module_repo }}"
+    module_version: "{{ proxy_vts_module_version }}"

@@ -18,25 +18,25 @@
 - name: Stat local cert.pem (pre-sync)
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/cert.pem"
   register: _pre_cert
 
 - name: Stat local fullchain.pem (pre-sync)
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/fullchain.pem"
   register: _pre_fullchain
 
 - name: Stat local privkey.pem (pre-sync)
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/privkey.pem"
   register: _pre_privkey
 
 - name: Inspect local cert (pre-sync)
   become: true
   community.crypto.x509_certificate_info:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/cert.pem"
     valid_at:
       threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
   register: _pre_cert_info
@@ -96,35 +96,35 @@
 - name: Stat restored cert.pem
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/cert.pem"
   register: _restored_cert
   when: not _local_cert_ok
 
 - name: Stat restored fullchain.pem
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/fullchain.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/fullchain.pem"
   register: _restored_fullchain
   when: not _local_cert_ok
 
 - name: Stat restored privkey.pem
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/privkey.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/privkey.pem"
   register: _restored_privkey
   when: not _local_cert_ok
 
 - name: Stat restored live cert directory
   become: true
   stat:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+    path: "{{ proxy_letsencrypt_live_dir }}"
   register: _restored_live_dir
   when: not _local_cert_ok
 
 - name: Inspect restored cert
   become: true
   community.crypto.x509_certificate_info:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}/cert.pem"
+    path: "{{ proxy_letsencrypt_live_dir }}/cert.pem"
     valid_at:
       threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
   register: _restored_cert_info
@@ -154,7 +154,7 @@
 - name: Remove stale restored cert if invalid or TLS bundle is incomplete
   become: true
   file:
-    path: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+    path: "{{ proxy_letsencrypt_live_dir }}"
     state: absent
   when:
     - not _local_cert_ok
