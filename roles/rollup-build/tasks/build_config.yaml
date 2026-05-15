@@ -108,6 +108,16 @@
     backup: no
   when: rollup_custom_gas_token_id is defined and rollup_custom_gas_token_id | string | length > 0
 
+- name: update CHAIN_HASH_OVERRIDES in constants.toml
+  become: true
+  become_user: ubuntu
+  ansible.builtin.replace:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/constants.toml"
+    regexp: '^CHAIN_HASH_OVERRIDES\s*=.*$'
+    replace: 'CHAIN_HASH_OVERRIDES = [{% for item in rollup_chain_hash_overrides %}{ start_height = {{ item.start_height }}, end_height = {{ item.end_height }}, chain_hash = "{{ item.chain_hash }}", grace_period = {{ item.grace_period }} }{% if not loop.last %}, {% endif %}{% endfor %}]'
+    backup: no
+  when: rollup_chain_hash_overrides is defined and rollup_chain_hash_overrides | length > 0
+
 - name: update EVM_MAX_FEE_CHECK_HEIGHT in constants.toml
   become: true
   become_user: ubuntu

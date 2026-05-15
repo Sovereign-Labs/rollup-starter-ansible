@@ -37,6 +37,7 @@ max_concurrent_proof_blobs = {{ rollup_max_concurrent_proof_blobs }}
 max_allowed_node_distance_behind = {{ rollup_max_allowed_node_distance_behind }}
 rollup_address = "{{ rollup_sequencer_address }}"
 blob_processing_timeout_secs = 60
+admin_addresses = ["{{ rollup_sequencer_address }}"]
 
 {% if rollup_sequencer_kind == "preferred" %}
 [sequencer.preferred]
