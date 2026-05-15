@@ -47,6 +47,21 @@
     fail_msg: "proxy_api_keys and proxy_secure_domain_names are required when proxy_api_key_auth_enabled is true"
   when: proxy_api_key_auth_enabled | bool
 
+# A domain that appears in both lists collides on server_name at 0.0.0.0:443
+# (public HTTPS block + secure HTTPS block both claim it). nginx keeps the first
+# match (public, no auth) and silently drops the second — silently bypassing the
+# API-key requirement. Fail loudly here so the operator sees it.
+- name: Validate proxy_secure_domain_names does not overlap with public or unlimited domains
+  assert:
+    that:
+      - (proxy_secure_domain_names | intersect([proxy_domain_name] + proxy_unlimited_domains)) | length == 0
+    fail_msg: >-
+      proxy_secure_domain_names overlaps with proxy_domain_name/proxy_unlimited_domains
+      ({{ proxy_secure_domain_names | intersect([proxy_domain_name] + proxy_unlimited_domains) }}).
+      A domain in both lists collides on server_name at 0.0.0.0:443 and lets traffic
+      bypass the API-key block. Put each domain in exactly one list.
+  when: proxy_api_key_auth_enabled | bool
+
 - name: Set follower IP to leader if not specified
   set_fact:
     proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
@@ -154,7 +169,12 @@
       LimitNOFILE=65535
     dest: /etc/systemd/system/openresty.service.d/limits.conf
     mode: '0644'
-  notify: reload systemd
+  # LimitNOFILE takes effect only at service start; daemon-reload + SIGHUP
+  # won't reach the running master. Order matters: `reload systemd` is defined
+  # first in handlers/main.yaml, so it runs before `restart openresty`.
+  notify:
+    - reload systemd
+    - restart openresty
 
 # =============================================================================
 # Certbot Installation (when SSL enabled)
@@ -216,6 +236,17 @@
 - name: Configure GeoIP2 country blocking
   import_tasks: geoip.yaml
   when: proxy_geoip_enabled | bool
+
+# =============================================================================
+# nginx-module-vts (per-vhost / per-upstream / per-status-code metrics)
+# =============================================================================
+# Builds ngx_http_vhost_traffic_status_module.so. Must run before the config
+# templates render so `load_module` and `vhost_traffic_status_zone` reference
+# a present .so. Defaults on (matches the bash repo's static-link behavior);
+# disable with proxy_vts_enabled=false if the build cost isn't wanted.
+- name: Configure VTS metrics module
+  import_tasks: vts.yaml
+  when: proxy_vts_enabled | bool
 
 # =============================================================================
 # Node-Discovery Pre-Start Stub

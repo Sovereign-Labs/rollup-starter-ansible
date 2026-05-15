@@ -49,6 +49,17 @@ proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
 # Observability
 proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy
 
+# nginx-module-vts (vhost_traffic_status) — per-vhost/per-upstream/per-status-code
+# metrics for Telegraf's `inputs.nginx_vts`. Matches the bash repo's behavior
+# (setup_proxy_monitoring.sh statically linked it). The apt-package OpenResty
+# install can't be relinked, so the role builds VTS as a dynamic .so the same
+# way tasks/geoip.yaml does for geoip2. Defaults on so existing Grafana panels
+# keep working; set false to skip the (5–10 min) source-build on bootstrap.
+proxy_vts_enabled: true
+proxy_vts_module_repo: "https://github.com/vozlt/nginx-module-vts.git"
+proxy_vts_module_version: "v0.2.4"      # tag — bump deliberately
+proxy_vts_status_port: 8080             # 127.0.0.1:<port>/vts_status; Telegraf scrapes here
+
 # S3 Certificate Backup/Restore (optional)
 # When proxy_cert_s3_bucket is set, Let's Encrypt state is synced to/from S3 so a
 # replacement proxy instance boots straight into HTTPS (zero-downtime replacement).

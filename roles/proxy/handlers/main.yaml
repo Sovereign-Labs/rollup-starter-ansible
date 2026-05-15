@@ -10,6 +10,14 @@
     name: openresty
     state: reloaded
 
+# Used when systemd unit-level changes need to land (e.g. LimitNOFILE override).
+# SIGHUP from `reload openresty` does not re-read those.
+- name: restart openresty
+  become: true
+  ansible.builtin.systemd:
+    name: openresty
+    state: restarted
+
 - name: restart telegraf
   become: true
   ansible.builtin.systemd:

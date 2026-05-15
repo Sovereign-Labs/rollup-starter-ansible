@@ -69,16 +69,13 @@ ansible-galaxy collection install -r requirements.yml
 (`community.crypto` is used by `tasks/s3_certs.yaml` for cert SAN
 validation.)
 
-## Known gaps vs. the bash repo
+## Dynamic-module builds
 
-The apt-package OpenResty install doesn't include `nginx-module-vts`, so:
+The apt-package OpenResty install can't be relinked, so anything the bash
+repo statically linked is ported as a dynamic `.so` built once per host:
 
-- **VTS metrics** are not available. Telegraf scrapes `/nginx_status`
-  (stub_status) only, so per-vhost / per-upstream / per-status-code
-  metrics aren't exposed. Dashboards built on bash's `nginx_vts` input
-  will show empty panels. Adding it would require either a source-build
-  path for OpenResty or a separate dynamic-module build like the one
-  `tasks/geoip.yaml` does for `ngx_http_geoip2_module`.
-
-GeoIP2 country blocking *is* ported (opt-in via `proxy_geoip_enabled`,
-implemented as a dynamic module build — see `tasks/geoip.yaml`).
+- **VTS** (`nginx-module-vts`) — built by `tasks/vts.yaml`. Powers
+  Telegraf's `inputs.nginx_vts` (per-vhost / per-upstream /
+  per-status-code metrics). Defaults on; toggle with `proxy_vts_enabled`.
+- **GeoIP2** (`ngx_http_geoip2_module`) — built by `tasks/geoip.yaml`.
+  Defaults off (requires MaxMind creds); toggle with `proxy_geoip_enabled`.

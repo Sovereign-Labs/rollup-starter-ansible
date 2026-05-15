@@ -5,6 +5,9 @@ pid /usr/local/openresty/nginx/logs/nginx.pid;
 {% if proxy_geoip_enabled | bool %}
 load_module modules/ngx_http_geoip2_module.so;
 {% endif %}
+{% if proxy_vts_enabled | bool %}
+load_module modules/ngx_http_vhost_traffic_status_module.so;
+{% endif %}
 
 events {
     worker_connections 4096;
@@ -15,6 +18,20 @@ events {
 http {
     include conf.d/http-base.conf;
 
+{% if proxy_vts_enabled | bool %}
+    # VTS metrics endpoint — scraped by Telegraf's inputs.nginx_vts.
+    # Localhost-only listener so it's not externally reachable.
+    server {
+        listen 127.0.0.1:{{ proxy_vts_status_port }};
+
+        location /vts_status {
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format json;
+            access_log off;
+        }
+    }
+
+{% endif %}
     # HTTP server - redirect to HTTPS and handle ACME challenges
     server {
         listen {{ proxy_listen_port }};

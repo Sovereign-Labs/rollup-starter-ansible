@@ -8,6 +8,12 @@
 # safe no-op even with the feature off.
 include conf.d/geoip-setup.conf;
 
+{% if proxy_vts_enabled | bool %}
+# VTS shared zone — required by the localhost /vts_status endpoint that
+# Telegraf's inputs.nginx_vts scrapes. Module loaded in openresty-{http,https}.conf.
+vhost_traffic_status_zone;
+{% endif %}
+
 {% if proxy_cloudflare_real_ip | bool %}
 # -----------------------------------------------------------------------------
 # Cloudflare Real IP
