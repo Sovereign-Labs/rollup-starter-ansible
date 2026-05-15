@@ -69,7 +69,8 @@ This setup supports multiple deployment configurations:
 brew install ansible
 ansible --version  # Should be ansible [core 2.16+]
 
-# Install required collections (community.crypto for the proxy role's cert checks)
+# Install required collections (`community.crypto` for proxy cert checks,
+# `community.postgresql` for local Postgres provisioning in the rollup role)
 ansible-galaxy collection install -r requirements.yml
 ```
 

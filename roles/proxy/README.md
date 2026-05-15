@@ -67,7 +67,8 @@ ansible-galaxy collection install -r requirements.yml
 ```
 
 (`community.crypto` is used by `tasks/s3_certs.yaml` for cert SAN
-validation.)
+validation; `community.postgresql` is also required by the rollup role when
+it provisions the local PostgreSQL instance.)
 
 ## Dynamic-module builds
 
