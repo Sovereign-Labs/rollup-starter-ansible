@@ -28,10 +28,12 @@ aggregated_proof_block_jump = 1
 prover_address = "{{ rollup_sequencer_address }}"
 max_number_of_transitions_in_db = 100
 max_number_of_transitions_in_memory = 20
+max_number_of_aggregated_proofs_in_memory = 10
 
 [sequencer]
 max_batch_size_bytes = {{ rollup_max_batch_size_bytes }}
-max_concurrent_blobs = {{ rollup_max_concurrent_blobs }}
+max_concurrent_batch_blobs = {{ rollup_max_concurrent_batch_blobs }}
+max_concurrent_proof_blobs = {{ rollup_max_concurrent_proof_blobs }}
 max_allowed_node_distance_behind = {{ rollup_max_allowed_node_distance_behind }}
 rollup_address = "{{ rollup_sequencer_address }}"
 blob_processing_timeout_secs = 60

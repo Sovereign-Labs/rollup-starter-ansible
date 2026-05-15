@@ -75,7 +75,8 @@ rollup_state_user_preallocate_ht: true
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"
 # 7 MiB
 rollup_max_batch_size_bytes: 7340032
-rollup_max_concurrent_blobs: 128
+rollup_max_concurrent_batch_blobs: 128
+rollup_max_concurrent_proof_blobs: 128
 rollup_max_allowed_node_distance_behind: 10
 
 # Rate limiter - only applies to preferred sequencer
