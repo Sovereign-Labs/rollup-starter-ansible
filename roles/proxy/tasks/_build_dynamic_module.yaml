@@ -105,7 +105,7 @@
     set -e
     cd /usr/local/src/openresty-{{ _dynmod_openresty_ver }}
     ./configure --with-compat --add-dynamic-module=/usr/local/src/{{ module_src_dir }}
-    cd build/nginx-*
+    cd build/nginx-[0-9]*
     make modules
   args:
     executable: /bin/bash
