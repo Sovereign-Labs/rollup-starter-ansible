@@ -1,4 +1,5 @@
-{%- set _public_domains = ([proxy_domain_name] + proxy_unlimited_domains) if (proxy_domain_name | length > 0) else ['_'] %}
+{%- set _all_public = proxy_public_domains + proxy_unlimited_domains %}
+{%- set _public_domains = _all_public if (_all_public | length > 0) else ['_'] %}
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
 pid /usr/local/openresty/nginx/logs/nginx.pid;
@@ -58,10 +59,10 @@ http {
     }
 
 {% if proxy_api_key_auth_enabled | bool %}
-    # Secure server: API-key-protected /rpc/<key> for proxy_secure_domain_names.
+    # Secure server: API-key-protected /rpc/<key> for proxy_secure_domains.
     server {
         listen {{ proxy_listen_port }};
-        server_name {{ proxy_secure_domain_names | join(' ') }};
+        server_name {{ proxy_secure_domains | join(' ') }};
 
         location /health {
             access_log off;

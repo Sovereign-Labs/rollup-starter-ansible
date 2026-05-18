@@ -18,8 +18,9 @@ pre_fetched_blocks_capacity = 4
 [runner.http_config]
 bind_host = "{{ rollup_http_bind_host }}"
 bind_port = {{ rollup_http_port }}
-{% if proxy_domain_name is defined and proxy_domain_name | length > 0 %}
-public_address = "{{ 'https' if (proxy_ssl_enabled | default(false) | bool) else 'http' }}://{{ proxy_domain_name }}"
+{%- set _rollup_public_domains = (proxy_public_domains | default([])) + (proxy_unlimited_domains | default([])) %}
+{% if _rollup_public_domains | length > 0 %}
+public_address = "{{ 'https' if (proxy_ssl_enabled | default(false) | bool) else 'http' }}://{{ _rollup_public_domains | first }}"
 {% endif %}
 
 [monitoring]

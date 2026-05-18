@@ -1,5 +1,5 @@
-{%- set _public_domains = [proxy_domain_name] + proxy_unlimited_domains %}
-{%- set _http_redirect_domains = _public_domains + (proxy_secure_domain_names if proxy_api_key_auth_enabled | bool else []) %}
+{%- set _public_domains = proxy_public_domains + proxy_unlimited_domains %}
+{%- set _http_redirect_domains = _public_domains + (proxy_secure_domains if proxy_api_key_auth_enabled | bool else []) %}
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
 pid /usr/local/openresty/nginx/logs/nginx.pid;
@@ -81,11 +81,11 @@ http {
     }
 
 {% if proxy_api_key_auth_enabled | bool %}
-    # HTTPS server - API-key-protected /rpc/<key> for proxy_secure_domain_names.
+    # HTTPS server - API-key-protected /rpc/<key> for proxy_secure_domains.
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
         http2 on;
-        server_name {{ proxy_secure_domain_names | join(' ') }};
+        server_name {{ proxy_secure_domains | join(' ') }};
 
         include conf.d/ssl.conf;
         include conf.d/security-headers.conf;

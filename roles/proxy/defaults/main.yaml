@@ -2,9 +2,18 @@
 # Proxy Configuration - OpenResty reverse proxy for Sovereign rollup
 
 # SSL/TLS Configuration
+#
+# Three peer domain lists; each entry must appear in exactly one list. When
+# proxy_ssl_enabled is true, at least one of these must be non-empty: a single
+# Let's Encrypt cert is issued covering every listed domain as SANs, and its
+# directory is keyed on the first available domain across the three lists.
+#
+#   proxy_public_domains    — public, rate-limited
+#   proxy_unlimited_domains — public, rate-limit exempt
+#   proxy_secure_domains    — API-key gated (requires proxy_api_key_auth_enabled)
 proxy_ssl_enabled: false
-proxy_domain_name: ""  # Required when SSL enabled
-proxy_unlimited_domains: []  # Additional domains for SSL certs and rate limit exemption
+proxy_public_domains: []
+proxy_unlimited_domains: []
 
 # Backend Configuration
 # proxy_rollup_leader_ip is REQUIRED (validated in tasks/main.yaml). Set it in
@@ -33,11 +42,11 @@ proxy_cloudflare_real_ip: false
 
 # API-key-protected RPC endpoint on a separate set of domains. When enabled,
 # clients must use https://<secure-domain>/rpc/<api_key>; any other path on
-# those domains returns 401. The cert (when SSL is on) covers all public
-# AND secure domains as SANs.
+# those domains returns 401. The cert (when SSL is on) covers all listed
+# domains as SANs.
 proxy_api_key_auth_enabled: false
-proxy_api_keys: []                # list of API key strings
-proxy_secure_domain_names: []     # list of domain strings (server_name)
+proxy_api_keys: []           # list of API key strings
+proxy_secure_domains: []     # list of domain strings (server_name)
 
 # Timeouts
 proxy_websocket_timeout: "3600s"
@@ -46,8 +55,10 @@ proxy_connect_timeout: "5s"
 # Certbot Configuration
 proxy_certbot_webroot: "/var/www/certbot"
 proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
-# Per-domain Let's Encrypt live cert dir (referenced from many tasks/templates).
-proxy_letsencrypt_live_dir: "/etc/letsencrypt/live/{{ proxy_domain_name }}"
+# Let's Encrypt live cert dir is derived in tasks/main.yaml from the first
+# available domain across proxy_public_domains/unlimited/secure (set as
+# proxy_letsencrypt_live_dir via set_fact when SSL is enabled). Operators
+# normally do not need to override it.
 
 # Observability
 proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy

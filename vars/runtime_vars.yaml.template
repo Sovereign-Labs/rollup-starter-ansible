@@ -63,10 +63,17 @@ rollup_http_port: 12346
 # proxy_rollup_leader_ip: "10.0.0.10"
 # proxy_rollup_follower_ip: "10.0.0.11"
 
-# TLS (Let's Encrypt via certbot)
+# TLS (Let's Encrypt via certbot).
+# When proxy_ssl_enabled is true, at least one of the three domain lists below
+# must be non-empty; a single multi-SAN cert covers them all. Each domain must
+# appear in exactly one list — overlaps cause nginx server_name collisions
+# and are rejected at play start.
+#   proxy_public_domains    — public, rate-limited
+#   proxy_unlimited_domains — public, rate-limit exempt
+#   proxy_secure_domains    — API-key gated (set proxy_api_key_auth_enabled too)
 # proxy_ssl_enabled: true
-# proxy_domain_name: "rpc.example.com"
-# proxy_unlimited_domains: ["secure.example.com"]
+# proxy_public_domains: ["rpc.example.com"]
+# proxy_unlimited_domains: ["integrations.example.com"]
 # proxy_certbot_email: "ops@example.com"
 
 # S3 certificate backup (enables zero-downtime proxy replacement)
@@ -94,13 +101,13 @@ rollup_http_port: 12346
 
 # API-key-protected RPC endpoint on a separate set of domains.
 # Clients must use https://<secure-domain>/rpc/<api_key>; any other path on
-# those domains returns 401. The cert (when SSL is on) covers all public AND
-# secure domains as SANs.
+# those domains returns 401. The cert (when SSL is on) covers every listed
+# domain across all three lists as SANs.
 # proxy_api_key_auth_enabled: true
 # proxy_api_keys:
 #   - "abc123_key_1"
 #   - "def456_key_2"
-# proxy_secure_domain_names:
+# proxy_secure_domains:
 #   - "secure-rpc.example.com"
 
 # GeoIP2 country blocking. When enabled, the role builds
