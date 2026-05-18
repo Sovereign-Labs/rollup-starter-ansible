@@ -1,0 +1,18 @@
+#!/bin/bash
+# Managed by Ansible (roles/proxy). Runs after `certbot renew` succeeds.
+set -e
+sync_failed=0
+
+if ! {{ proxy_aws_cli_bin }} s3 sync /etc/letsencrypt/ \
+  "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}" \
+  --region {{ proxy_cert_s3_region }} \
+  --quiet --exclude "*.log"; then
+  sync_failed=1
+  echo "WARNING: Failed to sync renewed certificates to S3" >&2
+fi
+
+systemctl reload openresty
+
+if [ "$sync_failed" -ne 0 ]; then
+  exit 1
+fi

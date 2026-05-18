@@ -1,0 +1,120 @@
+---
+# Proxy Configuration - OpenResty reverse proxy for Sovereign rollup
+
+# SSL/TLS Configuration
+#
+# Three peer domain lists; each entry must appear in exactly one list. When
+# proxy_ssl_enabled is true, at least one of these must be non-empty: a single
+# Let's Encrypt cert is issued covering every listed domain as SANs, and its
+# directory is keyed on the first available domain across the three lists.
+#
+#   proxy_public_domains    — public, rate-limited
+#   proxy_unlimited_domains — public, rate-limit exempt
+#   proxy_secure_domains    — API-key gated (requires proxy_api_key_auth_enabled)
+proxy_ssl_enabled: false
+proxy_public_domains: []
+proxy_unlimited_domains: []
+
+# Backend Configuration
+# proxy_rollup_leader_ip is REQUIRED (validated in tasks/main.yaml). Set it in
+# runtime_vars.yaml. The proxy backend port comes from rollup_http_port
+# (default: 12346 from the rollup role's defaults).
+proxy_rollup_follower_ip: ""  # Replica node IP (defaults to leader if empty)
+
+# Listen Ports
+proxy_listen_port: 80
+proxy_listen_port_ssl: 443
+
+# Rate Limiting
+proxy_rate_limit_enabled: true
+proxy_rate_limit_rate: "100r/s"
+proxy_rate_limit_burst: 50
+proxy_rate_limit_exempt_ips: []
+
+# DNS Resolver (empty = system default)
+proxy_dns_resolver: ""
+
+# Cloudflare front: when true, trust CF-Connecting-IP from the Cloudflare edge
+# CIDRs (defined in roles/proxy/vars/main.yaml) so $remote_addr — and therefore
+# rate limiting + access logs — reflect the real client IP. Leave false when
+# the proxy is exposed directly to the internet.
+proxy_cloudflare_real_ip: false
+
+# API-key-protected RPC endpoint on a separate set of domains. When enabled,
+# clients must use https://<secure-domain>/rpc/<api_key>; any other path on
+# those domains returns 401. The cert (when SSL is on) covers all listed
+# domains as SANs.
+proxy_api_key_auth_enabled: false
+proxy_api_keys: []           # list of API key strings
+proxy_secure_domains: []     # list of domain strings (server_name)
+
+# Timeouts
+proxy_websocket_timeout: "3600s"
+proxy_connect_timeout: "5s"
+
+# Certbot Configuration
+proxy_certbot_webroot: "/var/www/certbot"
+proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
+# Let's Encrypt live cert dir is derived in tasks/main.yaml from the first
+# available domain across proxy_public_domains/unlimited/secure (set as
+# proxy_letsencrypt_live_dir via set_fact when SSL is enabled). Operators
+# normally do not need to override it.
+
+# Observability
+proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy
+
+# nginx-module-vts (vhost_traffic_status) — per-vhost/per-upstream/per-status-code
+# metrics for Telegraf's `inputs.nginx_vts`. Matches the bash repo's behavior
+# (setup_proxy_monitoring.sh statically linked it). The apt-package OpenResty
+# install can't be relinked, so the role builds VTS as a dynamic .so the same
+# way tasks/geoip.yaml does for geoip2. Defaults on so existing Grafana panels
+# keep working; set false to skip the (5–10 min) source-build on bootstrap.
+proxy_vts_enabled: true
+proxy_vts_module_repo: "https://github.com/vozlt/nginx-module-vts.git"
+proxy_vts_module_version: "v0.2.4"      # tag — bump deliberately
+proxy_vts_status_port: 8080             # 127.0.0.1:<port>/vts_status; Telegraf scrapes here
+
+# S3 Certificate Backup/Restore (optional)
+# When proxy_cert_s3_bucket is set, Let's Encrypt state is synced to/from S3 so a
+# replacement proxy instance boots straight into HTTPS (zero-downtime replacement).
+# The instance must have IAM permissions on the bucket:
+#   s3:GetObject, s3:ListBucket, s3:PutObject, s3:DeleteObject
+# Use the snap path explicitly because Ansible `command`, sudo, and certbot
+# renewal hooks do not reliably include /snap/bin in PATH.
+proxy_aws_cli_bin: "/snap/bin/aws"
+proxy_cert_s3_bucket: ""                # empty = S3 sync disabled
+proxy_cert_s3_region: ""                # required when bucket set
+proxy_cert_s3_prefix: "letsencrypt/"    # keep trailing slash
+proxy_cert_expiry_threshold_days: 30    # re-issue if restored cert expires sooner
+
+# GeoIP2 country blocking (opt-in).
+# When enabled, the role builds ngx_http_geoip2_module as a dynamic .so against
+# OpenResty source matching the installed apt version, downloads the
+# GeoLite2-Country mmdb from MaxMind, and installs a daily cron to refresh it.
+# Every server block then includes a 403-on-blocked-country snippet.
+# Deployments that don't set MaxMind credentials see no change.
+proxy_geoip_enabled: false
+proxy_geoip_account_id: ""              # MaxMind account ID (required when enabled)
+proxy_geoip_license_key: ""             # MaxMind license key (required when enabled)
+proxy_geoip_blocked_countries: []       # ISO 3166-1 alpha-2 codes, e.g. ["CH", "CN"]
+proxy_geoip_module_repo: "https://github.com/leev/ngx_http_geoip2_module.git"
+proxy_geoip_module_version: "3.4"       # tag — bump deliberately
+proxy_geoip_mmdb_path: "/usr/share/GeoIP/GeoLite2-Country.mmdb"
+
+# Dynamic Backend Discovery (node-discovery Rust service)
+# When enabled, a systemd service builds and runs node-discovery, which
+# subscribes to PostgreSQL for cluster topology changes, writes Lua to
+# `proxy_node_discovery_output_file`, and issues `nginx -s reload` on change.
+# This enables automatic failover/scale without re-running Ansible.
+# When disabled (default), backend IPs are baked statically from
+# proxy_rollup_leader_ip / proxy_rollup_follower_ip.
+proxy_node_discovery_enabled: false
+# DB connection is shared with the rollup: node-discovery uses
+# `rollup_sequencer_postgres_connection_string` (set by roles/rollup/tasks/postgres.yaml
+# or by the operator in runtime_vars).
+proxy_node_discovery_output_file: "/usr/local/openresty/nginx/conf/backends.generated.lua"
+proxy_node_discovery_max_age_millis: 1000
+# node-discovery source/version is shared with the rollup: it builds from
+# `crates/utils/node-discovery` inside the rollup-starter checkout, so it
+# reuses `rollup_repo` / `rollup_branch` / `rollup_commit_hash` / `rollup_repo_dir`
+# (defined by rollup-build defaults or supplied via runtime_vars.yaml).

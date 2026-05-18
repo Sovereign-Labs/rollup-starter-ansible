@@ -1,0 +1,143 @@
+---
+# Shared "build OpenResty dynamic .so" pattern. Used by tasks/vts.yaml and
+# tasks/geoip.yaml. Skips the rebuild when the recorded buildinfo matches the
+# desired (openresty version, module repo, module version) tuple.
+#
+# Required vars:
+#   module_name          short label, used in task names (e.g. "vts", "geoip2")
+#   module_so_name       installed .so basename (e.g. "ngx_http_geoip2_module.so")
+#   module_src_dir       clone destination basename under /usr/local/src/
+#                        (e.g. "nginx-module-vts" or "ngx_http_geoip2_module")
+#   module_repo          git URL
+#   module_version       git tag/branch/sha
+# Optional:
+#   extra_apt_packages   additional build deps beyond the OpenResty baseline
+
+- name: Install {{ module_name }} build dependencies
+  become: true
+  apt:
+    name: "{{ ['build-essential', 'libpcre3-dev', 'libssl-dev', 'zlib1g-dev', 'wget', 'tar', 'git'] + (extra_apt_packages | default([])) }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Check if {{ module_name }} dynamic module is already installed
+  become: true
+  stat:
+    path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}"
+  register: _dynmod_so_installed
+
+- name: Check recorded {{ module_name }} build metadata
+  become: true
+  stat:
+    path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}.buildinfo"
+  register: _dynmod_buildinfo_stat
+
+- name: Detect installed OpenResty version
+  command: openresty -v
+  register: _dynmod_openresty_v
+  changed_when: false
+
+# `openresty -v` writes `nginx version: openresty/X.Y.Z.W` to stderr.
+- name: Parse OpenResty version
+  set_fact:
+    _dynmod_openresty_ver: "{{ (_dynmod_openresty_v.stderr | regex_search('openresty/([0-9.]+)', '\\1'))[0] }}"
+
+- name: Compute desired {{ module_name }} build metadata
+  set_fact:
+    _dynmod_build_key: "openresty={{ _dynmod_openresty_ver }};repo={{ module_repo }};version={{ module_version }}"
+
+- name: Read recorded {{ module_name }} build metadata
+  become: true
+  slurp:
+    path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}.buildinfo"
+  register: _dynmod_buildinfo_raw
+  when: _dynmod_buildinfo_stat.stat.exists
+
+- name: Decide whether {{ module_name }} rebuild is needed
+  set_fact:
+    _dynmod_rebuild_needed: >-
+      {{
+        (not _dynmod_so_installed.stat.exists)
+        or (not _dynmod_buildinfo_stat.stat.exists)
+        or ((_dynmod_buildinfo_raw.content | default('') | b64decode | trim) != _dynmod_build_key)
+      }}
+
+- name: Ensure /usr/local/src exists
+  become: true
+  file:
+    path: /usr/local/src
+    state: directory
+    mode: '0755'
+  when: _dynmod_rebuild_needed
+
+- name: Download OpenResty source tarball
+  become: true
+  get_url:
+    url: "https://openresty.org/download/openresty-{{ _dynmod_openresty_ver }}.tar.gz"
+    dest: "/usr/local/src/openresty-{{ _dynmod_openresty_ver }}.tar.gz"
+    mode: '0644'
+  when: _dynmod_rebuild_needed
+
+- name: Extract OpenResty source
+  become: true
+  unarchive:
+    src: "/usr/local/src/openresty-{{ _dynmod_openresty_ver }}.tar.gz"
+    dest: /usr/local/src/
+    remote_src: yes
+    creates: "/usr/local/src/openresty-{{ _dynmod_openresty_ver }}/configure"
+  when: _dynmod_rebuild_needed
+
+- name: Clone {{ module_name }} module source
+  become: true
+  git:
+    repo: "{{ module_repo }}"
+    dest: "/usr/local/src/{{ module_src_dir }}"
+    version: "{{ module_version }}"
+    force: yes
+  when: _dynmod_rebuild_needed
+
+# Build the .so only. OpenResty's bundle structure puts the nginx Makefile under
+# build/nginx-*/, so we cd into it after configure and run only `make modules`.
+- name: Configure and build {{ module_name }} dynamic module
+  become: true
+  shell: |
+    set -e
+    cd /usr/local/src/openresty-{{ _dynmod_openresty_ver }}
+    ./configure --with-compat --add-dynamic-module=/usr/local/src/{{ module_src_dir }}
+    cd build/nginx-[0-9]*
+    make modules
+  args:
+    executable: /bin/bash
+  when: _dynmod_rebuild_needed
+
+- name: Locate built {{ module_so_name }}
+  become: true
+  find:
+    paths: "/usr/local/src/openresty-{{ _dynmod_openresty_ver }}/build"
+    patterns: "{{ module_so_name }}"
+    recurse: yes
+  register: _dynmod_so_built
+  when: _dynmod_rebuild_needed
+
+- name: Install {{ module_so_name }}
+  become: true
+  copy:
+    src: "{{ _dynmod_so_built.files[0].path }}"
+    dest: "/usr/local/openresty/nginx/modules/{{ module_so_name }}"
+    mode: '0755'
+    owner: root
+    group: root
+    remote_src: yes
+  when: _dynmod_rebuild_needed
+  notify: reload openresty
+
+- name: Record {{ module_name }} build metadata
+  become: true
+  copy:
+    content: "{{ _dynmod_build_key }}\n"
+    dest: "/usr/local/openresty/nginx/modules/{{ module_so_name }}.buildinfo"
+    mode: '0644'
+    owner: root
+    group: root
+  when: _dynmod_rebuild_needed

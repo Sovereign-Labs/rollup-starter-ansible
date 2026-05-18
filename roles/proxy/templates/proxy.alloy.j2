@@ -1,0 +1,85 @@
+// Proxy (OpenResty/nginx) log collection
+
+// nginx access log parsing
+loki.process "nginx_access" {
+  forward_to = [loki.process.add_hostname.receiver]
+
+  // Parse nginx combined log format
+  stage.regex {
+    expression = `^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]*)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)" "(?P<http_x_forwarded_for>[^"]*)" rt=(?P<request_time>\S+) backend=(?P<upstream_addr>\S+)`
+  }
+
+  stage.labels {
+    values = {
+      status = "",
+    }
+  }
+}
+
+// nginx error log parsing
+loki.process "nginx_error" {
+  forward_to = [loki.process.add_hostname.receiver]
+
+  stage.regex {
+    expression = `^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<pid>\d+)#(?P<tid>\d+): (?P<message>.*)$`
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+// certbot log parsing
+loki.process "certbot" {
+  forward_to = [loki.process.add_hostname.receiver]
+}
+
+// File discovery for nginx access logs
+local.file_match "nginx_access" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/nginx/access.log",
+    job         = "nginx-access",
+    component   = "proxy",
+  }]
+}
+
+// File discovery for nginx error logs
+local.file_match "nginx_error" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/nginx/error.log",
+    job         = "nginx-error",
+    component   = "proxy",
+  }]
+}
+
+// File discovery for certbot logs
+local.file_match "certbot" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/letsencrypt/letsencrypt.log",
+    job         = "certbot",
+    component   = "proxy",
+  }]
+}
+
+// Read nginx access logs
+loki.source.file "nginx_access" {
+  targets    = local.file_match.nginx_access.targets
+  forward_to = [loki.process.nginx_access.receiver]
+}
+
+// Read nginx error logs
+loki.source.file "nginx_error" {
+  targets    = local.file_match.nginx_error.targets
+  forward_to = [loki.process.nginx_error.receiver]
+}
+
+// Read certbot logs
+loki.source.file "certbot" {
+  targets    = local.file_match.certbot.targets
+  forward_to = [loki.process.certbot.receiver]
+}

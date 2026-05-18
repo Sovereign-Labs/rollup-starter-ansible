@@ -16,11 +16,15 @@ concurrent_sync_tasks = 2
 pre_fetched_blocks_capacity = 4
 
 [runner.http_config]
-bind_host = "{{ rollup_http_host }}"
+bind_host = "{{ rollup_http_bind_host }}"
 bind_port = {{ rollup_http_port }}
+{%- set _rollup_public_domains = (proxy_public_domains | default([])) + (proxy_unlimited_domains | default([])) %}
+{% if _rollup_public_domains | length > 0 %}
+public_address = "{{ 'https' if (proxy_ssl_enabled | default(false) | bool) else 'http' }}://{{ _rollup_public_domains | first }}"
+{% endif %}
 
 [monitoring]
-telegraf_address = "127.0.0.1:8094"
+telegraf_address = "127.0.0.1:{{ telegraf_port | default(8094, true) }}"
 
 [proof_manager]
 aggregated_proof_block_jump = 1

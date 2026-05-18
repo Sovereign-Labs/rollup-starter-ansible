@@ -1,0 +1,23 @@
+- name: set sysctl performance variables for rollup workload
+  become: true
+  ansible.builtin.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/20-rollup.conf
+    reload: yes
+  loop:
+    # VM tuning for heavy I/O + RocksDB
+    - { name: 'vm.max_map_count', value: '2000000' }
+    # 4 GiB
+    - { name: 'vm.dirty_bytes', value: '4294967296' }
+    # 1 GiB
+    - { name: 'vm.dirty_background_bytes', value: '1073741824' }
+    # 256 MiB
+    - { name: 'vm.min_free_kbytes', value: '262144' }
+    # TCP buffers for P2P traffic (10k, 87.38k linux default, 12M max)
+    - { name: 'net.ipv4.tcp_rmem', value: '10240 87380 12582912' }
+    - { name: 'net.ipv4.tcp_wmem', value: '10240 87380 12582912' }
+    # Network core tuning (128 MiB per-socket cap)
+    - { name: 'net.core.rmem_max', value: '134217728' }
+    - { name: 'net.core.wmem_max', value: '134217728' }

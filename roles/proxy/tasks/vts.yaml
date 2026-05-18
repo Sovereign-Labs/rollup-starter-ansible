@@ -1,0 +1,19 @@
+---
+# nginx-module-vts (vhost_traffic_status) for the proxy role.
+# Triggered from tasks/main.yaml when proxy_vts_enabled.
+#
+# Builds ngx_http_vhost_traffic_status_module as a dynamic .so against OpenResty
+# source matching the installed apt-package version. The apt-package OpenResty
+# install is kept; only one .so is added via `load_module`. With this in place:
+#   - openresty-{http,https}.conf.j2 emits `vhost_traffic_status_zone;` (http
+#     scope) and a 127.0.0.1:{{ proxy_vts_status_port }}/vts_status server.
+#   - telegraf-proxy.conf.j2 swaps `inputs.nginx` for `inputs.nginx_vts`.
+
+- name: Build VTS dynamic module
+  include_tasks: _build_dynamic_module.yaml
+  vars:
+    module_name: vts
+    module_so_name: ngx_http_vhost_traffic_status_module.so
+    module_src_dir: nginx-module-vts
+    module_repo: "{{ proxy_vts_module_repo }}"
+    module_version: "{{ proxy_vts_module_version }}"
