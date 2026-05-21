@@ -35,6 +35,24 @@
     proxy_letsencrypt_live_dir: "/etc/letsencrypt/live/{{ (proxy_public_domains + proxy_unlimited_domains) | first }}"
   when: proxy_ssl_enabled | bool
 
+# Detect existing cert before the initial render so a re-run on a healthy HTTPS
+# proxy emits HTTPS config straight away instead of downgrading to HTTP-only
+# until the post-certbot re-render later in the play.
+- name: Stat cert bundle (pre-render)
+  become: true
+  stat:
+    path: "{{ proxy_letsencrypt_live_dir }}/{{ item }}"
+  register: _proxy_cert_files_pre
+  loop:
+    - fullchain.pem
+    - privkey.pem
+  when: proxy_ssl_enabled | bool
+
+- name: Set HTTPS readiness flag (pre-render)
+  set_fact:
+    proxy_https_ready: "{{ _proxy_cert_files_pre.results | map(attribute='stat.exists') | select | list | length == 2 }}"
+  when: proxy_ssl_enabled | bool
+
 # Mixed-host: rollup tuning takes precedence; clean up stale proxy drop-in.
 - name: remove stale proxy sysctl drop-in when rollup is also active
   become: true
