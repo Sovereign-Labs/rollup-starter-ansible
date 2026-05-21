@@ -33,30 +33,36 @@ required from `proxy-location.conf` and `secure-rpc-locations.conf`):
 
 ## Domain configuration
 
-The proxy classifies every hostname it serves into one of three peer lists.
-There is no "primary" domain — any combination of non-empty lists is valid,
-and the lists drive every domain-aware behavior in the role (server blocks,
-SSL cert SANs, rate limiting, API-key auth).
+The proxy classifies every hostname it serves into one of two peer lists,
+matching the CDK parameters of the same names. Either list can be empty;
+at least one must be non-empty when `proxy_ssl_enabled` is true. The lists
+drive every domain-aware behavior in the role (server blocks, SSL cert
+SANs, rate limiting, API-key auth).
 
-| Variable | Public? | Rate-limited? | API key required? | Notes |
-|---|---|---|---|---|
-| `proxy_public_domains` | yes | yes | no | The "normal" RPC entry points. |
-| `proxy_unlimited_domains` | yes | no (exempt by `$host`) | no | For partners/integrations that should bypass the global rate limit. |
-| `proxy_secure_domains` | yes (TLS) | yes | yes | Only `/rpc/<api_key>` is allowed; every other path returns 401. Requires `proxy_api_key_auth_enabled: true` and a non-empty `proxy_api_keys`. |
+| Variable | Rate-limited? | API key required? | Notes |
+|---|---|---|---|
+| `proxy_public_domains` | yes | no | The "normal" RPC entry points. Maps to CDK `DomainName`. |
+| `proxy_unlimited_domains` | no (exempt by `$host`) | yes | Only `/rpc/<api_key>` is allowed; every other path returns 401. Non-empty requires a non-empty `proxy_api_keys` (asserted at play start). Maps to CDK `UnlimitedDomainNames`. |
+
+If you need a rate-limit bypass without API-key auth (e.g. a partner
+domain fronted by your own CDN), use `proxy_rate_limit_exempt_ips` (IP
+allowlist) or terminate at the CDN. The role no longer ships an
+"exempt-without-auth" tier — that combination existed only briefly during
+porting and was removed for parity with the CDK and the upstream
+`ubuntu-evm-starter-script`.
 
 ### TLS / Let's Encrypt
 
 - Set `proxy_ssl_enabled: true` and `proxy_certbot_email` to obtain a
   Let's Encrypt cert via the webroot challenge.
-- With SSL on, **at least one** of the three lists must be non-empty.
-- A **single** multi-SAN certificate is issued. It covers every domain
-  in `proxy_public_domains + proxy_unlimited_domains`, plus
-  `proxy_secure_domains` when `proxy_api_key_auth_enabled` is on.
+- With SSL on, **at least one** of the two lists must be non-empty.
+- A **single** multi-SAN certificate is issued covering
+  `proxy_public_domains + proxy_unlimited_domains`.
 - The cert lives in `/etc/letsencrypt/live/<first-domain>/`, where
   `<first-domain>` is the first entry across the concatenation
-  `proxy_public_domains + proxy_unlimited_domains + proxy_secure_domains`.
-  Reordering the YAML lists therefore renames the cert directory on the
-  next certbot run — see the pitfall below.
+  `proxy_public_domains + proxy_unlimited_domains` (public list wins if
+  non-empty). Reordering the YAML lists therefore renames the cert
+  directory on the next certbot run — see the pitfall below.
 - Optional zero-downtime cert reuse: set `proxy_cert_s3_bucket` (with
   `proxy_cert_s3_region`) and the role syncs `/etc/letsencrypt/` to/from
   S3 around certbot. Replacement instances skip certbot and boot straight
@@ -64,46 +70,42 @@ SSL cert SANs, rate limiting, API-key auth).
 
 ### Use cases
 
-Every row below is a valid configuration. The Public/Unlimited/Secure
-columns show the lists; `cert dir` is `/etc/letsencrypt/live/<...>/`;
-`SANs` is the set of domains on that one cert. Everyone in `SANs` is
-served over HTTPS.
+Every row below is a valid configuration. `cert dir` is
+`/etc/letsencrypt/live/<...>/`; `SANs` is the set of domains on that one
+cert. Everyone in `SANs` is served over HTTPS.
 
-| Public | Unlimited | Secure | API auth | What you get |
-|---|---|---|---|---|
-| `[api]` | `[]` | `[]` | off | One public block on `api` (cert dir `live/api/`, SANs `{api}`). The classic single-domain rollup. |
-| `[api]` | `[partner]` | `[]` | off | Public block serves both `api` and `partner`; `partner` is exempt from the global rate limit. SANs `{api, partner}`. |
-| `[]` | `[partner]` | `[]` | off | Only unlimited domains: useful when the public RPC is fronted by Cloudflare and you only point this proxy at integration domains. Cert dir `live/partner/`. |
-| `[]` | `[]` | `[secure]` | on | Only the API-key-gated block: `https://secure/rpc/<key>` works, everything else 401s. Cert dir `live/secure/`. |
-| `[]` | `[partner]` | `[secure]` | on | Mixed: public exempt domain plus a key-gated domain, no plain public surface. Single cert covers both. |
-| `[api]` | `[partner]` | `[secure]` | on | Full surface: rate-limited public, exempt public, and key-gated. SANs `{api, partner, secure}`. |
+| Public | Unlimited | API keys | What you get |
+|---|---|---|---|
+| `[api]` | `[]` | `[]` | One public block on `api` (cert dir `live/api/`, SANs `{api}`). The classic single-domain rollup. |
+| `[]` | `[unlimited]` | `[k1]` | Only the API-key-gated block: `https://unlimited/rpc/k1` works, everything else 401s. Cert dir `live/unlimited/`, SANs `{unlimited}`. |
+| `[api]` | `[unlimited]` | `[k1]` | Full surface: rate-limited public and rate-exempt key-gated. Cert dir `live/api/`, SANs `{api, unlimited}`. |
 
 ### Pitfalls
 
-- **No domain overlaps across lists.** A hostname listed in two lists
+- **No domain overlaps across lists.** A hostname listed in both lists
   causes two nginx `server` blocks to claim the same `server_name`. nginx
-  matches the first and silently drops the rest, so the stricter block
-  (rate limit, API-key) is bypassed. The role asserts pairwise
-  disjointness for all three lists at play start and refuses to run.
-- **`proxy_secure_domains` without API-key auth is rejected.** Without
-  `proxy_api_key_auth_enabled: true`, the secure server block is not
-  rendered and secure domains are excluded from the cert. The role
-  fails fast rather than silently dropping the entries.
+  matches the first and silently drops the rest, so the API-key-gated
+  block is bypassed. The role asserts disjointness at play start and
+  refuses to run.
+- **`proxy_unlimited_domains` requires `proxy_api_keys`, and vice versa.**
+  Either both are non-empty or both are empty. The role asserts the
+  bi-implication at play start — there is no "unlimited but
+  unauthenticated" or "API keys without a host to consume them" tier.
 - **List order determines the cert directory.** The cert lives at
   `/etc/letsencrypt/live/<first-domain>/`, where "first" walks
-  `public → unlimited → secure`. Renaming the first domain — or moving
-  it to a different list — causes certbot to create a new directory at
-  the next renewal and leave the old one orphaned. If you sync certs via
+  `public → unlimited`. Renaming the first domain — or moving it to a
+  different list — causes certbot to create a new directory at the next
+  renewal and leave the old one orphaned. If you sync certs via
   `proxy_cert_s3_bucket`, the old S3 prefix is also orphaned until you
   prune it manually.
-- **`proxy_unlimited_domains` exempts by `Host` header.** The rate-limit
-  bypass keys on `$host`, so any client hitting that hostname bypasses
-  the global limit regardless of source IP. Don't put a domain there
-  unless you actually want it unmetered.
+- **`proxy_unlimited_domains` exempts the global rate limit by `Host`.**
+  Any client hitting that hostname bypasses the global limit regardless
+  of source IP (failed-auth attempts are still per-IP throttled). Don't
+  put a domain there unless you actually want it unmetered for valid
+  API-key holders.
 - **HTTP-only mode (`proxy_ssl_enabled: false`).** The role still listens
-  on port 80 and serves the public + secure (when API auth is on)
-  server blocks, but with no certbot run. Useful for internal proxies
-  or development.
+  on port 80 and serves the same server blocks, but with no certbot run.
+  Useful for internal proxies or development.
 
 ## Other key variables (defaults in `defaults/main.yaml`)
 
@@ -114,8 +116,9 @@ served over HTTPS.
   (and therefore rate limiting + access logs) reflect the real client IP.
 - `proxy_rate_limit_enabled`, `proxy_rate_limit_rate`,
   `proxy_rate_limit_burst`, `proxy_rate_limit_exempt_ips` — global rate
-  limit knobs; `proxy_unlimited_domains` are exempt by hostname,
-  `proxy_rate_limit_exempt_ips` are exempt by source IP.
+  limit knobs. `proxy_unlimited_domains` hosts are exempt by `Host` header
+  (and require API-key auth); `proxy_rate_limit_exempt_ips` are exempt by
+  source IP (no auth requirement).
 - `proxy_node_discovery_enabled` — opt in to dynamic backends.
 - `proxy_geoip_enabled` — opt in to GeoIP2 country blocking. When true, the
   role builds `ngx_http_geoip2_module` as a dynamic `.so` against the
@@ -124,9 +127,9 @@ served over HTTPS.
   invoked from cron. Requires
   `proxy_geoip_account_id` and `proxy_geoip_license_key`; pair with
   `proxy_geoip_blocked_countries` (list of ISO 3166-1 alpha-2 codes).
-  Blocked countries get a 403 on every server block — both public and the
-  API-key-protected `proxy_secure_domains` blocks — short-circuited
-  before authentication.
+  Blocked countries get a 403 on every server block — both
+  `proxy_public_domains` and the API-key-protected
+  `proxy_unlimited_domains` blocks — short-circuited before authentication.
 
 See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the
 full list.
@@ -147,8 +150,8 @@ ansible vars, and the role adds capabilities the shell starter never had
 | Shell variable | Ansible variable | Notes |
 |---|---|---|
 | `DOMAIN_NAME` | `proxy_public_domains[0]` | Shell accepted a single value; the role takes a list. Migrate single → one-element list. |
-| `SECURE_DOMAIN_NAMES` (CSV) | `proxy_secure_domains` (YAML list) | Split on comma. Also set `proxy_api_key_auth_enabled: true` — the role asserts at play start that secure domains require API-key auth. |
-| `API_KEYS` (CSV) | `proxy_api_keys` (YAML list) | Split on comma. |
+| `SECURE_DOMAIN_NAMES` (CSV) | `proxy_unlimited_domains` (YAML list) | Split on comma. Same combined semantics: rate-exempt by Host AND only `/rpc/<api_key>` honored. Pair with a non-empty `proxy_api_keys` — the role asserts the bi-implication at play start. |
+| `API_KEYS` (CSV) | `proxy_api_keys` (YAML list) | Split on comma. Required iff `proxy_unlimited_domains` is non-empty. |
 | `PROXY_GEO_IP_IGNORE_IPS` (CSV) | `proxy_rate_limit_exempt_ips` (YAML list) | Despite the shell name, these are rate-limit exemptions, not GeoIP. |
 | `GEOIP_BLOCKED_COUNTRIES` (CSV) | `proxy_geoip_blocked_countries` (YAML list) | ISO 3166-1 alpha-2 codes. Empty list = block nothing. |
 | `GEOIP_ACCOUNT` | `proxy_geoip_account_id` | MaxMind account ID. Required when `proxy_geoip_enabled: true`. |
@@ -177,17 +180,11 @@ ansible vars, and the role adds capabilities the shell starter never had
 These behaviors have no equivalent in `ubuntu-evm-starter-script`; the role
 adds them by design and keeps them through this migration.
 
-- **Three-list domain schema** (`proxy_public_domains` /
-  `proxy_unlimited_domains` / `proxy_secure_domains`), pairwise-disjoint and
-  asserted at play start. Replaces the shell's `DOMAIN_NAME` +
-  `SECURE_DOMAIN_NAMES` pair.
-- **`proxy_unlimited_domains`** — hostnames that bypass the global rate
-  limit by `Host` header. No shell equivalent.
 - **API-key URI redaction in the access log** — the `$logged_request_uri`
   map rewrites `/rpc/<key>` to `/rpc/[redacted]` so secrets don't land in
   log files. Shell logs the raw URI.
-- **GeoIP block applied on secure domains too** — defense-in-depth, the
-  shell starter only blocked geo on the public block.
+- **GeoIP block applied on the API-key-protected block too** —
+  defense-in-depth, the shell starter only blocked geo on the public block.
 - **Per-file S3 cert sync with SAN-coverage validation** — restores reject
   certs that don't cover every current SAN, in addition to expiry checks.
   Shell only checked expiry.

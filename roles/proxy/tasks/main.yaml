@@ -26,11 +26,11 @@
 - name: Validate SSL requirements
   assert:
     that:
-      - (proxy_public_domains + proxy_unlimited_domains + proxy_secure_domains) | length > 0
+      - (proxy_public_domains + proxy_unlimited_domains) | length > 0
       - proxy_certbot_email is defined and proxy_certbot_email | length > 0
     fail_msg: >-
-      proxy_ssl_enabled requires at least one entry across proxy_public_domains,
-      proxy_unlimited_domains, or proxy_secure_domains, plus proxy_certbot_email.
+      proxy_ssl_enabled requires at least one entry across proxy_public_domains
+      or proxy_unlimited_domains, plus proxy_certbot_email.
   when: proxy_ssl_enabled | bool
 
 - name: Validate S3 cert sync requirements
@@ -41,63 +41,59 @@
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
 
-- name: Validate API key auth requirements
+# proxy_unlimited_domains hosts only serve /rpc/<api_key>; setting them
+# without API keys would render a server block where every request 401s.
+- name: Validate proxy_unlimited_domains requires proxy_api_keys
   assert:
-    that:
-      - proxy_api_keys | length > 0
-      - proxy_secure_domains | length > 0
-    fail_msg: "proxy_api_keys and proxy_secure_domains are required when proxy_api_key_auth_enabled is true"
-  when: proxy_api_key_auth_enabled | bool
-
-# Without API-key auth, no secure server block is rendered and secure domains
-# are excluded from the cert SAN list. Setting proxy_secure_domains while
-# proxy_api_key_auth_enabled is off used to be a silent no-op; fail loudly so
-# the operator either enables auth or moves those domains into a public list.
-- name: Validate proxy_secure_domains is only set when API-key auth is enabled
-  assert:
-    that:
-      - proxy_secure_domains | length == 0
+    that: proxy_api_keys | length > 0
     fail_msg: >-
-      proxy_secure_domains is non-empty but proxy_api_key_auth_enabled is false.
-      Secure domains are inert without API-key auth (no server block rendered,
-      not added to cert). Either enable proxy_api_key_auth_enabled or move
-      these entries into proxy_public_domains/proxy_unlimited_domains.
-  when: not (proxy_api_key_auth_enabled | bool)
+      proxy_unlimited_domains is non-empty but proxy_api_keys is empty.
+      Unlimited-list hosts only serve /rpc/<api_key>; without keys every
+      request would 401. Either provide proxy_api_keys or clear
+      proxy_unlimited_domains.
+  when: proxy_unlimited_domains | length > 0
 
-# A domain in two lists collides on server_name at 0.0.0.0:{80,443}. nginx
-# keeps the first matching server block and silently drops the rest, which
-# means the stricter block (rate-limit, API-key) is bypassed. Fail loudly here.
+# API keys without an unlimited-list host to consume them is a misconfig —
+# the API-key map, $valid_api_key, and failed_auth_limit shared dict are
+# only rendered when proxy_unlimited_domains is non-empty.
+- name: Validate proxy_api_keys requires proxy_unlimited_domains
+  assert:
+    that: proxy_unlimited_domains | length > 0
+    fail_msg: >-
+      proxy_api_keys is non-empty but proxy_unlimited_domains is empty.
+      API keys are only honored on proxy_unlimited_domains hostnames. Either
+      add an unlimited-list domain or clear proxy_api_keys.
+  when: proxy_api_keys | length > 0
+
+# A domain listed in both lists would collide on server_name at
+# 0.0.0.0:{80,443}. nginx keeps the first matching server block and silently
+# drops the rest, bypassing the API-key block. Fail loudly here.
 - name: Validate domain lists do not overlap
   vars:
-    _overlap_pub_unl: "{{ proxy_public_domains | intersect(proxy_unlimited_domains) }}"
-    _overlap_pub_sec: "{{ proxy_public_domains | intersect(proxy_secure_domains) }}"
-    _overlap_unl_sec: "{{ proxy_unlimited_domains | intersect(proxy_secure_domains) }}"
+    _overlap: "{{ proxy_public_domains | intersect(proxy_unlimited_domains) }}"
   assert:
-    that:
-      - _overlap_pub_unl | length == 0
-      - _overlap_pub_sec | length == 0
-      - _overlap_unl_sec | length == 0
+    that: _overlap | length == 0
     fail_msg: >-
-      Domain lists overlap (public∩unlimited={{ _overlap_pub_unl }},
-      public∩secure={{ _overlap_pub_sec }}, unlimited∩secure={{ _overlap_unl_sec }}).
+      proxy_public_domains and proxy_unlimited_domains overlap on {{ _overlap }}.
       Each domain must appear in exactly one list — duplicates cause nginx
-      server_name collisions and silently bypass the stricter server block.
+      server_name collisions and silently bypass the API-key-protected block.
 
 - name: Set follower IP to leader if not specified
   set_fact:
     proxy_rollup_follower_ip: "{{ proxy_rollup_follower_ip if (proxy_rollup_follower_ip | length > 0) else proxy_rollup_leader_ip }}"
 
-# Domain list for the SSL cert (public + unlimited, plus secure when API-key
-# auth is on). Used by certbot and by the S3 cert restore SAN check so they
-# stay in sync. Iteration order also determines the cert directory name.
+# Domain list for the SSL cert (public + unlimited). Used by certbot and by
+# the S3 cert restore SAN check so they stay in sync. Iteration order also
+# determines the cert directory name (public first, then unlimited).
 - name: Compute all cert domains
   set_fact:
-    _proxy_all_cert_domains: "{{ proxy_public_domains + proxy_unlimited_domains + (proxy_secure_domains if proxy_api_key_auth_enabled | bool else []) }}"
+    _proxy_all_cert_domains: "{{ proxy_public_domains + proxy_unlimited_domains }}"
   when: proxy_ssl_enabled | bool
 
-# Cert CN is the first domain across all lists; certbot creates
-# /etc/letsencrypt/live/<cn>/ keyed on it. Reordering the YAML lists therefore
-# changes the directory — that is the documented behavior for this role.
+# Cert CN is the first domain (public wins if non-empty, else first unlimited);
+# certbot creates /etc/letsencrypt/live/<cn>/ keyed on it. Reordering the YAML
+# lists therefore changes the directory — that is the documented behavior for
+# this role.
 - name: Derive cert CN and letsencrypt live directory
   set_fact:
     _cert_cn: "{{ _proxy_all_cert_domains | first }}"
@@ -367,7 +363,7 @@
     src: conf.d/secure-rpc-locations.conf.j2
     dest: /usr/local/openresty/nginx/conf/conf.d/secure-rpc-locations.conf
     mode: '0644'
-  when: proxy_api_key_auth_enabled | bool
+  when: proxy_unlimited_domains | length > 0
   notify: reload openresty
 
 # =============================================================================

@@ -1,5 +1,4 @@
-{%- set _all_public = proxy_public_domains + proxy_unlimited_domains %}
-{%- set _public_domains = _all_public if (_all_public | length > 0) else ['_'] %}
+{%- set _public_domains = proxy_public_domains if (proxy_public_domains | length > 0) else ['_'] %}
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
 pid /usr/local/openresty/nginx/logs/nginx.pid;
@@ -58,11 +57,12 @@ http {
         include conf.d/proxy-location.conf;
     }
 
-{% if proxy_api_key_auth_enabled | bool %}
-    # Secure server: API-key-protected /rpc/<key> for proxy_secure_domains.
+{% if proxy_unlimited_domains | length > 0 %}
+    # Unlimited-list server: rate-exempt by Host AND API-key-protected.
+    # Only /rpc/<api_key> is honored; every other path returns 401.
     server {
         listen {{ proxy_listen_port }};
-        server_name {{ proxy_secure_domains | join(' ') }};
+        server_name {{ proxy_unlimited_domains | join(' ') }};
 
         location /health {
             access_log off;

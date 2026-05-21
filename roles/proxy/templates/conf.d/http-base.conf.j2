@@ -111,7 +111,7 @@ map $http_upgrade $connection_upgrade {
 # Backend Configuration (Lua)
 # -----------------------------------------------------------------------------
 lua_shared_dict backend_cache 1m;
-{% if proxy_api_key_auth_enabled | bool %}
+{% if proxy_unlimited_domains | length > 0 %}
 # Per-IP counter for failed API-key auth attempts (used by secure-rpc-locations.conf).
 lua_shared_dict failed_auth_limit 10m;
 {% endif %}
@@ -135,7 +135,7 @@ init_worker_by_lua_block {
 }
 {% endif %}
 
-{% if proxy_api_key_auth_enabled | bool %}
+{% if proxy_unlimited_domains | length > 0 %}
 # -----------------------------------------------------------------------------
 # API Key Validation Map
 # -----------------------------------------------------------------------------
@@ -162,15 +162,15 @@ geo $ip_exempt {
 {% endfor %}
 }
 
-# Hostnames exempt from rate limiting (proxy_unlimited_domains + proxy_secure_domains).
-# Secure hostnames are exempted here so the global
-# `limit_req` does not double-throttle API-key-authenticated traffic - the
-# `failed_auth_limit` lua block in secure-rpc-locations.conf still rate-limits
-# invalid-key attempts. Matches ubuntu-evm-starter-script's behavior, where
-# SECURE_DOMAIN_NAMES were appended to the host-exemption list.
+# Hostnames exempt from the global rate limit. proxy_unlimited_domains hosts
+# are both rate-exempt by Host AND only serve /rpc/<api_key> (enforced in
+# secure-rpc-locations.conf). The exemption avoids double-throttling
+# authenticated traffic; invalid-key attempts are still rate-limited per
+# source IP by the `failed_auth_limit` shared dict in secure-rpc-locations.conf.
+# Matches ubuntu-evm-starter-script's SECURE_DOMAIN_NAMES → host-exemption mapping.
 map $host $host_exempt {
     default 0;
-{% for domain in (proxy_unlimited_domains + proxy_secure_domains) %}
+{% for domain in proxy_unlimited_domains %}
     "{{ domain }}" 1;
 {% endfor %}
 }

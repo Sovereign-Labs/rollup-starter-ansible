@@ -1,7 +1,8 @@
 # API-key-protected RPC locations.
-# Included by the secure server block when proxy_api_key_auth_enabled is true.
-# Requires $valid_api_key map, failed_auth_limit, and backend_cache shared
-# dicts (set up in http-base.conf), and the conf.d/backend-select.lua module.
+# Included by the proxy_unlimited_domains server block when that list is
+# non-empty. Requires the $valid_api_key map, the failed_auth_limit and
+# backend_cache shared dicts (set up in http-base.conf), and the
+# conf.d/backend-select.lua module.
 
 # Server-scope GeoIP block: short-circuits to 403 before location matching, so
 # blocked countries can't reach the API-key auth check. No-op when
@@ -10,10 +11,10 @@ include conf.d/geoip-block.conf;
 
 # Only /rpc/<key> (optionally trailing slash) is allowed.
 #
-# No `limit_req` here: secure hostnames are exempted from the global rate
-# limit via the $host_exempt map in conf.d/http-base.conf, so this directive
-# would be a no-op. Failed API-key attempts are still rate-limited per source
-# IP by the failed_auth_limit shared dict below.
+# No `limit_req` here: proxy_unlimited_domains hostnames are exempted from the
+# global rate limit via the $host_exempt map in conf.d/http-base.conf, so this
+# directive would be a no-op. Failed API-key attempts are still rate-limited
+# per source IP by the failed_auth_limit shared dict below.
 location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
     set $backend '';
 

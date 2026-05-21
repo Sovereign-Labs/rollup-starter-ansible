@@ -3,14 +3,16 @@
 
 # SSL/TLS Configuration
 #
-# Three peer domain lists; each entry must appear in exactly one list. When
+# Two peer domain lists; each entry must appear in exactly one list. When
 # proxy_ssl_enabled is true, at least one of these must be non-empty: a single
 # Let's Encrypt cert is issued covering every listed domain as SANs, and its
-# directory is keyed on the first available domain across the three lists.
+# directory is keyed on the first available domain across the two lists
+# (public → unlimited).
 #
-#   proxy_public_domains    — public, rate-limited
-#   proxy_unlimited_domains — public, rate-limit exempt
-#   proxy_secure_domains    — API-key gated (requires proxy_api_key_auth_enabled)
+#   proxy_public_domains    — public, global rate-limited (CDK: DomainName)
+#   proxy_unlimited_domains — rate-exempt by Host AND API-key required;
+#                             clients must use /rpc/<api_key>, all other paths
+#                             return 401 (CDK: UnlimitedDomainNames)
 proxy_ssl_enabled: false
 proxy_public_domains: []
 proxy_unlimited_domains: []
@@ -40,13 +42,11 @@ proxy_dns_resolver: ""
 # the proxy is exposed directly to the internet.
 proxy_cloudflare_real_ip: false
 
-# API-key-protected RPC endpoint on a separate set of domains. When enabled,
-# clients must use https://<secure-domain>/rpc/<api_key>; any other path on
-# those domains returns 401. The cert (when SSL is on) covers all listed
-# domains as SANs.
-proxy_api_key_auth_enabled: false
+# API keys for proxy_unlimited_domains. Required (and only meaningful) when
+# proxy_unlimited_domains is non-empty — the role asserts the bi-implication
+# at play start. Each key authorizes the URL pattern /rpc/<key> on every
+# unlimited-list hostname; every other path on those hostnames returns 401.
 proxy_api_keys: []           # list of API key strings
-proxy_secure_domains: []     # list of domain strings (server_name)
 
 # Timeouts
 proxy_websocket_timeout: "3600s"
@@ -56,9 +56,9 @@ proxy_connect_timeout: "5s"
 proxy_certbot_webroot: "/var/www/certbot"
 proxy_certbot_email: "info@sovlabs.io"  # Required when SSL enabled
 # Let's Encrypt live cert dir is derived in tasks/main.yaml from the first
-# available domain across proxy_public_domains/unlimited/secure (set as
-# proxy_letsencrypt_live_dir via set_fact when SSL is enabled). Operators
-# normally do not need to override it.
+# available domain across proxy_public_domains then proxy_unlimited_domains
+# (set as proxy_letsencrypt_live_dir via set_fact when SSL is enabled).
+# Operators normally do not need to override it.
 
 # Observability
 proxy_enable_logs_export: false  # Enable log export to Grafana Loki via Alloy
