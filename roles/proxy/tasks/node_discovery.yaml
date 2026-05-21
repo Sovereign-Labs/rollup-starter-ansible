@@ -1,61 +1,24 @@
 ---
-# Build and run the node-discovery Rust service.
-#
-# The service polls PostgreSQL for cluster topology, writes the current
-# leader/followers into {{ proxy_node_discovery_output_file }} as Lua, and
-# triggers `nginx -s reload` — so OpenResty picks up new backends without
-# Ansible re-running. Mirrors ubuntu-evm-starter-script/setup_node_discovery.sh
-# but uses this repo's existing Rust toolchain from the common role.
+# Build and run the node-discovery Rust service. The service polls Postgres
+# for cluster topology, writes Lua to {{ proxy_node_discovery_output_file }},
+# and triggers `nginx -s reload` — so OpenResty picks up new backends without
+# Ansible re-running.
 
-- name: Validate rollup_sequencer_postgres_connection_string is set
+- name: Validate node-discovery inputs
   assert:
     that:
-      - rollup_sequencer_postgres_connection_string is defined
-      - rollup_sequencer_postgres_connection_string | length > 0
-    fail_msg: >-
-      node-discovery uses `rollup_sequencer_postgres_connection_string`. Run the
-      rollup role on this host (it sets the fact via roles/rollup/tasks/postgres.yaml),
-      or set the variable explicitly in runtime_vars.yaml.
-
-- name: Validate rollup git vars are set
-  assert:
-    that:
+      - rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0
       - rollup_repo is defined and rollup_repo | length > 0
       - rollup_repo_dir is defined and rollup_repo_dir | length > 0
-      - (rollup_commit_hash is defined and rollup_commit_hash | length > 0)
-        or (rollup_branch is defined and rollup_branch | length > 0)
+      - (rollup_commit_hash is defined and rollup_commit_hash | length > 0) or (rollup_branch is defined and rollup_branch | length > 0)
+      - telegraf_port is defined and telegraf_port | string | length > 0
     fail_msg: >-
-      node-discovery builds from the rollup-starter checkout and reuses
-      `rollup_repo`, `rollup_repo_dir`, and `rollup_commit_hash` (or
-      `rollup_branch`). Set these in runtime_vars.yaml when running the
-      proxy role standalone.
+      node-discovery requires: rollup_sequencer_postgres_connection_string
+      (set by rollup role's postgres.yaml, or in runtime_vars);
+      rollup_repo / rollup_repo_dir / (rollup_commit_hash or rollup_branch)
+      for the source checkout; telegraf_port for --metrics-port.
 
-# telegraf_port is the local metrics socket the node-discovery service writes
-# to (see node-discovery.service.j2). Comes from the common role's defaults
-# (8094); assert explicitly so a proxy-only run fails loudly instead of
-# rendering `--metrics-port ` (empty arg).
-- name: Validate telegraf_port is defined
-  assert:
-    that:
-      - telegraf_port is defined
-      - telegraf_port | string | length > 0
-    fail_msg: >-
-      telegraf_port is required (used by node-discovery's --metrics-port). It
-      is defined by the common role's defaults; set it in runtime_vars.yaml
-      when running the proxy role standalone (`switches=p`).
-
-- name: Verify cargo is available for the ubuntu user
-  become: true
-  become_user: ubuntu
-  shell: test -f /home/ubuntu/.cargo/env && source /home/ubuntu/.cargo/env && command -v cargo
-  args:
-    executable: /bin/bash
-  register: _nd_cargo
-  changed_when: false
-
-# force: yes discards local mods under /home/ubuntu/{{ rollup_repo_dir }} so
-# re-runs converge on the pinned commit/branch. Operators editing this checkout
-# in place should expect their changes to be wiped.
+# force: yes discards local mods so re-runs converge on the pinned commit.
 - name: Checkout rollup-starter for node-discovery
   become: true
   become_user: ubuntu
@@ -73,20 +36,8 @@
   args:
     chdir: "/home/ubuntu/{{ rollup_repo_dir }}"
     executable: /bin/bash
-  register: _nd_build
   async: 3600
   poll: 5
-
-- name: Verify node-discovery binary was produced
-  stat:
-    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
-  register: _nd_bin
-  become: true
-
-- name: Fail if node-discovery binary is missing
-  fail:
-    msg: "node-discovery build did not produce a binary at /home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
-  when: not _nd_bin.stat.exists
 
 - name: Install node-discovery binary to /usr/local/bin
   become: true

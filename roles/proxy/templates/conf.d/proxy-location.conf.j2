@@ -1,20 +1,15 @@
-# Main proxy location with dynamic backend selection.
-# Included in the public server block.
-
-# Server-scope GeoIP block: short-circuits to 403 before location matching.
-# Applied to every server block (public AND API-key-protected); no-op when
-# proxy_geoip_enabled is false (stub map in geoip-setup.conf).
-include conf.d/geoip-block.conf;
+{% if proxy_geoip_enabled | bool %}
+if ($geoip_country_blocked) { return 403; }
+{% endif %}
 
 location / {
 {% if proxy_rate_limit_enabled | bool %}
-    # Apply conditional rate limiting
     limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
     limit_req_status 429;
 {% endif %}
 
     # Bare `/` is the JSON-RPC endpoint for standard ETH clients; route it
-    # exactly like /rpc so the eth_sendRawTransaction* leader check applies.
+    # like /rpc so the eth_sendRawTransaction* leader check applies.
     rewrite ^/$ /rpc break;
 
     set $backend '';

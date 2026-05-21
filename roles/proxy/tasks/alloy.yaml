@@ -1,7 +1,7 @@
 ---
-# Proxy-specific Alloy configuration for log collection.
-# Alloy itself is installed by the common role (roles/common/tasks/grafana_alloy.yaml),
-# which only runs when grafana_loki_token or grafana_tempo_token is set.
+# Proxy-specific Alloy log shipping. Alloy itself is installed by the common
+# role's grafana_alloy.yaml (only when grafana_loki_token / grafana_tempo_token
+# is set).
 
 - name: Check Alloy is installed
   ansible.builtin.stat:

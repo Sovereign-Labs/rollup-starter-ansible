@@ -1,13 +1,11 @@
 ---
-# Shared "build OpenResty dynamic .so" pattern. Used by tasks/vts.yaml and
-# tasks/geoip.yaml. Skips the rebuild when the recorded buildinfo matches the
-# desired (openresty version, module repo, module version) tuple.
+# Shared "build OpenResty dynamic .so" pattern (used by vts.yaml, geoip.yaml).
+# Skips rebuild when the recorded buildinfo matches (openresty version, repo, tag).
 #
 # Required vars:
-#   module_name          short label, used in task names (e.g. "vts", "geoip2")
+#   module_name          short label (e.g. "vts", "geoip2")
 #   module_so_name       installed .so basename (e.g. "ngx_http_geoip2_module.so")
 #   module_src_dir       clone destination basename under /usr/local/src/
-#                        (e.g. "nginx-module-vts" or "ngx_http_geoip2_module")
 #   module_repo          git URL
 #   module_version       git tag/branch/sha
 # Optional:
@@ -21,55 +19,44 @@
     update_cache: yes
     cache_valid_time: 3600
 
-- name: Check if {{ module_name }} dynamic module is already installed
+- name: Stat {{ module_name }} module + buildinfo
   become: true
   stat:
-    path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}"
-  register: _dynmod_so_installed
+    path: "/usr/local/openresty/nginx/modules/{{ item }}"
+  register: _dynmod_stats
+  loop:
+    - "{{ module_so_name }}"
+    - "{{ module_so_name }}.buildinfo"
 
-- name: Check recorded {{ module_name }} build metadata
-  become: true
-  stat:
-    path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}.buildinfo"
-  register: _dynmod_buildinfo_stat
-
-- name: Detect installed OpenResty version
+# `openresty -v` writes `nginx version: openresty/X.Y.Z.W` to stderr.
+- name: Detect OpenResty version
   command: openresty -v
   register: _dynmod_openresty_v
   changed_when: false
 
-# `openresty -v` writes `nginx version: openresty/X.Y.Z.W` to stderr.
-- name: Parse OpenResty version
-  set_fact:
-    _dynmod_openresty_ver: "{{ (_dynmod_openresty_v.stderr | regex_search('openresty/([0-9.]+)', '\\1'))[0] }}"
-
-- name: Compute desired {{ module_name }} build metadata
-  set_fact:
-    _dynmod_build_key: "openresty={{ _dynmod_openresty_ver }};repo={{ module_repo }};version={{ module_version }}"
-
-- name: Read recorded {{ module_name }} build metadata
+- name: Read recorded {{ module_name }} buildinfo
   become: true
   slurp:
     path: "/usr/local/openresty/nginx/modules/{{ module_so_name }}.buildinfo"
   register: _dynmod_buildinfo_raw
-  when: _dynmod_buildinfo_stat.stat.exists
+  when: _dynmod_stats.results[1].stat.exists
+
+- name: Compute {{ module_name }} build key
+  set_fact:
+    _dynmod_openresty_ver: "{{ (_dynmod_openresty_v.stderr | regex_search('openresty/([0-9.]+)', '\\1'))[0] }}"
 
 - name: Decide whether {{ module_name }} rebuild is needed
   set_fact:
+    _dynmod_build_key: "openresty={{ _dynmod_openresty_ver }};repo={{ module_repo }};version={{ module_version }}"
     _dynmod_rebuild_needed: >-
       {{
-        (not _dynmod_so_installed.stat.exists)
-        or (not _dynmod_buildinfo_stat.stat.exists)
-        or ((_dynmod_buildinfo_raw.content | default('') | b64decode | trim) != _dynmod_build_key)
+        (not _dynmod_stats.results[0].stat.exists)
+        or (not _dynmod_stats.results[1].stat.exists)
+        or ((_dynmod_buildinfo_raw.content | default('') | b64decode | trim)
+            != 'openresty=' + _dynmod_openresty_ver
+            + ';repo=' + module_repo
+            + ';version=' + module_version)
       }}
-
-- name: Ensure /usr/local/src exists
-  become: true
-  file:
-    path: /usr/local/src
-    state: directory
-    mode: '0755'
-  when: _dynmod_rebuild_needed
 
 - name: Download OpenResty source tarball
   become: true
@@ -97,8 +84,8 @@
     force: yes
   when: _dynmod_rebuild_needed
 
-# Build the .so only. OpenResty's bundle structure puts the nginx Makefile under
-# build/nginx-*/, so we cd into it after configure and run only `make modules`.
+# OpenResty's bundle puts the nginx Makefile under build/nginx-*/; we cd there
+# after configure and run `make modules` only.
 - name: Configure and build {{ module_name }} dynamic module
   become: true
   shell: |

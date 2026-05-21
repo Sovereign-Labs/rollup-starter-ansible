@@ -1,6 +1,4 @@
 ---
-# Proxy-specific Telegraf configuration
-
 - name: Deploy proxy telegraf config
   ansible.builtin.template:
     src: telegraf-proxy.conf.j2

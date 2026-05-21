@@ -1,23 +1,9 @@
 ---
 # One-shot migration from the legacy bash-repo S3 layout
-# (`s3://<bucket>/letsencrypt.tar.gz` — single tarball uploaded by
-# ubuntu-evm-starter-script/setup-proxy-helpers.sh) to the new per-file layout
-# (`s3://<bucket>/<prefix>/...` via `aws s3 sync`).
-#
-# Triggered only when:
-#   - the per-file `aws s3 sync` returned no objects (stdout empty), AND
-#   - /etc/letsencrypt/live/<domain>/ still has no fullchain.pem locally.
-# i.e. the bucket pre-dates this role's layout and the prefix is empty.
-#
-# On a successful untar the new sync uploader (main.yaml) will repopulate the
-# per-file layout on its next run, so this path is taken at most once per
-# bucket migration.
-
-- name: Stat live cert dir to decide if legacy tarball migration is needed
-  become: true
-  stat:
-    path: "{{ proxy_letsencrypt_live_dir }}/fullchain.pem"
-  register: _legacy_post_sync_fullchain
+# (`s3://<bucket>/letsencrypt.tar.gz`) to the new per-file layout
+# (`s3://<bucket>/<prefix>/...` via `aws s3 sync`). Triggered only when the
+# per-file sync returned no objects (empty prefix). The main play's S3 upload
+# step repopulates the per-file layout, so subsequent runs skip this path.
 
 - name: Attempt legacy letsencrypt.tar.gz download
   become: true
@@ -29,9 +15,7 @@
   register: _legacy_tarball_cp
   changed_when: _legacy_tarball_cp.rc == 0
   failed_when: false
-  when:
-    - not _legacy_post_sync_fullchain.stat.exists
-    - (_s3_restore.stdout | default('')) | length == 0
+  when: (_s3_restore.stdout | default('')) | length == 0
 
 - name: Extract legacy letsencrypt.tar.gz into /etc
   become: true
@@ -39,15 +23,11 @@
     src: /tmp/letsencrypt.tar.gz
     dest: /etc
     remote_src: yes
-  when:
-    - not _legacy_post_sync_fullchain.stat.exists
-    - _legacy_tarball_cp.rc | default(1) == 0
+  when: _legacy_tarball_cp.rc | default(1) == 0
 
 - name: Clean up legacy tarball
   become: true
   file:
     path: /tmp/letsencrypt.tar.gz
     state: absent
-  when:
-    - not _legacy_post_sync_fullchain.stat.exists
-    - _legacy_tarball_cp.rc | default(1) == 0
+  when: _legacy_tarball_cp.rc | default(1) == 0

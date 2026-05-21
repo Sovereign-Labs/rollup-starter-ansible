@@ -15,7 +15,7 @@ local function pick_backend(use_leader, backend_cache)
     return backend_cache:get("follower_1")
         or backend_cache:get("follower")
         or backend_cache:get("leader")
-        or "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip) }}:{{ rollup_http_port }}"
+        or "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip, true) }}:{{ rollup_http_port }}"
 end
 
 function _M.select(path)

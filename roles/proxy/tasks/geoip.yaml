@@ -1,31 +1,18 @@
 ---
-# GeoIP2 country blocking for the proxy role.
-# Triggered from tasks/main.yaml when proxy_geoip_enabled.
-#
-# Builds ngx_http_geoip2_module as a dynamic .so against OpenResty source
-# matching the installed apt-package version, seeds the GeoLite2-Country mmdb
-# from MaxMind, and installs a daily cron refresh helper. The apt-package
-# OpenResty install is kept; only one .so is added via `load_module`.
+# GeoIP2 country blocking: builds ngx_http_geoip2_module as a dynamic .so,
+# seeds the GeoLite2-Country mmdb, and installs a daily refresh cron.
 
-# =============================================================================
-# Validation
-# =============================================================================
-- name: Validate MaxMind credentials are set
+- name: Validate GeoIP inputs
   assert:
     that:
       - proxy_geoip_account_id | length > 0
       - proxy_geoip_license_key | length > 0
-    fail_msg: "proxy_geoip_account_id and proxy_geoip_license_key are required when proxy_geoip_enabled is true"
+      - (proxy_geoip_blocked_countries | reject('match', '^[A-Z]{2}$') | list) | length == 0
+    fail_msg: >-
+      proxy_geoip_enabled requires proxy_geoip_account_id and
+      proxy_geoip_license_key, and proxy_geoip_blocked_countries entries must
+      be 2-letter uppercase ISO 3166-1 alpha-2 codes.
 
-- name: Validate proxy_geoip_blocked_countries are ISO 3166-1 alpha-2
-  assert:
-    that: item is match('^[A-Z]{2}$')
-    fail_msg: "proxy_geoip_blocked_countries entry {{ item | to_json }} is not a 2-letter uppercase ISO 3166-1 alpha-2 code"
-  loop: "{{ proxy_geoip_blocked_countries }}"
-
-# =============================================================================
-# Build ngx_http_geoip2_module as a dynamic .so
-# =============================================================================
 - name: Build geoip2 dynamic module
   include_tasks: _build_dynamic_module.yaml
   vars:
@@ -38,10 +25,7 @@
       - libmaxminddb-dev
       - libmaxminddb0
 
-# =============================================================================
-# Seed GeoLite2-Country.mmdb from MaxMind
-# =============================================================================
-- name: Ensure /usr/share/GeoIP exists
+- name: Ensure GeoIP database directory exists
   become: true
   file:
     path: "{{ proxy_geoip_mmdb_path | dirname }}"
@@ -56,7 +40,7 @@
     path: "{{ proxy_geoip_mmdb_path }}"
   register: _mmdb_stat
 
-# Only seed in-role if missing. Daily refresh is owned by the cron helper, so
+# Only seed in-role if missing; daily refresh is owned by the cron helper, so
 # rerunning Ansible does not burn MaxMind's free-tier daily download quota.
 - name: Seed MaxMind GeoLite2-Country mmdb
   when: not _mmdb_stat.stat.exists
@@ -100,11 +84,8 @@
         - /tmp/GeoLite2-Country.tar.gz
         - "{{ _mmdb_extracted.files[0].path | dirname }}"
 
-# =============================================================================
-# Daily cron refresh
-# =============================================================================
 # Templated bash (same precedent as templates/s3-upload-hook.sh.j2). Mode 0700
-# because the file embeds the MaxMind license key at template time.
+# because the file embeds the MaxMind license key.
 - name: Render update-geoip-dbs.sh
   become: true
   template:
