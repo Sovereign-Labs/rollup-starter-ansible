@@ -107,6 +107,15 @@
   register: _dynmod_so_built
   when: _dynmod_rebuild_needed
 
+- name: Ensure OpenResty modules directory exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/openresty/nginx/modules
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Install {{ module_so_name }}
   become: true
   copy:
