@@ -131,6 +131,93 @@ served over HTTPS.
 See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the
 full list.
 
+## Migration from ubuntu-evm-starter-script
+
+The role replaces the proxy + observability + node-discovery surface of
+[`ubuntu-evm-starter-script`](https://github.com/Sovereign-Labs/ubuntu-evm-starter-script)
+— specifically `setup_proxy_monitoring.sh`, `setup_node_discovery.sh`,
+`setup-proxy-helpers.sh`, the `conf.d/*` and `nginx-*.conf` templates, and
+the `try_restore_certs` / S3 backup helpers. Schema-wise the role is a strict
+superset of the shell starter: every shell variable maps to one or more
+ansible vars, and the role adds capabilities the shell starter never had
+(see "What's new in the ansible role" below).
+
+### Variable mapping
+
+| Shell variable | Ansible variable | Notes |
+|---|---|---|
+| `DOMAIN_NAME` | `proxy_public_domains[0]` | Shell accepted a single value; the role takes a list. Migrate single → one-element list. |
+| `SECURE_DOMAIN_NAMES` (CSV) | `proxy_secure_domains` (YAML list) | Split on comma. Also set `proxy_api_key_auth_enabled: true` — the role asserts at play start that secure domains require API-key auth. |
+| `API_KEYS` (CSV) | `proxy_api_keys` (YAML list) | Split on comma. |
+| `PROXY_GEO_IP_IGNORE_IPS` (CSV) | `proxy_rate_limit_exempt_ips` (YAML list) | Despite the shell name, these are rate-limit exemptions, not GeoIP. |
+| `GEOIP_BLOCKED_COUNTRIES` (CSV) | `proxy_geoip_blocked_countries` (YAML list) | ISO 3166-1 alpha-2 codes. Empty list = block nothing. |
+| `GEOIP_ACCOUNT` | `proxy_geoip_account_id` | MaxMind account ID. Required when `proxy_geoip_enabled: true`. |
+| `GEOIP_LICENSE` | `proxy_geoip_license_key` | MaxMind license key. Required when `proxy_geoip_enabled: true`. |
+| (GeoIP toggle: presence of `GEOIP_ACCOUNT`+`GEOIP_LICENSE`) | `proxy_geoip_enabled` | Explicit boolean; required by the role even when creds are set. |
+| `CERT_BUCKET_NAME` | `proxy_cert_s3_bucket` | Empty disables S3 sync. Role uses per-file `aws s3 sync` (vs the shell's single `letsencrypt.tar.gz` tarball) — with a one-shot migration step that ingests an existing tarball on first run. |
+| `REGION` (for S3 cert ops) | `proxy_cert_s3_region` | Required when `proxy_cert_s3_bucket` is set; the role asserts. |
+| `ROLLUP_LEADER_IP` | `proxy_rollup_leader_ip` | Required unless `proxy_node_discovery_enabled: true`. |
+| `ROLLUP_FOLLOWER_IP` | `proxy_rollup_follower_ip` | Defaults to leader IP when empty. |
+| `NGINX_BASE_URL` | n/a | Templates ship inside the role; no remote fetch. |
+| `STACK_NAME` (ASG lookup) | n/a | Backend IPs come pre-resolved (`proxy_rollup_*_ip`) or from node-discovery via Postgres — no in-role AWS API calls. |
+| `DB_SECRET_ARN` / `DB_HOST` / `DB_PORT` / `DB_NAME` | `rollup_sequencer_postgres_connection_string` + `proxy_node_discovery_enabled: true` | node-discovery consumes the rollup role's shared Postgres connection string. CDK assembles the URL once and passes it in `runtime_vars.yaml`. |
+| `MONITORING_URL` | `influxdb_remote_url` | Set in `runtime_vars.yaml`; defaults are in `roles/common/defaults/main.yaml`. |
+| `INFLUX_TOKEN` | `influxdb_token` | Same. Required for output. |
+| `INFLUX_ORG` | `influxdb_org` | Same. |
+| `INFLUX_BUCKET` | `influxdb_bucket` | Same. |
+| (secondary InfluxDB outputs, shell N/A) | `influxdb_secondary_outputs` / `influxdb_secondary_tokens` | Multi-destination mirroring the shell never supported. |
+| `INSTANCE_ID` | n/a (telegraf auto-populates `host` tag) | Not set explicitly; telegraf uses the instance hostname. |
+| `DEPLOYMENT_NAME` | `deployment_name` | Top-level runtime var; flows into telegraf global tags. |
+| (cloudflare front, shell always on) | `proxy_cloudflare_real_ip` (default `false`) | Opt-in in the role. Set to `true` when the proxy sits behind Cloudflare; CIDRs live in `roles/proxy/vars/main.yaml`. |
+| (DNS resolver, shell hardcodes AWS VPC DNS) | `proxy_dns_resolver` (default empty) | Set to `"169.254.169.253"` on AWS to match shell behavior. |
+| (logs export, shell N/A) | `proxy_enable_logs_export` | Opt-in Alloy → Grafana Loki shipping. |
+
+### What's new in the ansible role
+
+These behaviors have no equivalent in `ubuntu-evm-starter-script`; the role
+adds them by design and keeps them through this migration.
+
+- **Three-list domain schema** (`proxy_public_domains` /
+  `proxy_unlimited_domains` / `proxy_secure_domains`), pairwise-disjoint and
+  asserted at play start. Replaces the shell's `DOMAIN_NAME` +
+  `SECURE_DOMAIN_NAMES` pair.
+- **`proxy_unlimited_domains`** — hostnames that bypass the global rate
+  limit by `Host` header. No shell equivalent.
+- **API-key URI redaction in the access log** — the `$logged_request_uri`
+  map rewrites `/rpc/<key>` to `/rpc/[redacted]` so secrets don't land in
+  log files. Shell logs the raw URI.
+- **GeoIP block applied on secure domains too** — defense-in-depth, the
+  shell starter only blocked geo on the public block.
+- **Per-file S3 cert sync with SAN-coverage validation** — restores reject
+  certs that don't cover every current SAN, in addition to expiry checks.
+  Shell only checked expiry.
+- **Legacy tarball migration** — the role auto-ingests an existing
+  `letsencrypt.tar.gz` from the same bucket on first run, then writes back
+  in per-file layout.
+- **Extra backend fallback layers** in `backend-select.lua` (follower_1 →
+  follower → leader → template-baked static fallback) instead of returning
+  503 when the cache is empty.
+- **`/nginx_status` (stub_status)** on `127.0.0.1` in the HTTP redirect
+  block, for local debugging / fallback telegraf scrape if VTS is off.
+
+### Out-of-scope deviations (deferred to follow-up)
+
+Two shell-starter behaviors are deliberately **not** ported in this PR
+because adopting either changes which `server` block answers unmatched SNI
+and warrants a separate review:
+
+- `listen 443 ssl default_server;` on the public HTTPS block.
+- `_` catchall token in the secure block's `server_name`.
+
+### CDK-side handoff
+
+[`sov-rollup-cdk-starter`](https://github.com/Sovereign-Labs/sov-rollup-cdk-starter)'s
+proxy user-data already wires every variable in the table above into
+`runtime_vars.yaml` before invoking `ansible-pull`, so existing CDK
+deployments need no schema change as a result of this PR. The mapping above
+is what an operator porting a hand-rolled `ubuntu-evm-starter-script`
+deployment to the ansible role would use directly.
+
 ## Required collections
 
 ```sh

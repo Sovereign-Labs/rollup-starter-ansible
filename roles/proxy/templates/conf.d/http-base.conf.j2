@@ -162,10 +162,15 @@ geo $ip_exempt {
 {% endfor %}
 }
 
-# Hostnames exempt from rate limiting (proxy_unlimited_domains only)
+# Hostnames exempt from rate limiting (proxy_unlimited_domains + proxy_secure_domains).
+# Secure hostnames are exempted here so the global
+# `limit_req` does not double-throttle API-key-authenticated traffic - the
+# `failed_auth_limit` lua block in secure-rpc-locations.conf still rate-limits
+# invalid-key attempts. Matches ubuntu-evm-starter-script's behavior, where
+# SECURE_DOMAIN_NAMES were appended to the host-exemption list.
 map $host $host_exempt {
     default 0;
-{% for domain in proxy_unlimited_domains %}
+{% for domain in (proxy_unlimited_domains + proxy_secure_domains) %}
     "{{ domain }}" 1;
 {% endfor %}
 }
