@@ -2,6 +2,10 @@
   set_fact:
     effective_hostname: "{{ custom_host_label | default(inventory_hostname) }}"
 
+- name: set effective environment
+  set_fact:
+    effective_environment: "{{ custom_environment | default('sov-aws-dev', true) }}"
+
 - name: load disk profile
   set_fact:
     disk_profile_raw: "{{ disk_custom if disk_profile == 'custom' else disk_profiles[disk_profile] }}"
