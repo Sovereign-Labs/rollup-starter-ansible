@@ -45,8 +45,8 @@
     "current_time": 0,
     "operating_mode": "{{ rollup_genesis_operating_mode }}",
     {% if rollup_genesis_bank_disable_gas_token %}"admin": "{{ rollup_sequencer_address }}",{% endif %}
-    "inner_code_commitment": [0, 0, 0, 0, 0, 0, 0, 0],
-    "outer_code_commitment": [0, 0, 0, 0, 0, 0, 0, 0],
+    "inner_code_commitment": {{ rollup_genesis_inner_code_commitment | to_json }},
+    "outer_code_commitment": {{ rollup_genesis_outer_code_commitment | to_json }},
     "genesis_da_height": {{ genesis_da_height }}
   },
   "paymaster": {
