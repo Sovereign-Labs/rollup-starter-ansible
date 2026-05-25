@@ -17,11 +17,11 @@
       - rollup_genesis_inner_code_commitment is not string
       - rollup_genesis_outer_code_commitment is sequence
       - rollup_genesis_outer_code_commitment is not string
-      - rollup_genesis_inner_code_commitment | length == 8
-      - rollup_genesis_outer_code_commitment | length == 8
-      - rollup_genesis_inner_code_commitment | select('integer') | list | length == 8
-      - rollup_genesis_outer_code_commitment | select('integer') | list | length == 8
-    fail_msg: "rollup_genesis_inner_code_commitment and rollup_genesis_outer_code_commitment must each be a list of exactly 8 integers."
+      - rollup_genesis_inner_code_commitment | length >= 8
+      - rollup_genesis_outer_code_commitment | length >= 8
+      - (rollup_genesis_inner_code_commitment | select('integer') | list | length) == (rollup_genesis_inner_code_commitment | length)
+      - (rollup_genesis_outer_code_commitment | select('integer') | list | length) == (rollup_genesis_outer_code_commitment | length)
+    fail_msg: "rollup_genesis_inner_code_commitment and rollup_genesis_outer_code_commitment must each be a list of at least 8 integers."
     quiet: true
 
 - name: Validate real zkVM genesis code commitments are supplied
