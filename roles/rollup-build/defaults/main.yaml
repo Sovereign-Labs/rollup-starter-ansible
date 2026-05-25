@@ -32,6 +32,9 @@ da_store: "/mnt/da"
 #    -a "src=roles/rollup-build/templates/genesis.json.j2 dest=/tmp/genesis.json" \
 #     -e "@roles/rollup-build/defaults/main.yaml" \
 #    -e "@path/to/your/vars.yaml"
+# Rollup operating mode. One of: "operator", "zk", "optimistic".
+# "operator" omits the [proof_manager] section; "zk"/"optimistic" require it.
+rollup_genesis_operating_mode: "operator"
 rollup_genesis_bank_disable_admin: false
 rollup_genesis_seq_min_bond: 5000
 rollup_genesis_seq_init_bond: 100000000000000000000000000000000
