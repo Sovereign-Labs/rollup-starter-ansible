@@ -2,6 +2,39 @@
 # Rollup build role - builds a single version of the rollup binary
 # This role can be invoked standalone or called by the rollup role
 
+- name: Validate operating mode is supported
+  assert:
+    that: "rollup_genesis_operating_mode | default('') in ['operator', 'zk', 'optimistic']"
+    fail_msg: "rollup_genesis_operating_mode must be one of: operator, zk, optimistic (got '{{ rollup_genesis_operating_mode | default('') }}')."
+    quiet: true
+
+- name: Validate genesis code commitments
+  assert:
+    that:
+      - rollup_genesis_inner_code_commitment is defined
+      - rollup_genesis_outer_code_commitment is defined
+      - rollup_genesis_inner_code_commitment is sequence
+      - rollup_genesis_inner_code_commitment is not string
+      - rollup_genesis_outer_code_commitment is sequence
+      - rollup_genesis_outer_code_commitment is not string
+      - rollup_genesis_inner_code_commitment | length >= 8
+      - rollup_genesis_outer_code_commitment | length >= 8
+      - (rollup_genesis_inner_code_commitment | select('integer') | list | length) == (rollup_genesis_inner_code_commitment | length)
+      - (rollup_genesis_outer_code_commitment | select('integer') | list | length) == (rollup_genesis_outer_code_commitment | length)
+    fail_msg: "rollup_genesis_inner_code_commitment and rollup_genesis_outer_code_commitment must each be a list of at least 8 integers."
+    quiet: true
+
+- name: Validate real zkVM genesis code commitments are supplied
+  assert:
+    that:
+      - rollup_genesis_inner_code_commitment | reject('equalto', 0) | list | length > 0
+      - rollup_genesis_outer_code_commitment | reject('equalto', 0) | list | length > 0
+    fail_msg: "rollup_genesis_inner_code_commitment and rollup_genesis_outer_code_commitment must be non-zero for zk/optimistic genesis with zkvm_role={{ zkvm_role }}."
+    quiet: true
+  when:
+    - rollup_genesis_operating_mode in ['zk', 'optimistic']
+    - zkvm_role in ['risc0', 'sp1']
+
 - name: Load DA-specific variables
   include_vars: "{{ role_path }}/vars/{{ data_availability_role }}.yaml"
 

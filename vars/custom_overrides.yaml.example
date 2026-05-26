@@ -47,6 +47,14 @@
 # zkVM implementation: "mock_zkvm", "risc0", or "sp1"
 # zkvm_role: "mock_zkvm"
 
+# Genesis operating mode: "operator", "zk", or "optimistic"
+# rollup_genesis_operating_mode: "operator"
+
+# Genesis code commitments. Required to be non-zero when using zk/optimistic
+# mode with a real zkVM ("risc0" or "sp1").
+# rollup_genesis_inner_code_commitment: [0, 0, 0, 0, 0, 0, 0, 0]
+# rollup_genesis_outer_code_commitment: [0, 0, 0, 0, 0, 0, 0, 0]
+
 # Build mode: true for debug, false for release
 # debug: true
 
