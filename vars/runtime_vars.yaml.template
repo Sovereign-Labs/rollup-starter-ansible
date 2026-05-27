@@ -34,6 +34,15 @@ rollup_commit_hash: "770a88a25576640b1e76b9385bf61b05452d60dd"
 # Options: "mock_zkvm" (fast, for development), "risc0", or "sp1" (full proving)
 zkvm_role: "mock_zkvm"
 
+# Genesis operating mode
+# Options: "operator", "zk", or "optimistic"
+rollup_genesis_operating_mode: "operator"
+
+# Genesis code commitments. Required to be non-zero when using zk/optimistic
+# mode with a real zkVM ("risc0" or "sp1").
+# rollup_genesis_inner_code_commitment: [0, 0, 0, 0, 0, 0, 0, 0]
+# rollup_genesis_outer_code_commitment: [0, 0, 0, 0, 0, 0, 0, 0]
+
 # Sequencer type
 # "Preferred": will run the preferred sequencer that provides soft confirmations.
 # "Standard": will run a basic near-stateless sequencer.

@@ -90,7 +90,9 @@ All configuration is organized in role-based defaults and secret files:
 - `rollup_repo` - Full git URL (default: "https://github.com/Sovereign-Labs/rollup-starter.git")
   - Use HTTPS for public repos, `git@github.com:org/repo.git` for private repos with SSH keys
 - `rollup_commit_hash` - ⚠️ **Git commit to deploy** (update this!)
-- `zkvm_role` - zkVM implementation (default: "mock_zkvm", option: "risc0")
+- `zkvm_role` - zkVM implementation (default: "mock_zkvm", options: "risc0", "sp1")
+- `rollup_genesis_operating_mode` - Genesis operating mode: "operator", "zk", or "optimistic"
+- `rollup_genesis_inner_code_commitment` / `rollup_genesis_outer_code_commitment` - Eight-integer code commitments; required to be non-zero for "zk"/"optimistic" with "risc0" or "sp1"
 - `debug` - Build in debug mode (default: false) for faster iteration
 - `rollup_http_port` - API port (default: 12346)
 - `rollup_http_host` - Optional bind host override; defaults to `127.0.0.1` with the proxy role and `0.0.0.0` without it

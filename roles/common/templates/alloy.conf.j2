@@ -31,6 +31,18 @@ otelcol.processor.attributes "custom_labels" {
     action = "insert"
     value = "{{ effective_hostname }}"
   }
+  action {
+    key = "environment"
+    action = "insert"
+    value = "{{ effective_environment }}"
+  }
+{% if deployment_name is defined and deployment_name %}
+  action {
+    key = "deployment_name"
+    action = "insert"
+    value = "{{ deployment_name }}"
+  }
+{% endif %}
   output {
     traces = [otelcol.exporter.otlp.grafanacloud.input]
   }
@@ -67,6 +79,10 @@ loki.process "add_hostname" {
   stage.static_labels {
     values = {
       host = "{{ effective_hostname }}",
+      environment = "{{ effective_environment }}",
+{% if deployment_name is defined and deployment_name %}
+      deployment_name = "{{ deployment_name }}",
+{% endif %}
     }
   }
 }
