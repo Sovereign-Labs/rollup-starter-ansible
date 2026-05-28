@@ -153,7 +153,13 @@ address_custom_limits = [{% for item in rollup_rate_limiter_address_limits %}["{
 ["0x95584C303FCd48AF5c6B9873015f2AD0ca84EaE3", {resources_per_bucket = 0, refill_rate = 0}],
 ["0xcB74874f1e06Fcf80A306e06e5379A44B488bA2D", {resources_per_bucket = 0, refill_rate = 0}],
 ["0x0330070FD38Ec3bB94F58FA55D40368271E9e54A", {resources_per_bucket = 0, refill_rate = 0}],
-["0x9Be599d7867f5E1a2D7Ec6dB9710dF2b98A15573", {resources_per_bucket = 0, refill_rate = 0}]]
+["0x9Be599d7867f5E1a2D7Ec6dB9710dF2b98A15573", {resources_per_bucket = 0, refill_rate = 0}],
+["0x038989cbb1710c72b9920dc4fa529158f463e72c", {resources_per_bucket = 0, refill_rate = 0}],
+["0x14779CEC0B117d5194c750C55Ea1f42086631964", {resources_per_bucket = 0, refill_rate = 0}],
+["0x32dA24Ca413F3E7B53145D4737e172C3bdF81e3e", {resources_per_bucket = 0, refill_rate = 0}],
+["0xf2235d55b2950a0b1317469d72d07ae65b2e27cb", {resources_per_bucket = 0, refill_rate = 0}],
+["0x4F428c11Dc82388fa5136D636e613ad923Eb700B", {resources_per_bucket = 0, refill_rate = 0}],
+["0xaC4cC4B68ea24BbFAAC8fD127B67Ed445ACcCE22", {resources_per_bucket = 0, refill_rate = 0}]]
 {% if rollup_rate_limiter_ip_limits | length > 0 %}
 ip_custom_limits = [{% for item in rollup_rate_limiter_ip_limits %}["{{ item.ip }}", { resources_per_bucket = {{ item.resources_per_bucket }}, refill_rate = {{ item.refill_rate }} }]{% if not loop.last %}, {% endif %}{% endfor %}]
 {% endif %}
