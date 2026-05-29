@@ -6,10 +6,12 @@ Requires=openresty.service
 
 [Service]
 Type=simple
+# DATABASE_URL holds the DB password; it is loaded from this 0600 file rather
+# than inlined into ExecStart, so it is not exposed in this 0644 unit file.
 EnvironmentFile=/etc/node-discovery.env
 ExecStart=/usr/local/bin/node-discovery \
   --database-url ${DATABASE_URL} \
-  --output-file ${OUTPUT_FILE} \
+  --output-file {{ proxy_node_discovery_output_file }} \
   --max-age-millis {{ proxy_node_discovery_max_age_millis }} \
   --nginx-binary /usr/local/openresty/nginx/sbin/nginx \
   --metrics-port {{ telegraf_port | default(8094, true) }}

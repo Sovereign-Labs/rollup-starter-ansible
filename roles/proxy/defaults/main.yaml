@@ -10,6 +10,11 @@
 #   proxy_unlimited_domains — rate-exempt by Host AND API-key required;
 #                             clients must use /rpc/<api_key>; other paths 401
 proxy_ssl_enabled: false
+# Fail the play if SSL was requested but HTTPS never came up (no valid cert),
+# instead of silently leaving the proxy on HTTP. Defaults to proxy_ssl_enabled.
+# Set false for the first bootstrap run (e.g. DNS not yet pointed at the host) so
+# the play can finish and obtain the cert on a later run.
+proxy_require_https_ready: "{{ proxy_ssl_enabled }}"
 proxy_public_domains: []
 proxy_unlimited_domains: []
 

@@ -139,6 +139,15 @@
     - reload systemd
     - restart openresty
 
+# Land the FD-limit restart now, before any config is rendered. apt-install
+# auto-starts openresty at the default 1024 soft limit; if that master survives
+# to the end-of-play flush, the `reload openresty` (SIGHUP) notified by the
+# config templates fires *before* `restart openresty` in handler order and logs
+# a spurious "worker_connections exceed open file resource limit: 1024". Flushing
+# here restarts the master to 65535 first, so later reloads stay quiet.
+- name: Apply FD-limit override before any config reload
+  meta: flush_handlers
+
 - name: Install certbot and cert inspection deps
   become: true
   apt:
