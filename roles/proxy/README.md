@@ -54,6 +54,10 @@ A **single** multi-SAN Let's Encrypt cert covers
   directory name just no longer matches and is rebuilt.
 - **`proxy_unlimited_domains` is rate-exempt by `Host`** — valid API-key
   traffic is unmetered; failed-auth attempts remain per-IP throttled.
+- **Only-unlimited deployments expose no anonymous endpoint.** With
+  `proxy_public_domains` empty, no `server_name _;` catch-all is rendered, so
+  raw-IP / unmatched-`Host` requests fall through to the secure server and get
+  401 — the backend is never reachable without an API key.
 
 ## Key variables
 
@@ -65,6 +69,9 @@ See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the full list
 - `proxy_rate_limit_*` — global rate limit knobs.
 - `proxy_cert_s3_bucket` + `proxy_cert_s3_region` — optional S3 cert backup
   (tarball at the bucket root, key `proxy_cert_s3_key`).
+- `proxy_require_https_ready` — when SSL is on, fail the play if no valid cert
+  came up (defaults to `proxy_ssl_enabled`) rather than silently serving HTTP.
+  Set `false` for the first bootstrap run (DNS not yet pointed at the host).
 - `proxy_node_discovery_enabled` — opt in to dynamic backends (Rust service).
 - `proxy_vts_enabled` — opt in to per-vhost / per-upstream metrics (~5–10 min
   source build on first deploy).

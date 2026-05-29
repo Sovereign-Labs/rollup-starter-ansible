@@ -74,6 +74,12 @@ http {
 {{ ssl_server(proxy_unlimited_domains, 'conf.d/secure-rpc-locations.conf') }}
 {% endif %}
 {% else %}
+{# Render the anonymous public server only when public domains exist, or when no
+   domains are configured at all. With only proxy_unlimited_domains set, omitting
+   it avoids a `server_name _;` catch-all serving the no-API-key
+   proxy-location.conf to raw-IP/unmatched-Host requests; the unlimited (secure)
+   server then becomes nginx's default and answers those with 401. #}
+{% if proxy_public_domains | length > 0 or proxy_unlimited_domains | length == 0 %}
     server {
         listen {{ proxy_listen_port }};
         server_name {{ _public_domains | join(' ') }};
@@ -84,6 +90,7 @@ http {
 
         include conf.d/proxy-location.conf;
     }
+{% endif %}
 
 {% if proxy_unlimited_domains | length > 0 %}
     server {

@@ -337,6 +337,19 @@
     proxy_https_ready: "{{ _check_cert_ok | default(false) }}"
   when: proxy_ssl_enabled | bool
 
+- name: Fail when HTTPS is required but no valid certificate is available
+  assert:
+    that:
+      - proxy_https_ready | default(false)
+    fail_msg: >-
+      proxy_require_https_ready is true but no valid certificate is available for
+      {{ _proxy_all_cert_domains | join(', ') }}. Refusing to leave the proxy on
+      HTTP-only. Fix DNS / certbot, or set proxy_require_https_ready=false for the
+      initial bootstrap run.
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_require_https_ready | bool
+
 - name: Back up current Let's Encrypt state to S3 (tarball preserves symlinks)
   become: true
   shell: |

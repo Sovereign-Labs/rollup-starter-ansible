@@ -82,6 +82,9 @@ rollup_http_port: 12346
 #                             clients must use /rpc/<api_key>
 #                             (CDK: UnlimitedDomainNames)
 # proxy_ssl_enabled: true
+# proxy_require_https_ready defaults to proxy_ssl_enabled; set false ONLY for the
+# first bootstrap run (DNS not yet pointed) so the play can finish on HTTP.
+# proxy_require_https_ready: false
 # proxy_public_domains: ["rpc.example.com"]
 # proxy_certbot_email: "ops@example.com"
 
