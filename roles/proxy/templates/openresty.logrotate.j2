@@ -1,11 +1,12 @@
 /var/log/nginx/*.log {
     daily
+    maxsize 1G
     rotate 28
     dateext
+    dateformat -%Y%m%d-%s
     missingok
     notifempty
     compress
-    delaycompress
     sharedscripts
     postrotate
         if [ -f /usr/local/openresty/nginx/logs/nginx.pid ]; then

@@ -14,7 +14,7 @@ proxy / observability / node-discovery surface of
 - Optionally builds dynamic `.so` modules (VTS metrics, GeoIP2 country blocking).
 - Optionally builds and runs the `node-discovery` Rust service for automatic
   backend updates on Postgres topology changes.
-- Telegraf input + optional Alloy log export + daily logrotate.
+- Telegraf input + optional Alloy log export + hourly-checked, size-capped (1G) logrotate.
 
 ## Routing
 

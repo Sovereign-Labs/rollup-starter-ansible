@@ -1,8 +1,9 @@
 ---
 # Sets `_check_cert_ok` based on the cert at `_check_path`.
-# True when cert.pem, fullchain.pem, privkey.pem all exist, the cert is
-# valid for at least `proxy_cert_expiry_threshold_days` more, and its SANs
-# cover every domain in `_proxy_all_cert_domains`.
+# True when cert.pem, fullchain.pem, privkey.pem all exist, the cert is valid
+# for at least `_check_threshold_days` more days (defaults to
+# `proxy_cert_expiry_threshold_days`; HTTPS-readiness callers pass 0 = "valid
+# right now"), and its SANs cover every domain in `_proxy_all_cert_domains`.
 
 - name: Stat cert bundle at {{ _check_path }}
   become: true
@@ -19,7 +20,7 @@
   community.crypto.x509_certificate_info:
     path: "{{ _check_path }}/cert.pem"
     valid_at:
-      threshold: "+{{ proxy_cert_expiry_threshold_days }}d"
+      threshold: "+{{ _check_threshold_days | default(proxy_cert_expiry_threshold_days) }}d"
   register: _check_cert_info
   when: _check_files.results[0].stat.exists
 

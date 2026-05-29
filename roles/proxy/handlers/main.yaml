@@ -4,6 +4,16 @@
   ansible.builtin.systemd:
     daemon_reload: yes
 
+# daemon_reload picks up the timer drop-in; restart re-arms the new schedule.
+# Notified only by the hourly.conf copy, so it fires only when that file changes.
+- name: restart logrotate timer
+  become: true
+  ansible.builtin.systemd:
+    name: logrotate.timer
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
 - name: reload openresty
   become: true
   ansible.builtin.systemd:

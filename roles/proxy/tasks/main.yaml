@@ -38,19 +38,16 @@
 # Detect existing cert before the initial render so a re-run on a healthy HTTPS
 # proxy emits HTTPS config straight away instead of downgrading to HTTP-only
 # until the post-certbot re-render later in the play.
-- name: Stat cert bundle (pre-render)
-  become: true
-  stat:
-    path: "{{ proxy_letsencrypt_live_dir }}/{{ item }}"
-  register: _proxy_cert_files_pre
-  loop:
-    - fullchain.pem
-    - privkey.pem
+- name: Assess existing cert for HTTPS readiness (pre-render)
+  include_tasks: _assess_cert.yaml
+  vars:
+    _check_path: "{{ proxy_letsencrypt_live_dir }}"
+    _check_threshold_days: 0          # servable now (not expired); 30d freshness is for renew/restore
   when: proxy_ssl_enabled | bool
 
 - name: Set HTTPS readiness flag (pre-render)
   set_fact:
-    proxy_https_ready: "{{ _proxy_cert_files_pre.results | map(attribute='stat.exists') | select | list | length == 2 }}"
+    proxy_https_ready: "{{ _check_cert_ok | default(false) }}"
   when: proxy_ssl_enabled | bool
 
 # Mixed-host: rollup tuning takes precedence; clean up stale proxy drop-in.
@@ -142,10 +139,12 @@
     - reload systemd
     - restart openresty
 
-- name: Install certbot
+- name: Install certbot and cert inspection deps
   become: true
   apt:
-    name: certbot
+    name:
+      - certbot
+      - python3-cryptography   # community.crypto.x509_certificate_info (_assess_cert.yaml)
     state: present
   when: proxy_ssl_enabled | bool
 
@@ -180,12 +179,39 @@
     state: directory
     mode: '0755'
 
+- name: Ensure logrotate is installed
+  become: true
+  apt:
+    name: logrotate
+    state: present
+
 - name: Install nginx logrotate config
   become: true
   template:
     src: openresty.logrotate.j2
     dest: /etc/logrotate.d/openresty
     mode: '0644'
+
+- name: Ensure logrotate timer override directory exists
+  become: true
+  file:
+    path: /etc/systemd/system/logrotate.timer.d
+    state: directory
+    mode: '0755'
+
+- name: Run logrotate hourly (override the vendor daily timer)
+  become: true
+  copy:
+    dest: /etc/systemd/system/logrotate.timer.d/hourly.conf
+    mode: '0644'
+    content: |
+      # Managed by Ansible (proxy role). Check logrotate hourly so `maxsize` in
+      # /etc/logrotate.d/openresty caps nginx log disk use between daily runs.
+      # Empty OnCalendar= clears the inherited daily schedule before setting hourly.
+      [Timer]
+      OnCalendar=
+      OnCalendar=hourly
+  notify: restart logrotate timer
 
 # Both build a dynamic .so the openresty-{http,https}.conf `load_module`
 # directives reference, so they must run before the config templates render.
@@ -290,19 +316,16 @@
     - _proxy_all_cert_domains | length > 0
     - not (proxy_cert_restored | default(false))
 
-- name: Stat cert bundle
-  become: true
-  stat:
-    path: "{{ proxy_letsencrypt_live_dir }}/{{ item }}"
-  register: _proxy_cert_files
-  loop:
-    - fullchain.pem
-    - privkey.pem
+- name: Assess existing cert for HTTPS readiness (post-certbot)
+  include_tasks: _assess_cert.yaml
+  vars:
+    _check_path: "{{ proxy_letsencrypt_live_dir }}"
+    _check_threshold_days: 0          # servable now; this gate only activates HTTPS, never downgrades
   when: proxy_ssl_enabled | bool
 
-- name: Set HTTPS readiness flag
+- name: Set HTTPS readiness flag (post-certbot)
   set_fact:
-    proxy_https_ready: "{{ _proxy_cert_files.results | map(attribute='stat.exists') | select | list | length == 2 }}"
+    proxy_https_ready: "{{ _check_cert_ok | default(false) }}"
   when: proxy_ssl_enabled | bool
 
 - name: Back up current Let's Encrypt state to S3 (tarball preserves symlinks)
