@@ -58,14 +58,20 @@ proxy_vts_module_repo: "https://github.com/vozlt/nginx-module-vts.git"
 proxy_vts_module_version: "v0.2.4"
 proxy_vts_status_port: 8080
 
-# S3 cert backup/restore (optional). When set, /etc/letsencrypt/ is synced
-# to/from S3 so replacement instances boot straight into HTTPS. The instance
-# needs s3:{Get,List,Put,Delete}Object on the bucket. Snap path is hardcoded
+# S3 cert backup/restore (optional). When set, /etc/letsencrypt/ is archived to
+# a single tarball in S3 (key: proxy_cert_s3_key) so replacement instances boot
+# straight into HTTPS. A TARBALL is used (not `aws s3 sync`) because Let's
+# Encrypt stores live/<domain>/*.pem as SYMLINKS into archive/<domain>/, and
+# `s3 sync` does not preserve symlinks — restoring a synced tree leaves broken
+# links and breaks `certbot renew`. `tar` preserves them. The object lives at
+# the bucket root and is shared with ubuntu-evm-starter-script (same key).
+# The instance needs only s3:GetObject + s3:PutObject on the bucket (no List/
+# Delete — single fixed key, overwritten in place). Snap path is hardcoded
 # because certbot renewal hooks don't reliably include /snap/bin in PATH.
 proxy_aws_cli_bin: "/snap/bin/aws"
 proxy_cert_s3_bucket: ""
 proxy_cert_s3_region: ""
-proxy_cert_s3_prefix: "letsencrypt/"
+proxy_cert_s3_key: "letsencrypt.tar.gz"
 proxy_cert_expiry_threshold_days: 30
 
 # GeoIP2 country blocking (opt-in). When enabled, the role builds

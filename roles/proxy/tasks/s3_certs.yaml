@@ -1,7 +1,9 @@
 ---
 # Restore Let's Encrypt state from S3 so a replacement proxy boots straight
-# into HTTPS. Skips the sync when the local cert is already fresh + covers all
-# SANs; otherwise deletes the stale live/ dir so certbot re-issues cleanly.
+# into HTTPS. Downloads a tarball (tar preserves certbot's live/ -> archive/
+# symlinks, which `aws s3 sync` would break) and extracts it. Skips the restore
+# when the local cert is already fresh + covers all SANs; otherwise deletes the
+# stale live/ dir so certbot re-issues cleanly.
 
 - name: Initialize cert restored flag
   set_fact:
@@ -14,7 +16,7 @@
     state: directory
     mode: '0755'
 
-- name: Assess local cert (pre-sync)
+- name: Assess local cert (pre-restore)
   include_tasks: _assess_cert.yaml
   vars:
     _check_path: "{{ proxy_letsencrypt_live_dir }}"
@@ -23,33 +25,44 @@
   set_fact:
     _local_cert_ok: "{{ _check_cert_ok }}"
 
-- name: Sync certs from S3 (local cert missing or stale)
+- name: Download cert tarball from S3 (local cert missing or stale)
   become: true
   command: >
-    {{ proxy_aws_cli_bin }} s3 sync
-    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
-    /etc/letsencrypt/
+    {{ proxy_aws_cli_bin }} s3 cp
+    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_key }}
+    /tmp/proxy-letsencrypt-restore.tar.gz
     --region {{ proxy_cert_s3_region }}
     --quiet
-  register: _s3_restore
-  changed_when: _s3_restore.stdout | default('') | length > 0
+  register: _s3_restore_cp
+  changed_when: _s3_restore_cp.rc == 0
   failed_when: false
   when: not _local_cert_ok
 
-# Missing bucket / empty prefix is fine (first-time setup); surface other
-# failures so operators see auth or network errors before falling through to
-# certbot.
-- name: Warn on S3 cert sync failure
+# A missing tarball (rc != 0) is the EXPECTED first-time / fresh-replacement
+# path: we fall through to certbot below. Surface rc/stderr only so auth or
+# network errors stay visible to operators.
+- name: Note S3 cert restore outcome
   ansible.builtin.debug:
     msg: |
-      S3 cert restore failed (rc={{ _s3_restore.rc }}). Proceeding to certbot.
-      stderr: {{ _s3_restore.stderr | default('') }}
+      No cert tarball restored from S3 (rc={{ _s3_restore_cp.rc | default('n/a') }}).
+      Proceeding to certbot. stderr: {{ _s3_restore_cp.stderr | default('') }}
   when:
     - not _local_cert_ok
-    - _s3_restore.rc | default(0) != 0
+    - _s3_restore_cp.rc | default(1) != 0
 
-- name: Migrate legacy letsencrypt.tar.gz layout if prefix is empty
-  import_tasks: migrate_legacy_tarball.yaml
+- name: Extract cert tarball into /etc
+  become: true
+  command: tar xzf /tmp/proxy-letsencrypt-restore.tar.gz -C /etc
+  changed_when: true
+  when:
+    - not _local_cert_ok
+    - _s3_restore_cp.rc | default(1) == 0
+
+- name: Clean up restore tarball
+  become: true
+  file:
+    path: /tmp/proxy-letsencrypt-restore.tar.gz
+    state: absent
   when: not _local_cert_ok
 
 - name: Assess restored cert

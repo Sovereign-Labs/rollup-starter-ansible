@@ -1,18 +1,23 @@
 #!/bin/bash
 # Managed by Ansible (roles/proxy). Runs after `certbot renew` succeeds.
-set -e
-sync_failed=0
+# Archives /etc/letsencrypt to a tarball (preserves the live/ -> archive/
+# symlinks that `aws s3 sync` would break) and uploads it to S3, then reloads
+# OpenResty. We reload even if the upload fails, then exit non-zero so certbot's
+# hook runner still surfaces it.
+upload_failed=0
+tarball="$(mktemp /tmp/letsencrypt-renew.XXXXXX.tar.gz)"
+trap 'rm -f "$tarball"' EXIT
 
-if ! {{ proxy_aws_cli_bin }} s3 sync /etc/letsencrypt/ \
-  "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}" \
-  --region {{ proxy_cert_s3_region }} \
-  --quiet --exclude "*.log"; then
-  sync_failed=1
-  echo "WARNING: Failed to sync renewed certificates to S3" >&2
+if ! { tar czf "$tarball" --exclude='*.log' -C /etc letsencrypt \
+       && {{ proxy_aws_cli_bin }} s3 cp "$tarball" \
+            "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_key }}" \
+            --region {{ proxy_cert_s3_region }} --quiet; }; then
+  upload_failed=1
+  echo "WARNING: Failed to back up renewed certificates to S3" >&2
 fi
 
 systemctl reload openresty
 
-if [ "$sync_failed" -ne 0 ]; then
+if [ "$upload_failed" -ne 0 ]; then
   exit 1
 fi

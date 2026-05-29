@@ -9,7 +9,8 @@ proxy / observability / node-discovery surface of
 - Installs the apt-package OpenResty.
 - Renders nginx config under `/usr/local/openresty/nginx/conf/`.
 - Optionally obtains a Let's Encrypt cert via certbot (webroot challenge),
-  with optional S3 sync of `/etc/letsencrypt/` for zero-downtime replacement.
+  with optional S3 backup of `/etc/letsencrypt/` (as a tarball) for
+  zero-downtime replacement.
 - Optionally builds dynamic `.so` modules (VTS metrics, GeoIP2 country blocking).
 - Optionally builds and runs the `node-discovery` Rust service for automatic
   backend updates on Postgres topology changes.
@@ -48,7 +49,9 @@ A **single** multi-SAN Let's Encrypt cert covers
 ### Pitfalls
 
 - **List order picks the cert directory.** Reordering renames it on the next
-  certbot run and orphans the old S3 prefix (if `proxy_cert_s3_bucket` is set).
+  certbot run, so the next replacement re-issues via certbot once. The S3 backup
+  is a single fixed-key tarball, so nothing is orphaned — the restored bundle's
+  directory name just no longer matches and is rebuilt.
 - **`proxy_unlimited_domains` is rate-exempt by `Host`** — valid API-key
   traffic is unmetered; failed-auth attempts remain per-IP throttled.
 
@@ -60,7 +63,8 @@ See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the full list
 - `proxy_rollup_follower_ip` — optional; defaults to leader.
 - `proxy_cloudflare_real_ip` — trust `CF-Connecting-IP` from CF edge CIDRs.
 - `proxy_rate_limit_*` — global rate limit knobs.
-- `proxy_cert_s3_bucket` + `proxy_cert_s3_region` — optional S3 cert sync.
+- `proxy_cert_s3_bucket` + `proxy_cert_s3_region` — optional S3 cert backup
+  (tarball at the bucket root, key `proxy_cert_s3_key`).
 - `proxy_node_discovery_enabled` — opt in to dynamic backends (Rust service).
 - `proxy_vts_enabled` — opt in to per-vhost / per-upstream metrics (~5–10 min
   source build on first deploy).

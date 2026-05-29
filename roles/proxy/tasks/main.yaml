@@ -25,7 +25,7 @@
       - (proxy_cert_s3_bucket | length == 0) or (proxy_cert_s3_region | length > 0)
     fail_msg: >-
       proxy_ssl_enabled requires at least one entry across proxy_public_domains
-      or proxy_unlimited_domains, proxy_certbot_email, and (if S3 sync used)
+      or proxy_unlimited_domains, proxy_certbot_email, and (if S3 backup used)
       proxy_cert_s3_region.
   when: proxy_ssl_enabled | bool
 
@@ -305,19 +305,28 @@
     proxy_https_ready: "{{ _proxy_cert_files.results | map(attribute='stat.exists') | select | list | length == 2 }}"
   when: proxy_ssl_enabled | bool
 
-- name: Upload current Let's Encrypt state to S3
+- name: Back up current Let's Encrypt state to S3 (tarball preserves symlinks)
   become: true
-  command: >
-    {{ proxy_aws_cli_bin }} s3 sync /etc/letsencrypt/
-    s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_prefix }}
-    --region {{ proxy_cert_s3_region }}
-    --exclude "*.log"
-  register: _s3_cert_upload
-  changed_when: _s3_cert_upload.stdout | default('') | length > 0
+  shell: |
+    set -euo pipefail
+    tarball="$(mktemp /tmp/proxy-letsencrypt-backup.XXXXXX.tar.gz)"
+    trap 'rm -f "$tarball"' EXIT
+    tar czf "$tarball" --exclude='*.log' -C /etc letsencrypt
+    {{ proxy_aws_cli_bin }} s3 cp "$tarball" \
+      "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_key }}" \
+      --region {{ proxy_cert_s3_region }} --quiet
+  args:
+    executable: /bin/bash
+  # Best-effort S3 side effect, not host state -> changed_when: false. The
+  # tightened `when` skips the upload on steady-state re-runs (cert restored /
+  # already fresh and certbot was a no-op) so we don't re-tar+upload an
+  # identical tree every run.
+  changed_when: false
   when:
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
     - proxy_https_ready | default(false)
+    - (certbot_result is defined and certbot_result is changed) or not (proxy_cert_restored | default(false))
 
 - name: Warn if HTTPS config is not ready (proxy running on HTTP only)
   ansible.builtin.debug:
