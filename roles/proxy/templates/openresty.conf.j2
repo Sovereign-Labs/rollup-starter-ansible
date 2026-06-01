@@ -1,0 +1,107 @@
+{%- set _all_domains = proxy_public_domains + proxy_unlimited_domains %}
+{%- set _public_domains = proxy_public_domains if (proxy_public_domains | length > 0) else ['_'] %}
+{%- macro ssl_server(domains, include_path) %}
+    server {
+        listen {{ proxy_listen_port_ssl }} ssl;
+        http2 on;
+        server_name {{ domains | join(' ') }};
+
+        ssl_certificate     {{ proxy_letsencrypt_live_dir }}/fullchain.pem;
+        ssl_certificate_key {{ proxy_letsencrypt_live_dir }}/privkey.pem;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+        ssl_prefer_server_ciphers off;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:SSL:50m;
+        ssl_session_tickets off;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+
+        location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
+        include {{ include_path }};
+    }
+{%- endmacro %}
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /usr/local/openresty/nginx/logs/nginx.pid;
+
+{% if proxy_geoip_enabled | bool %}
+load_module modules/ngx_http_geoip2_module.so;
+{% endif %}
+{% if proxy_vts_enabled | bool %}
+load_module modules/ngx_http_vhost_traffic_status_module.so;
+{% endif %}
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include conf.d/http-base.conf;
+
+{% if proxy_vts_enabled | bool %}
+    server {
+        listen 127.0.0.1:{{ proxy_vts_status_port }};
+        location /vts_status {
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format json;
+            access_log off;
+        }
+    }
+
+{% endif %}
+{% if proxy_https_ready | default(false) %}
+    server {
+        listen {{ proxy_listen_port }};
+        server_name {{ _all_domains | join(' ') }};
+
+        location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
+        location /nginx_status { stub_status on; access_log off; allow 127.0.0.1; deny all; }
+        location /.well-known/acme-challenge/ { root {{ proxy_certbot_webroot }}; }
+
+        location / {
+            return 301 https://$host{% if proxy_listen_port_ssl | int != 443 %}:{{ proxy_listen_port_ssl }}{% endif %}$request_uri;
+        }
+    }
+{% if proxy_public_domains | length > 0 %}
+{{ ssl_server(proxy_public_domains, 'conf.d/proxy-location.conf') }}
+{% endif %}
+{% if proxy_unlimited_domains | length > 0 %}
+{{ ssl_server(proxy_unlimited_domains, 'conf.d/secure-rpc-locations.conf') }}
+{% endif %}
+{% else %}
+{# Render the anonymous public server only when public domains exist, or when no
+   domains are configured at all. With only proxy_unlimited_domains set, omitting
+   it avoids a `server_name _;` catch-all serving the no-API-key
+   proxy-location.conf to raw-IP/unmatched-Host requests; the unlimited (secure)
+   server then becomes nginx's default and answers those with 401. #}
+{% if proxy_public_domains | length > 0 or proxy_unlimited_domains | length == 0 %}
+    server {
+        listen {{ proxy_listen_port }};
+        server_name {{ _public_domains | join(' ') }};
+
+        location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
+        location /nginx_status { stub_status on; access_log off; allow 127.0.0.1; deny all; }
+        location /.well-known/acme-challenge/ { root {{ proxy_certbot_webroot }}; }
+
+        include conf.d/proxy-location.conf;
+    }
+{% endif %}
+
+{% if proxy_unlimited_domains | length > 0 %}
+    server {
+        listen {{ proxy_listen_port }};
+        server_name {{ proxy_unlimited_domains | join(' ') }};
+
+        location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
+        location /.well-known/acme-challenge/ { root {{ proxy_certbot_webroot }}; }
+
+        include conf.d/secure-rpc-locations.conf;
+    }
+{% endif %}
+{% endif %}
+}

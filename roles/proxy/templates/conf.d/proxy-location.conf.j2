@@ -1,0 +1,23 @@
+{% if proxy_geoip_enabled | bool %}
+if ($geoip_country_blocked) { return 403; }
+{% endif %}
+
+location / {
+{% if proxy_rate_limit_enabled | bool %}
+    limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
+    limit_req_status 429;
+{% endif %}
+
+    # Bare `/` is the JSON-RPC endpoint for standard ETH clients; route it
+    # like /rpc so the eth_sendRawTransaction* leader check applies.
+    rewrite ^/$ /rpc break;
+
+    set $backend '';
+
+    access_by_lua_block {
+        require("backend-select").select(ngx.var.uri)
+    }
+
+    proxy_pass http://$backend;
+    include conf.d/proxy-headers.conf;
+}

@@ -15,8 +15,14 @@
 - name: chrony
   include_tasks: chrony.yaml
 
+- name: migrate legacy sysctl entries off /etc/sysctl.conf
+  include_tasks: migrate_sysctl.yaml
+
 - name: tune host
   include_tasks: system_tuner.yaml
+
+- name: set CPU governor
+  include_tasks: cpu_governor.yaml
 
 - name: folders
   include_tasks: dirs.yaml

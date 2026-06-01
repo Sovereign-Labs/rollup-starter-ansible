@@ -1,0 +1,10 @@
+---
+- name: Deploy proxy telegraf config
+  ansible.builtin.template:
+    src: telegraf-proxy.conf.j2
+    dest: /etc/telegraf/telegraf.d/proxy.conf
+    owner: telegraf
+    group: telegraf
+    mode: '0644'
+  become: true
+  notify: restart telegraf

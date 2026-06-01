@@ -85,6 +85,21 @@
   set_fact:
     override_vars_arg: "{{ '-e @' + config_checkout_dir + '/' + version.vars_file if (version.vars_file is defined and version.vars_file | length > 0) else '' }}"
 
+# Derived here in the parent's `switches` context because the sub-playbook is
+# launched with `-e switches=b`, which would make the same expression in
+# roles/rollup-build/tasks/build_config.yaml resolve to 0.0.0.0 regardless of
+# whether the parent run included `p`. We pass the resolved value via
+# `-e rollup_http_host=...`; build_config.yaml's derivation then short-circuits
+# on the non-empty input.
+- name: Derive rollup HTTP bind host for version build
+  set_fact:
+    rollup_http_bind_host: >-
+      {{
+        rollup_http_host
+        if (rollup_http_host | default('') | string | length > 0)
+        else ('127.0.0.1' if 'p' in (switches | default('')) else '0.0.0.0')
+      }}
+
 - name: Build version command
   set_fact:
     build_command: >-
@@ -97,6 +112,7 @@
       -e binary_folder={{ version_output_dir }}
       -e config_folder={{ version_output_dir }}
       -e genesis_folder={{ version_genesis_folder }}
+      -e rollup_http_host={{ rollup_http_bind_host | quote }}
       -e rollup_http_port={{ rollup_http_port }}
       -e rollup_storage_dir={{ rollup_storage_dir }}
 

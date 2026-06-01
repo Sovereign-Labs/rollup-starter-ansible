@@ -68,6 +68,10 @@ This setup supports multiple deployment configurations:
 ```bash
 brew install ansible
 ansible --version  # Should be ansible [core 2.16+]
+
+# Install required collections (`community.crypto` for proxy cert checks,
+# `community.postgresql` for local Postgres provisioning in the rollup role)
+ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Configuration
@@ -91,6 +95,7 @@ All configuration is organized in role-based defaults and secret files:
 - `rollup_genesis_inner_code_commitment` / `rollup_genesis_outer_code_commitment` - Eight-integer code commitments; required to be non-zero for "zk"/"optimistic" with "risc0" or "sp1"
 - `debug` - Build in debug mode (default: false) for faster iteration
 - `rollup_http_port` - API port (default: 12346)
+- `rollup_http_host` - Optional bind host override; defaults to `127.0.0.1` with the proxy role and `0.0.0.0` without it
 - `wipe` - Wipe data on deployment (default: false)
 
 **Secrets (override in `vars/celestia_secrets.yaml`):**
@@ -289,9 +294,11 @@ The `switches` variable controls which roles run:
 
 - `c` - **Common** - Infrastructure setup (disks, deps, users)
 - `r` - **Rollup** - Build and deploy rollup (includes DA configuration)
+- `p` - **Proxy** - OpenResty public RPC proxy with optional TLS and secure domains
 
 **Common Combinations:**
-- `cr` - Full setup from scratch
+- `cr` - Full setup from scratch without the proxy role; public RPC is exposed on port `12346`
+- `crp` - Full setup from scratch with the proxy role in front of a loopback-only rollup backend
 - `r` - Rollup only (update binary)
 
 ## SSH Setup
@@ -396,7 +403,7 @@ df -h /mnt/rollup /mnt/logs
 **Test API endpoint:**
 ```bash
 curl http://localhost:12346/health  # Direct
-curl http://localhost:8081/health   # Via nginx
+curl http://localhost/health        # Via proxy when switches includes "p"
 ```
 
 ## Advanced Usage

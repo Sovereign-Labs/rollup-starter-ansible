@@ -1,0 +1,77 @@
+---
+# Build and run the node-discovery Rust service. The service polls Postgres
+# for cluster topology, writes Lua to {{ proxy_node_discovery_output_file }},
+# and triggers `nginx -s reload` — so OpenResty picks up new backends without
+# Ansible re-running.
+
+- name: Validate node-discovery inputs
+  assert:
+    that:
+      - rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0
+      - rollup_repo is defined and rollup_repo | length > 0
+      - rollup_repo_dir is defined and rollup_repo_dir | length > 0
+      - (rollup_commit_hash is defined and rollup_commit_hash | length > 0) or (rollup_branch is defined and rollup_branch | length > 0)
+      - telegraf_port is defined and telegraf_port | string | length > 0
+    fail_msg: >-
+      node-discovery requires: rollup_sequencer_postgres_connection_string
+      (set by rollup role's postgres.yaml, or in runtime_vars);
+      rollup_repo / rollup_repo_dir / (rollup_commit_hash or rollup_branch)
+      for the source checkout; telegraf_port for --metrics-port.
+
+# force: yes discards local mods so re-runs converge on the pinned commit.
+- name: Checkout rollup-starter for node-discovery
+  become: true
+  become_user: ubuntu
+  git:
+    repo: "{{ rollup_repo }}"
+    dest: "/home/ubuntu/{{ rollup_repo_dir }}"
+    version: "{{ rollup_commit_hash if (rollup_commit_hash is defined and rollup_commit_hash | length > 0) else rollup_branch }}"
+    accept_hostkey: yes
+    force: yes
+
+- name: Build node-discovery binary (cargo release)
+  become: true
+  become_user: ubuntu
+  shell: source /home/ubuntu/.cargo/env && cargo build --release --manifest-path crates/utils/node-discovery/Cargo.toml
+  args:
+    chdir: "/home/ubuntu/{{ rollup_repo_dir }}"
+    executable: /bin/bash
+  async: 3600
+  poll: 5
+
+- name: Install node-discovery binary to /usr/local/bin
+  become: true
+  copy:
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/release/node-discovery"
+    dest: /usr/local/bin/node-discovery
+    remote_src: true
+    mode: '0755'
+  notify: restart node-discovery
+
+- name: Render node-discovery environment file (contains DB password)
+  become: true
+  template:
+    src: node-discovery.env.j2
+    dest: /etc/node-discovery.env
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart node-discovery
+
+- name: Render node-discovery systemd unit
+  become: true
+  template:
+    src: node-discovery.service.j2
+    dest: /etc/systemd/system/node-discovery.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart node-discovery
+
+- name: Enable and start node-discovery
+  become: true
+  systemd:
+    name: node-discovery
+    state: started
+    enabled: yes
+    daemon_reload: yes

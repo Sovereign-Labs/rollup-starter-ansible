@@ -58,9 +58,79 @@ wipe: false
 
 # Rollup ports
 rollup_http_port: 12346
-nginx_port: 8081
+# Optional override for the rollup bind host.
+# Default: "127.0.0.1" when "p" is in switches, otherwise "0.0.0.0"
+# rollup_http_host: "0.0.0.0"
 
 # Genesis addresses
+
+# ============================================================================
+# PROXY CONFIGURATION (optional, activate with "p" in switches)
+# ============================================================================
+
+# Backend node IPs (required if running proxy)
+# proxy_rollup_leader_ip: "10.0.0.10"
+# proxy_rollup_follower_ip: "10.0.0.11"
+
+# TLS (Let's Encrypt via certbot).
+# When proxy_ssl_enabled is true, at least one of the two domain lists below
+# must be non-empty; a single multi-SAN cert covers them all. A domain must
+# appear in at most one list — overlaps cause nginx server_name collisions
+# and are rejected at play start.
+#   proxy_public_domains    — public, rate-limited (CDK: DomainName)
+#   proxy_unlimited_domains — rate-exempt by Host AND API-key required;
+#                             clients must use /rpc/<api_key>
+#                             (CDK: UnlimitedDomainNames)
+# proxy_ssl_enabled: true
+# proxy_require_https_ready defaults to proxy_ssl_enabled; set false ONLY for the
+# first bootstrap run (DNS not yet pointed) so the play can finish on HTTP.
+# proxy_require_https_ready: false
+# proxy_public_domains: ["rpc.example.com"]
+# proxy_certbot_email: "ops@example.com"
+
+# S3 certificate backup (enables zero-downtime proxy replacement)
+# The instance needs an IAM role with s3:GetObject, s3:ListBucket,
+# s3:PutObject, s3:DeleteObject on the bucket.
+# proxy_cert_s3_bucket: "my-rollup-proxy-certs"
+# proxy_cert_s3_region: "us-east-1"
+
+# Dynamic backend discovery (node-discovery Rust service)
+# When enabled, the proxy builds the node-discovery binary from rollup-starter
+# and runs it as a systemd service. The service polls PostgreSQL for cluster
+# topology and reloads nginx automatically on changes — enabling failover and
+# scaling without re-running Ansible.
+#
+# Uses `rollup_sequencer_postgres_connection_string` for DB access (same as the
+# rollup). Either run the rollup role on this host, or set that variable.
+# Source/version comes from `rollup_repo` / `rollup_branch` / `rollup_commit_hash`
+# above (same checkout as the rollup-build role).
+# proxy_node_discovery_enabled: true
+
+# Cloudflare front (set to true when this proxy sits behind Cloudflare).
+# Trusts CF-Connecting-IP from the Cloudflare edge CIDRs so $remote_addr —
+# and therefore rate limiting and access logs — reflect the real client IP.
+# proxy_cloudflare_real_ip: true
+
+# Unlimited (API-key-protected, rate-exempt) RPC endpoint.
+# Clients must use https://<unlimited-domain>/rpc/<api_key>; any other path
+# on those domains returns 401. The cert (when SSL is on) covers every
+# listed domain across both lists as SANs. proxy_api_keys is required iff
+# proxy_unlimited_domains is non-empty (the role asserts both directions).
+# proxy_unlimited_domains:
+#   - "unlimited-rpc.example.com"
+# proxy_api_keys:
+#   - "abc123_key_1"
+#   - "def456_key_2"
+
+# GeoIP2 country blocking. When enabled, the role builds
+# ngx_http_geoip2_module from source against the matching OpenResty, seeds
+# the GeoLite2-Country mmdb from MaxMind, and installs a daily refresh
+# helper. Applies to every server block (proxy_public_domains AND
+# proxy_unlimited_domains).
+# proxy_geoip_enabled: true
+# proxy_geoip_account_id: "12345"
+# proxy_geoip_license_key: "abcdef..."
+# proxy_geoip_blocked_countries: ["CH", "CN"]
 
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)

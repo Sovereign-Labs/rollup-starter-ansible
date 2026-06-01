@@ -1,0 +1,25 @@
+- name: set sysctl performance variables for nginx proxy workload
+  become: true
+  ansible.builtin.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/20-proxy.conf
+    reload: yes
+  loop:
+    # Connection handling — high concurrency
+    - { name: 'net.core.somaxconn', value: '16384' }
+    - { name: 'net.core.netdev_max_backlog', value: '8192' }
+    - { name: 'net.ipv4.tcp_max_syn_backlog', value: '8192' }
+    # Widen ephemeral port range for upstream connections
+    - { name: 'net.ipv4.ip_local_port_range', value: '15000 65535' }
+    # Recycle sockets faster
+    - { name: 'net.ipv4.tcp_tw_reuse', value: '1' }
+    - { name: 'net.ipv4.tcp_fin_timeout', value: '15' }
+    # Detect dead upstreams faster (default 7200s)
+    - { name: 'net.ipv4.tcp_keepalive_time', value: '300' }
+    # Modest TCP buffers — proxy has many small connections, not few fat ones (4 MiB max)
+    - { name: 'net.ipv4.tcp_rmem', value: '4096 87380 4194304' }
+    - { name: 'net.ipv4.tcp_wmem', value: '4096 87380 4194304' }
+    - { name: 'net.core.rmem_max', value: '4194304' }
+    - { name: 'net.core.wmem_max', value: '4194304' }

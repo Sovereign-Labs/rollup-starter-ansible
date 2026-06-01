@@ -3,6 +3,9 @@
 - name: Backup node detection and validation
   import_tasks: backup_node.yaml
 
+- name: tune kernel for rollup workload
+  include_tasks: system_tuner.yaml
+
 - name: setup local postgresql
   include_tasks: postgres.yaml
   when: rollup_sequencer_postgres_connection_string is not defined or rollup_sequencer_postgres_connection_string | length == 0
@@ -22,9 +25,6 @@
 
 - name: rollup service
   include_tasks: service.yaml
-
-- name: install and setup nginx
-  include_tasks: nginx.yaml
 
 - name: configure rollup telegraf monitoring
   include_tasks: telegraf.yaml

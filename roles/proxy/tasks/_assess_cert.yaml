@@ -1,0 +1,41 @@
+---
+# Sets `_check_cert_ok` based on the cert at `_check_path`.
+# True when cert.pem, fullchain.pem, privkey.pem all exist, the cert is valid
+# for at least `_check_threshold_days` more days (defaults to
+# `proxy_cert_expiry_threshold_days`; HTTPS-readiness callers pass 0 = "valid
+# right now"), and its SANs cover every domain in `_proxy_all_cert_domains`.
+
+- name: Stat cert bundle at {{ _check_path }}
+  become: true
+  stat:
+    path: "{{ _check_path }}/{{ item }}"
+  register: _check_files
+  loop:
+    - cert.pem
+    - fullchain.pem
+    - privkey.pem
+
+- name: Inspect cert at {{ _check_path }}
+  become: true
+  community.crypto.x509_certificate_info:
+    path: "{{ _check_path }}/cert.pem"
+    valid_at:
+      threshold: "+{{ _check_threshold_days | default(proxy_cert_expiry_threshold_days) }}d"
+  register: _check_cert_info
+  when: _check_files.results[0].stat.exists
+
+- name: Decide cert ok
+  set_fact:
+    _check_cert_ok: >-
+      {{
+        (_check_files.results | map(attribute='stat.exists') | select | list | length == 3)
+        and (_check_cert_info.valid_at.threshold | default(false))
+        and (
+          _proxy_all_cert_domains
+          | difference(
+              _check_cert_info.subject_alt_name | default([])
+              | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+            )
+          | length == 0
+        )
+      }}

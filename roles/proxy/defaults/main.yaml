@@ -1,0 +1,103 @@
+---
+# OpenResty reverse proxy defaults. See roles/proxy/README.md for full docs.
+
+# Two peer domain lists; each entry appears in exactly one. When
+# proxy_ssl_enabled is true, at least one must be non-empty. A single
+# multi-SAN Let's Encrypt cert covers both lists; its directory is keyed on
+# the first available domain (public → unlimited).
+#
+#   proxy_public_domains    — public, global rate-limited (CDK: DomainName)
+#   proxy_unlimited_domains — rate-exempt by Host AND API-key required;
+#                             clients must use /rpc/<api_key>; other paths 401
+proxy_ssl_enabled: false
+# Fail the play if SSL was requested but HTTPS never came up (no valid cert),
+# instead of silently leaving the proxy on HTTP. Defaults to proxy_ssl_enabled.
+# Set false for the first bootstrap run (e.g. DNS not yet pointed at the host) so
+# the play can finish and obtain the cert on a later run.
+proxy_require_https_ready: "{{ proxy_ssl_enabled }}"
+proxy_public_domains: []
+proxy_unlimited_domains: []
+
+# Backend (proxy_rollup_leader_ip is REQUIRED; validated in tasks/main.yaml).
+# Backend port comes from rollup_http_port (default 12346 in rollup role).
+proxy_rollup_follower_ip: ""   # defaults to leader if empty
+
+proxy_listen_port: 80
+proxy_listen_port_ssl: 443
+
+# Rate limiting
+proxy_rate_limit_enabled: true
+proxy_rate_limit_rate: "100r/s"
+proxy_rate_limit_burst: 50
+proxy_rate_limit_exempt_ips: []
+
+# DNS resolver (empty = system default; set "169.254.169.253" on AWS)
+proxy_dns_resolver: ""
+
+# When true, trust CF-Connecting-IP from Cloudflare edge CIDRs
+# (vars/main.yaml) so $remote_addr reflects the real client IP.
+proxy_cloudflare_real_ip: false
+
+# API keys for proxy_unlimited_domains. Each authorizes /rpc/<key> on every
+# unlimited-list hostname; other paths return 401. Bi-implication with
+# proxy_unlimited_domains is asserted at play start.
+proxy_api_keys: []
+
+# Timeouts
+proxy_websocket_timeout: "3600s"
+proxy_connect_timeout: "5s"
+
+# Certbot
+proxy_certbot_webroot: "/var/www/certbot"
+proxy_certbot_email: "info@sovlabs.io"
+
+# Observability
+proxy_enable_logs_export: false   # log export to Grafana Loki via Alloy
+
+# nginx-module-vts: per-vhost/per-upstream/per-status metrics for Telegraf's
+# inputs.nginx_vts. Built as a dynamic .so against OpenResty source matching
+# the installed apt version. Default on for parity with the bash repo;
+# set false to skip the ~5–10 min source build on bootstrap.
+proxy_vts_enabled: true
+proxy_vts_module_repo: "https://github.com/vozlt/nginx-module-vts.git"
+proxy_vts_module_version: "v0.2.4"
+proxy_vts_status_port: 8080
+
+# S3 cert backup/restore (optional). When set, /etc/letsencrypt/ is archived to
+# a single tarball in S3 (key: proxy_cert_s3_key) so replacement instances boot
+# straight into HTTPS. A TARBALL is used (not `aws s3 sync`) because Let's
+# Encrypt stores live/<domain>/*.pem as SYMLINKS into archive/<domain>/, and
+# `s3 sync` does not preserve symlinks — restoring a synced tree leaves broken
+# links and breaks `certbot renew`. `tar` preserves them. The object lives at
+# the bucket root and is shared with ubuntu-evm-starter-script (same key).
+# The instance needs only s3:GetObject + s3:PutObject on the bucket (no List/
+# Delete — single fixed key, overwritten in place). Snap path is hardcoded
+# because certbot renewal hooks don't reliably include /snap/bin in PATH.
+proxy_aws_cli_bin: "/snap/bin/aws"
+proxy_cert_s3_bucket: ""
+proxy_cert_s3_region: ""
+proxy_cert_s3_key: "letsencrypt.tar.gz"
+proxy_cert_expiry_threshold_days: 30
+
+# GeoIP2 country blocking (opt-in). When enabled, the role builds
+# ngx_http_geoip2_module as a dynamic .so, seeds the GeoLite2-Country mmdb,
+# and installs a daily cron refresh. Every server block 403s blocked countries.
+proxy_geoip_enabled: false
+proxy_geoip_account_id: ""
+proxy_geoip_license_key: ""
+proxy_geoip_blocked_countries: []   # ISO 3166-1 alpha-2 codes, e.g. ["CH"]
+proxy_geoip_module_repo: "https://github.com/leev/ngx_http_geoip2_module.git"
+proxy_geoip_module_version: "3.4"
+proxy_geoip_mmdb_path: "/usr/share/GeoIP/GeoLite2-Country.mmdb"
+
+# Dynamic backend discovery (node-discovery Rust service). When enabled, the
+# service subscribes to Postgres for cluster topology and writes Lua to
+# proxy_node_discovery_output_file, then triggers `nginx -s reload`. When
+# disabled, backend IPs are baked statically from
+# proxy_rollup_leader_ip / proxy_rollup_follower_ip. Reuses
+# rollup_sequencer_postgres_connection_string from the rollup role and builds
+# from the rollup-starter checkout (rollup_repo / rollup_repo_dir /
+# rollup_commit_hash | rollup_branch).
+proxy_node_discovery_enabled: false
+proxy_node_discovery_output_file: "/usr/local/openresty/nginx/conf/backends.generated.lua"
+proxy_node_discovery_max_age_millis: 1000
