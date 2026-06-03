@@ -72,6 +72,8 @@ rollup_genesis_challenger_min_bond: [1000, 1000]
 # ZK genesis
 rollup_genesis_proving_penalty: [10, 10]
 
+rollup_genesis_state_version: 1
+
 # 10GB, in bytes
 rollup_state_cache_size: 10000000000
 rollup_state_user_commit_concurrency: 6
