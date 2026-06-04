@@ -5,6 +5,8 @@
   set_fact:
     version_output_dir: "{{ versions_output_dir }}/{{ version.version_id }}"
     version_genesis_folder: "{{ genesis_folder if version_index == 0 else '' }}"
+    version_build_db_migration: "{{ version.build_db_migration | default(false) | bool }}"
+    version_db_migration_crate: "{{ version.rollup_db_migration_crate | default(rollup_db_migration_crate | default('rollup-db-migration')) }}"
 
 - name: Create version output directory
   ansible.builtin.file:
@@ -115,7 +117,8 @@
       -e rollup_http_host={{ rollup_http_bind_host | quote }}
       -e rollup_http_port={{ rollup_http_port }}
       -e rollup_storage_dir={{ rollup_storage_dir }}
-      -e build_db_migration={{ (version_index | int) >= 1 }}
+      -e build_db_migration={{ version_build_db_migration | lower }}
+      -e rollup_db_migration_crate={{ version_db_migration_crate | quote }}
 
 - name: Display build command for version {{ version.version_id }}
   debug:

@@ -49,7 +49,7 @@
     mode: '0755'
   become: true
 
-# Optionally build & install the DB migration binary (enabled for version_index >= 1).
+# Optionally build & install the DB migration binary.
 - name: build rollup db migration binary
   become: true
   become_user: ubuntu

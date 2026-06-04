@@ -45,6 +45,22 @@
           migration_path: null
   when: (rollup_config_repo is not defined or rollup_config_repo | length == 0) and version_spec is not defined
 
+- name: Validate migration settings
+  assert:
+    that:
+      - not (
+          (version.build_db_migration | default(false) | bool) and
+          (version.migration_path is defined and version.migration_path is not none and version.migration_path | string | length > 0)
+        )
+    fail_msg: >-
+      Version {{ version.version_id }} cannot set both build_db_migration=true
+      and migration_path. build_db_migration uses the generated
+      rollup-db-migration binary path automatically.
+    quiet: true
+  loop: "{{ version_spec.rollup_versions }}"
+  loop_control:
+    loop_var: version
+
 # --- Clone ansible repo and build versions ---
 
 - name: Clone ansible repo
