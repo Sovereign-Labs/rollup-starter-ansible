@@ -48,3 +48,47 @@
     group: sovereign
     mode: '0755'
   become: true
+
+# Optionally build & install the DB migration binary (enabled for version_index >= 1).
+- name: build rollup db migration binary
+  become: true
+  become_user: ubuntu
+  vars:
+    build_profile_flag: "{{ '--release' if not debug else '' }}"
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_db_migration_crate }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
+  args:
+    chdir: /home/ubuntu/{{ rollup_repo_dir }}
+    executable: /bin/bash
+  register: db_migration_build_result
+  async: 3600
+  poll: 30
+  when: build_db_migration | default(false) | bool
+
+- name: verify db migration binary was built successfully
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  stat:
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
+  register: db_migration_binary_stat
+  become: true
+  when: build_db_migration | default(false) | bool
+
+- name: fail if db migration binary was not built
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  fail:
+    msg: "DB migration build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
+  when: build_db_migration | default(false) | bool and not db_migration_binary_stat.stat.exists
+
+- name: copy db migration binary to output path
+  vars:
+    build_profile_path: "{{ 'release' if not debug else 'debug' }}"
+  ansible.builtin.copy:
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
+    dest: "{{ binary_folder }}/{{ rollup_db_migration_crate }}"
+    remote_src: true
+    owner: sovereign
+    group: sovereign
+    mode: '0755'
+  become: true
+  when: build_db_migration | default(false) | bool

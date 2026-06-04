@@ -115,6 +115,7 @@
       -e rollup_http_host={{ rollup_http_bind_host | quote }}
       -e rollup_http_port={{ rollup_http_port }}
       -e rollup_storage_dir={{ rollup_storage_dir }}
+      -e build_db_migration={{ (version_index | int) >= 1 }}
 
 - name: Display build command for version {{ version.version_id }}
   debug:

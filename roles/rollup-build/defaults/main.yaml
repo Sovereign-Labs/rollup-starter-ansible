@@ -18,6 +18,12 @@ rollup_branch: "main"
 rollup_crate: "rollup"
 # Output binary name (used in destination path)
 rollup_bin: "rollup"
+# DB migration binary. Built and installed alongside the rollup binary only when
+# build_db_migration is true (the multi-version orchestrator enables this for
+# non-genesis versions, i.e. version_index >= 1). Off by default for standalone builds.
+build_db_migration: false
+# Cargo bin target name; also the output binary name (they match).
+rollup_db_migration_crate: "rollup-db-migration"
 # Can be `risc0`, `sp1`, or `mock_zkvm`
 zkvm_role: "mock_zkvm"
 # Debug or release build?
