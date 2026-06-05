@@ -10,10 +10,11 @@
 # (mocha, fresh genesis height), namespaces, deployment_name, and no proxy.
 #
 # Celestia endpoints, signer key and monitoring tokens are NOT here — they
-# belong in vars/celestia_secrets.yaml and vars/monitoring_secrets.yaml on the
-# host (see the .example files next to this file). Keeping them out of params
-# avoids the asymmetric load order between the outer play and the per-version
-# build subprocesses.
+# come from the usual vars/celestia_secrets.yaml and vars/monitoring_secrets.yaml
+# (gitignored). celestia_secrets.yaml must hold MOCHA endpoints and a
+# mocha-funded key; monitoring_secrets.yaml is the same as for devnet.
+# Keeping them out of params avoids the asymmetric load order between the
+# outer play and the per-version build subprocesses.
 #
 # See README.md in this folder for the full runbook.
 

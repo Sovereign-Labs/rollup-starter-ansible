@@ -36,9 +36,11 @@ git clone -b nikolai/updates-for-multisig-upgrade \
   https://github.com/Sovereign-Labs/rollup-starter-ansible.git ~/rollup-starter-ansible
 cd ~/rollup-starter-ansible
 
-# 3. Secrets (gitignored; fill in mocha values)
-cp vars/relay-devnet-test/celestia_secrets.yaml.example vars/celestia_secrets.yaml
-cp vars/relay-devnet-test/monitoring_secrets.yaml.example vars/monitoring_secrets.yaml
+# 3. Secrets (gitignored; shape in vars/celestia_secrets.yaml.example at repo root)
+#    - vars/celestia_secrets.yaml: MOCHA rpc/grpc endpoints + a mocha-funded
+#      signer key and its da_rollup_address (NOT the mainnet devnet values!)
+#    - vars/monitoring_secrets.yaml: same influxdb_token / grafana_*_token as
+#      devnet (RELAY_DEVNET_INFLUX_TOKEN / RELAY_DEVNET_ALLOY_PASSWORD)
 $EDITOR vars/celestia_secrets.yaml vars/monitoring_secrets.yaml
 
 # 4. Run (builds v0, v1 and rollup-db-migration, then starts the manager)
