@@ -1,0 +1,82 @@
+---
+# relay-devnet-test: hard-fork rehearsal of relay-devnet-01 on Celestia MOCHA.
+#
+# Multi-version deployment: v0 (current devnet build) runs genesis..999, the
+# manager runs rollup-db-migration (state 0 -> 1) at the boundary, v1 runs
+# from height 1000. The version spec (versions.yaml + version_vars/) lives at
+# the root of the rollup-starter branch referenced below.
+#
+# Values mirror relay-devnet-01 (relay_devnet_params.json) except: DA network
+# (mocha, fresh genesis height), namespaces, deployment_name, and no proxy.
+#
+# Celestia endpoints, signer key and monitoring tokens are NOT here — they
+# belong in vars/celestia_secrets.yaml and vars/monitoring_secrets.yaml on the
+# host (see the .example files next to this file). Keeping them out of params
+# avoids the asymmetric load order between the outer play and the per-version
+# build subprocesses.
+#
+# See README.md in this folder for the full runbook.
+
+switches: "cr"
+data_availability_role: "celestia"
+zkvm_role: "mock_zkvm"
+debug: false
+wipe: false
+
+deployment_name: "relay-devnet-test"        # devnet: relay-devnet-01 — keep metrics separable
+custom_host_label: "relay-devnet-test-01"
+
+# --- Multi-version fork config ---
+# versions.yaml at the root of this repo/branch defines v0/v1, heights and
+# build_db_migration; version_vars/ pins the rollup commits.
+rollup_config_repo: "https://github.com/Sovereign-Labs/rollup-starter.git"
+rollup_config_repo_branch: "nikolai/relay-devnet-multisig-upgrade"
+# Manager fix that passes --rollup-config-path to migration binaries.
+# Drop this once nikolai/migration-config-arg is merged to master.
+rollup_manager_branch: "nikolai/migration-config-arg"
+
+# --- Celestia Mocha ---
+da_start_height: 11645225
+# Exactly 10 characters each. Devnet uses relay-dev1 (and, implicitly, the
+# ansible default sov-p-dev8 proof namespace) on mainnet; distinct values here
+# keep the mocha rehearsal isolated and easy to find on celenium.
+rollup_batch_namespace: "relay-tst1"
+rollup_proof_namespace: "relay-tsp1"
+
+# --- Genesis (mirrors relay-devnet-01) ---
+rollup_sequencer_address: "0xc3214182E92bd1C3BC974AC03099b8BD0Cd23357"
+rollup_genesis_seq_min_bond: 1000000000000000
+rollup_genesis_evm_initial_base_fee: 0
+# ContractDeploymentRestrictionsEnabled=false on devnet => allow all
+rollup_genesis_evm_allow_all_contract_creation: true
+# NOTE: rollup_genesis_state_version is intentionally NOT set. Genesis is
+# rendered once, by v0's build, using the cdk-deployment-april-2026 ansible
+# templates (no state_version field) — exactly as devnet's genesis was — and
+# on-disk state therefore starts at version 0, which the migration expects.
+
+# --- Sequencer runtime (mirrors relay-devnet-01) ---
+publish_reverted_evm_txs: true
+rollup_rate_limiter_enabled: true
+rollup_rate_limiter_address_limits:
+  - { address: "0x0A998d6ae81cee64E15B164910d3e03c5F06d2d0", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x1A3411431BE3063D9Ae3F52cD5782831EeD9F1F9", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x2Be3DF6C50Fb1b11d8189C2d4DE5c16F6712FAc4", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x5eA8cd330CB5ecE0Dfa91c45B381eF49736Eaa13", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x6D878dC11d1aEe73F9c55B324c23DCe05fE91a3D", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x8BdE0941b569aB33AaA2EA9617Dd992A8A1Af805", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x9beE034fb873496ADe3d654AC59c3B9c8513749e", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x66ac5b03B68ec3Af176C4Ee8565C6Fa0b19dBD4a", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x2134c27B7748eE13e9e6ec943153237d85b57559", resources_per_bucket: 1000, refill_rate: 10 }
+  - { address: "0x5143DcEaF7ceEAe6bf24E51c23b8e1EEe28f4241", resources_per_bucket: 1000, refill_rate: 10 }
+rollup_rate_limiter_ip_limits:
+  - { ip: "54.158.159.154", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "54.161.160.203", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "52.87.38.115", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "52.54.123.193", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "44.215.7.217", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "18.213.188.5", resources_per_bucket: 1000, refill_rate: 10 }
+  - { ip: "18.233.140.249", resources_per_bucket: 1000, refill_rate: 10 }
+
+# --- Monitoring ---
+influxdb_remote_url: "http://influxdb.sov-obs.xyz:8086"
+# influxdb_token / grafana_*_token come from vars/monitoring_secrets.yaml
