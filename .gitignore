@@ -6,5 +6,6 @@ vars/runtime_vars.yaml
 vars/runtime_vars_hyperlane_relayer.yaml
 vars/runtime_vars_hyperlane_validator.yaml
 vars/hyperlane_secrets.yaml
+vars/relay-devnet-test/
 inventory/*.ini
 !inventory/localhost.ini
