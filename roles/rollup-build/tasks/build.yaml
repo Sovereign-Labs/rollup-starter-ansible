@@ -50,6 +50,10 @@
   become: true
 
 # Optionally build & install the DB migration binary.
+- name: determine whether to build db migration binary
+  set_fact:
+    build_db_migration_enabled: "{{ build_db_migration | default(false) | bool }}"
+
 - name: build rollup db migration binary
   become: true
   become_user: ubuntu
@@ -62,7 +66,7 @@
   register: db_migration_build_result
   async: 3600
   poll: 30
-  when: build_db_migration | default(false) | bool
+  when: build_db_migration_enabled
 
 - name: verify db migration binary was built successfully
   vars:
@@ -71,14 +75,14 @@
     path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
   register: db_migration_binary_stat
   become: true
-  when: build_db_migration | default(false) | bool
+  when: build_db_migration_enabled
 
 - name: fail if db migration binary was not built
   vars:
     build_profile_path: "{{ 'release' if not debug else 'debug' }}"
   fail:
     msg: "DB migration build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
-  when: build_db_migration | default(false) | bool and not db_migration_binary_stat.stat.exists
+  when: build_db_migration_enabled and not db_migration_binary_stat.stat.exists
 
 - name: copy db migration binary to output path
   vars:
@@ -91,4 +95,4 @@
     group: sovereign
     mode: '0755'
   become: true
-  when: build_db_migration | default(false) | bool
+  when: build_db_migration_enabled
