@@ -83,9 +83,28 @@
       {% if result.stat.exists %}-e @/tmp/build_{{ result.item }} {% endif %}
       {% endfor %}
 
+# Per-version overrides come either inline (version.vars, written to a temp
+# file here) or from a file in the config repo checkout (version.vars_file).
+# Inline vars keep the whole version spec expressible as plain variables, so
+# it can be passed end-to-end (e.g. from CDK) without a config repo.
+- name: Write inline version vars for build subprocess
+  ansible.builtin.copy:
+    content: "{{ version['vars'] | to_nice_yaml }}"
+    dest: "/tmp/build_version_vars_{{ version.version_id }}.yaml"
+    mode: '0644'
+  become: true
+  when: version['vars'] is defined and version['vars'] | length > 0
+
 - name: Build override vars argument
   set_fact:
-    override_vars_arg: "{{ '-e @' + config_checkout_dir + '/' + version.vars_file if (version.vars_file is defined and version.vars_file | length > 0) else '' }}"
+    override_vars_arg: >-
+      {{
+        '-e @/tmp/build_version_vars_' + version.version_id + '.yaml'
+        if (version['vars'] is defined and version['vars'] | length > 0)
+        else ('-e @' + config_checkout_dir + '/' + version.vars_file
+              if (version.vars_file is defined and version.vars_file | length > 0)
+              else '')
+      }}
 
 # Derived here in the parent's `switches` context because the sub-playbook is
 # launched with `-e switches=b`, which would make the same expression in

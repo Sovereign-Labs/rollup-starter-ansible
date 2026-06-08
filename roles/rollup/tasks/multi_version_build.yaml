@@ -19,10 +19,18 @@
     force: yes
   when: rollup_config_repo is defined and rollup_config_repo | length > 0
 
-- name: Load versions.yaml from config repo
-  include_vars:
-    file: "{{ config_checkout_dir }}/versions.yaml"
-    name: version_spec
+# include_vars reads from the controller; in push mode the file lives on the
+# remote where the git task above cloned it. slurp reads it on the remote.
+- name: Read versions.yaml from config repo checkout (on the remote host)
+  ansible.builtin.slurp:
+    src: "{{ config_checkout_dir }}/versions.yaml"
+  register: versions_yaml_raw
+  become: true
+  when: rollup_config_repo is defined and rollup_config_repo | length > 0
+
+- name: Parse versions.yaml into version_spec
+  set_fact:
+    version_spec: "{{ versions_yaml_raw.content | b64decode | from_yaml }}"
   when: rollup_config_repo is defined and rollup_config_repo | length > 0
 
 - name: Detect current ansible repo commit
@@ -56,6 +64,25 @@
       Version {{ version.version_id }} cannot set both build_db_migration=true
       and migration_path. build_db_migration uses the generated
       rollup-db-migration binary path automatically.
+    quiet: true
+  loop: "{{ version_spec.rollup_versions }}"
+  loop_control:
+    loop_var: version
+
+- name: Validate version vars settings
+  assert:
+    that:
+      - not (
+          (version['vars'] is defined and version['vars'] | length > 0) and
+          (version.vars_file is defined and version.vars_file | length > 0)
+        )
+      - >-
+        (version.vars_file is not defined or version.vars_file | length == 0)
+        or (rollup_config_repo is defined and rollup_config_repo | length > 0)
+    fail_msg: >-
+      Version {{ version.version_id }}: set either inline `vars` or `vars_file`
+      (not both), and `vars_file` requires rollup_config_repo since it resolves
+      relative to the config repo checkout.
     quiet: true
   loop: "{{ version_spec.rollup_versions }}"
   loop_control:

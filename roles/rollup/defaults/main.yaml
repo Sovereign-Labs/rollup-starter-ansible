@@ -26,9 +26,13 @@ rollup_config_repo_branch: "master"
 # Ansible repo URL (for checking out version-specific commits in multi-version mode)
 ansible_repo_url: "https://github.com/Sovereign-Labs/rollup-starter-ansible.git"
 
-# Checkout directories for multi-version builds
+# Checkout directories for multi-version builds.
+# config_checkout_dir is a dedicated, pinned checkout of the rollup-starter repo
+# (holds versions.yaml + version_vars/*.yaml). Kept separate from
+# /home/ubuntu/rollup-starter, which the per-version builds re-checkout at each
+# version's commit and would otherwise clobber the version_vars files.
 ansible_checkout_dir: "/home/ubuntu/ansible-checkout"
-config_checkout_dir: "/home/ubuntu/rollup-config"
+config_checkout_dir: "/home/ubuntu/rollup-starter-versions"
 
 # Output base directory for multi-version builds
 versions_output_dir: "/home/sovereign/versions"
