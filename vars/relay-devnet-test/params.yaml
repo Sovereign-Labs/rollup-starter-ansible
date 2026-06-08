@@ -42,7 +42,7 @@ rollup_config_repo_branch: "nikolai/relay-devnet-multisig-upgrade"
 rollup_manager_branch: "nikolai/migration-config-arg"
 
 # --- Celestia Mocha ---
-da_start_height: 11400200
+da_start_height: 11750580
 # Exactly 10 characters each. Devnet uses relay-dev1 (and, implicitly, the
 # ansible default sov-p-dev8 proof namespace) on mainnet; distinct values here
 # keep the mocha rehearsal isolated and easy to find on celenium.
