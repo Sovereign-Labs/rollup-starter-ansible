@@ -4,3 +4,8 @@ SystemMaxUse=50G
 SystemKeepFree=10G
 MaxRetentionSec=30day
 ForwardToSyslog=no
+# Explicit global per-unit rate-limit baseline (equals systemd's built-in default).
+# Protects every service sharing this journal from back-pressure stalls. The rollup
+# unit overrides this with a higher burst; hyperlane/others inherit this value.
+RateLimitIntervalSec=30s
+RateLimitBurst=10000
