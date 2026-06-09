@@ -6,7 +6,7 @@
     version_output_dir: "{{ versions_output_dir }}/{{ version.version_id }}"
     version_genesis_folder: "{{ genesis_folder if version_index == 0 else '' }}"
     version_build_db_migration: "{{ version.build_db_migration | default(false) | bool }}"
-    version_db_migration_crate: "{{ version.rollup_db_migration_crate | default(rollup_db_migration_crate | default('rollup-db-migration')) }}"
+    version_db_migration_crate: "{{ version.rollup_db_migration_crate | default(rollup_db_migration_crate) }}"
 
 - name: Create version output directory
   ansible.builtin.file:

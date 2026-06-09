@@ -39,6 +39,8 @@ versions_output_dir: "/home/sovereign/versions"
 
 # Binary name - used by manager config template
 rollup_bin: "rollup"
+# DB migration binary name - used by manager config template
+rollup_db_migration_crate: "rollup-db-migration"
 
 # Network ports
 # Leave empty to keep the backend private when the proxy role is enabled and
