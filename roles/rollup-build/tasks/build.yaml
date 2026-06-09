@@ -12,7 +12,7 @@
 - name: build sovereign rollup binary
   become: true
   become_user: ubuntu
-  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_crate }} {{ ('--bin ' + rollup_db_migration_crate) if build_db_migration_enabled else '' }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
+  shell: source /home/ubuntu/.cargo/env && cargo build {{ build_profile_flag }} --bin {{ rollup_crate }} {{ ('--bin ' + rollup_db_migration_bin) if build_db_migration_enabled else '' }} --no-default-features --features {{ da_feature }},{{ zkvm_role }}
   args:
     chdir: /home/ubuntu/{{ rollup_repo_dir }}
     executable: /bin/bash
@@ -53,20 +53,20 @@
 # Install the DB migration binary (built above in the same cargo invocation).
 - name: verify db migration binary was built successfully
   stat:
-    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
+    path: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_bin }}"
   register: db_migration_binary_stat
   become: true
   when: build_db_migration_enabled
 
 - name: fail if db migration binary was not built
   fail:
-    msg: "DB migration build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
+    msg: "DB migration build failed or binary not found at {{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_bin }}"
   when: build_db_migration_enabled and not db_migration_binary_stat.stat.exists
 
 - name: copy db migration binary to output path
   ansible.builtin.copy:
-    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_crate }}"
-    dest: "{{ binary_folder }}/{{ rollup_db_migration_crate }}"
+    src: "/home/ubuntu/{{ rollup_repo_dir }}/target/{{ build_profile_path }}/{{ rollup_db_migration_bin }}"
+    dest: "{{ binary_folder }}/{{ rollup_db_migration_bin }}"
     remote_src: true
     owner: sovereign
     group: sovereign

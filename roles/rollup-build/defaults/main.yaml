@@ -21,8 +21,8 @@ rollup_bin: "rollup"
 # DB migration binary. Built and installed alongside the rollup binary only
 # when explicitly requested with build_db_migration=true.
 build_db_migration: false
-# Cargo bin target name; also the output binary name (they match).
-rollup_db_migration_crate: "rollup-db-migration"
+# Cargo `--bin` target name and output binary name (they match).
+rollup_db_migration_bin: "rollup-db-migration"
 # Can be `risc0`, `sp1`, or `mock_zkvm`
 zkvm_role: "mock_zkvm"
 # Debug or release build?

@@ -1,8 +1,8 @@
 {
   "versions": [
 {% for version in version_spec.rollup_versions %}
-{% set migration_crate = version.rollup_db_migration_crate | default(rollup_db_migration_crate) %}
-{% set migration_binary = versions_output_dir ~ '/' ~ version.version_id ~ '/' ~ migration_crate %}
+{% set migration_bin = version.rollup_db_migration_bin | default(rollup_db_migration_bin) %}
+{% set migration_binary = versions_output_dir ~ '/' ~ version.version_id ~ '/' ~ migration_bin %}
     {
       "rollup_binary": "{{ versions_output_dir }}/{{ version.version_id }}/rollup",
       "config_path": "{{ versions_output_dir }}/{{ version.version_id }}/rollup_config.toml",
