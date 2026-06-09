@@ -10,7 +10,11 @@ Restart=always
 RestartSec=3
 User=sovereign
 LimitNOFILE={{ max_open_files }}
-LogRateLimitIntervalSec=0
+# Drop-valve: bound journald's per-unit log rate so a storm sheds messages instead
+# of back-pressuring (blocking) the rollup's stdout writes and stalling the node.
+# Do NOT set the interval to 0 — that disables the valve and reintroduces the stall.
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=20000
 StandardOutput=journal
 StandardError=journal
 Environment="PATH=/home/sovereign/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/snap/bin:/home/sovereign/.local/bin/"
