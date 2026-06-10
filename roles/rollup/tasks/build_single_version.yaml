@@ -91,7 +91,7 @@
   ansible.builtin.copy:
     content: "{{ version['vars'] | to_nice_yaml }}"
     dest: "/tmp/build_version_vars_{{ version.version_id }}.yaml"
-    mode: '0644'
+    mode: '0600'
   become: true
   when: version['vars'] is defined and version['vars'] | length > 0
 

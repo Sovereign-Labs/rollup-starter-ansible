@@ -3,6 +3,8 @@
 #
 # Version spec precedence:
 # 1. version_spec passed directly (e.g. -e @versions.yaml) → use as-is.
+#    If rollup_config_repo is set, it is still checked out so that per-version
+#    vars_file entries resolve against a fresh checkout (not a stale one).
 # 2. versions.yaml present in the config repo checkout → multi-version build.
 #    The config repo defaults to the rollup repo (rollup_repo) at the rollup
 #    ref (rollup_commit_hash, else rollup_branch), so a deployment opts into a
@@ -17,7 +19,7 @@
   set_fact:
     effective_config_repo: "{{ rollup_config_repo if (rollup_config_repo | default('') | length > 0) else rollup_repo }}"
     effective_config_ref: "{{ rollup_config_repo_branch if (rollup_config_repo | default('') | length > 0) else (rollup_commit_hash if (rollup_commit_hash | default('') | length > 0) else rollup_branch) }}"
-  when: version_spec is not defined
+  when: version_spec is not defined or (rollup_config_repo | default('') | length > 0)
 
 - name: Checkout config repo (defaults to the rollup repo at the rollup ref)
   become: true
@@ -28,7 +30,7 @@
     version: "{{ effective_config_ref }}"
     accept_hostkey: yes
     force: yes
-  when: version_spec is not defined
+  when: version_spec is not defined or (rollup_config_repo | default('') | length > 0)
 
 - name: Check for versions.yaml in the config repo checkout
   ansible.builtin.stat:
@@ -94,15 +96,15 @@
           (version['vars'] is defined and version['vars'] | length > 0) and
           (version.vars_file is defined and version.vars_file | length > 0)
         )
+      # effective_config_repo is set exactly when the checkout above ran.
       - >-
         (version.vars_file is not defined or version.vars_file | length == 0)
-        or (rollup_config_repo | default('') | length > 0)
         or (effective_config_repo | default('') | length > 0)
     fail_msg: >-
       Version {{ version.version_id }}: set either inline `vars` or `vars_file`
-      (not both), and `vars_file` requires a config repo checkout (set
-      rollup_config_repo, or point rollup_branch/rollup_commit_hash at a ref
-      that carries versions.yaml) since it resolves relative to that checkout.
+      (not both). `vars_file` resolves relative to the config repo checkout,
+      which a directly-passed version_spec skips — set rollup_config_repo or
+      use inline `vars` instead.
     quiet: true
   loop: "{{ version_spec.rollup_versions }}"
   loop_control:
