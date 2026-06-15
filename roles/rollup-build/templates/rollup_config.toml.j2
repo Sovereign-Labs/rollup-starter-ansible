@@ -58,6 +58,11 @@ num_cache_warmup_workers = 0
 postgres_connection_string = "{{ rollup_sequencer_postgres_connection_string }}"
 node_role = "{{ rollup_node_role }}"
 node_id = "{{ rollup_node_id }}"
+
+[sequencer.preferred.postgres_config.leader_election]
+leader_timeout_millis = {{ rollup_leader_election_leader_timeout_millis }}
+grace_period_millis = {{ rollup_leader_election_grace_period_millis }}
+heartbeat_interval_millis = {{ rollup_leader_election_heartbeat_interval_millis }}
 {% endif %}
 {% else %}
 [sequencer.standard]
