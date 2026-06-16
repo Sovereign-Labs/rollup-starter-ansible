@@ -101,6 +101,9 @@ rollup_http_port: 12346
 # s3:PutObject, s3:DeleteObject on the bucket.
 # proxy_cert_s3_bucket: "my-rollup-proxy-certs"
 # proxy_cert_s3_region: "us-east-1"
+# Restored backups need enough validity to survive the replacement boot and the
+# next renewal cron. Fresh local/renewed certs still use the 30-day default.
+# proxy_cert_restore_min_valid_days: 1
 
 # Dynamic backend discovery (node-discovery Rust service)
 # When enabled, the proxy builds the node-discovery binary from rollup-starter

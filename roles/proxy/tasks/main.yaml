@@ -42,7 +42,7 @@
   include_tasks: _assess_cert.yaml
   vars:
     _check_path: "{{ proxy_letsencrypt_live_dir }}"
-    _check_threshold_days: 0          # servable now (not expired); 30d freshness is for renew/restore
+    _check_threshold_days: 0          # servable now; restore and renewal paths use stricter thresholds
   when: proxy_ssl_enabled | bool
 
 - name: Set HTTPS readiness flag (pre-render)
@@ -329,13 +329,27 @@
   include_tasks: _assess_cert.yaml
   vars:
     _check_path: "{{ proxy_letsencrypt_live_dir }}"
-    _check_threshold_days: 0          # servable now; this gate only activates HTTPS, never downgrades
+    _check_threshold_days: "{{ (proxy_cert_restored | default(false)) | ternary(proxy_cert_restore_min_valid_days, proxy_cert_expiry_threshold_days) }}"
+    _check_debug_rejections: true
   when: proxy_ssl_enabled | bool
 
 - name: Set HTTPS readiness flag (post-certbot)
   set_fact:
     proxy_https_ready: "{{ _check_cert_ok | default(false) }}"
   when: proxy_ssl_enabled | bool
+
+- name: Show certbot output when HTTPS is still not ready
+  ansible.builtin.debug:
+    msg: |
+      certbot rc={{ certbot_result.rc | default('n/a') }}
+      stdout:
+      {{ certbot_result.stdout | default('') | indent(2) }}
+      stderr:
+      {{ certbot_result.stderr | default('') | indent(2) }}
+  when:
+    - proxy_ssl_enabled | bool
+    - certbot_result is defined
+    - not (proxy_https_ready | default(false))
 
 - name: Fail when HTTPS is required but no valid certificate is available
   assert:

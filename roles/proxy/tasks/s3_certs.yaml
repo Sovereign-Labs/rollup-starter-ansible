@@ -20,6 +20,8 @@
   include_tasks: _assess_cert.yaml
   vars:
     _check_path: "{{ proxy_letsencrypt_live_dir }}"
+    _check_threshold_days: "{{ proxy_cert_expiry_threshold_days }}"
+    _check_debug_rejections: true
 
 - name: Capture local cert status
   set_fact:
@@ -69,6 +71,8 @@
   include_tasks: _assess_cert.yaml
   vars:
     _check_path: "{{ proxy_letsencrypt_live_dir }}"
+    _check_threshold_days: "{{ proxy_cert_restore_min_valid_days }}"
+    _check_debug_rejections: true
   when: not _local_cert_ok
 
 - name: Capture restored cert status
