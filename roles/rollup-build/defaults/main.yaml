@@ -124,6 +124,18 @@ rollup_node_id: "node1"
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
 
+# Leader election timing (preferred sequencer with Postgres only).
+# These map to [sequencer.preferred.postgres_config.leader_election] in
+# rollup_config.toml and are only relevant when a Postgres connection string
+# is configured.
+# Max time (ms) without a heartbeat before a leader is considered inactive.
+rollup_leader_election_leader_timeout_millis: 1000
+# Min time (ms) after leader acquisition before another node can take over.
+# Prevents rapid leader flapping.
+rollup_leader_election_grace_period_millis: 10000
+# Interval (ms) between heartbeat updates.
+rollup_leader_election_heartbeat_interval_millis: 100
+
 # Optional comma separated string of EVM addresses for RAM pinning (privileged deployers)
 evm_pinned_addresses: ""
 # Whether reverted EVM txs should be published to DA
