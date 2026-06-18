@@ -52,6 +52,11 @@ A **single** multi-SAN Let's Encrypt cert covers
   certbot run, so the next replacement re-issues via certbot once. The S3 backup
   is a single fixed-key tarball, so nothing is orphaned — the restored bundle's
   directory name just no longer matches and is rebuilt.
+- **Restored certs use a small boot margin.** A replacement may not be able to
+  complete HTTP-01 until after traffic shifts, so restored backups are accepted
+  when they are valid for `proxy_cert_restore_min_valid_days` (default: 1), while
+  newly issued or locally renewable certs still use the normal
+  `proxy_cert_expiry_threshold_days` freshness gate (default: 30).
 - **`proxy_unlimited_domains` is rate-exempt by `Host`** — valid API-key
   traffic is unmetered; failed-auth attempts remain per-IP throttled.
 - **Only-unlimited deployments expose no anonymous endpoint.** With

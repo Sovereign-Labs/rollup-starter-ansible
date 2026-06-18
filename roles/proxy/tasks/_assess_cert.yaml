@@ -1,9 +1,13 @@
 ---
-# Sets `_check_cert_ok` based on the cert at `_check_path`.
-# True when cert.pem, fullchain.pem, privkey.pem all exist, the cert is valid
-# for at least `_check_threshold_days` more days (defaults to
-# `proxy_cert_expiry_threshold_days`; HTTPS-readiness callers pass 0 = "valid
-# right now"), and its SANs cover every domain in `_proxy_all_cert_domains`.
+# Sets `_check_cert_ok` based on the cert at `_check_path` and records failure
+# details in `_check_cert_status` for debug output. True when cert.pem,
+# fullchain.pem, privkey.pem all exist, the cert is valid for at least
+# `_check_threshold_days` more days (defaults to `proxy_cert_expiry_threshold_days`),
+# and its SANs cover every domain in `_proxy_all_cert_domains`.
+
+- name: Set cert assessment threshold
+  set_fact:
+    _check_effective_threshold_days: "{{ _check_threshold_days | default(proxy_cert_expiry_threshold_days) | int }}"
 
 - name: Stat cert bundle at {{ _check_path }}
   become: true
@@ -20,12 +24,26 @@
   community.crypto.x509_certificate_info:
     path: "{{ _check_path }}/cert.pem"
     valid_at:
-      threshold: "+{{ _check_threshold_days | default(proxy_cert_expiry_threshold_days) }}d"
+      threshold: "+{{ _check_effective_threshold_days }}d"
   register: _check_cert_info
   when: _check_files.results[0].stat.exists
 
 - name: Decide cert ok
   set_fact:
+    _check_file_status: "{{ dict(_check_files.results | map(attribute='item') | zip(_check_files.results | map(attribute='stat.exists'))) }}"
+    _check_cert_sans: >-
+      {{
+        _check_cert_info.subject_alt_name | default([])
+        | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+      }}
+    _check_missing_domains: >-
+      {{
+        _proxy_all_cert_domains
+        | difference(
+            _check_cert_info.subject_alt_name | default([])
+            | select('match', '^DNS:') | map('regex_replace', '^DNS:', '') | list
+          )
+      }}
     _check_cert_ok: >-
       {{
         (_check_files.results | map(attribute='stat.exists') | select | list | length == 3)
@@ -39,3 +57,24 @@
           | length == 0
         )
       }}
+
+- name: Record cert assessment details
+  set_fact:
+    _check_cert_status:
+      path: "{{ _check_path }}"
+      ok: "{{ _check_cert_ok }}"
+      threshold_days: "{{ _check_effective_threshold_days }}"
+      files: "{{ _check_file_status }}"
+      valid_at_threshold: "{{ _check_cert_info.valid_at.threshold | default(false) }}"
+      not_before: "{{ _check_cert_info.not_before | default('n/a') }}"
+      not_after: "{{ _check_cert_info.not_after | default('n/a') }}"
+      expected_domains: "{{ _proxy_all_cert_domains }}"
+      cert_dns_sans: "{{ _check_cert_sans }}"
+      missing_domains: "{{ _check_missing_domains }}"
+
+- name: Show rejected cert details
+  ansible.builtin.debug:
+    var: _check_cert_status
+  when:
+    - _check_debug_rejections | default(false) | bool
+    - not (_check_cert_ok | default(false))

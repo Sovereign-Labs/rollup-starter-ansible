@@ -77,6 +77,11 @@ proxy_aws_cli_bin: "/snap/bin/aws"
 proxy_cert_s3_bucket: ""
 proxy_cert_s3_region: ""
 proxy_cert_s3_key: "letsencrypt.tar.gz"
+# Minimum validity required for a restored backup during replacement boot.
+# Renewal is a daily cron on the traffic-owning proxy; a replacement may not be
+# able to complete HTTP-01 until after the EIP shifts, so this is intentionally
+# lower than the normal renewal freshness threshold.
+proxy_cert_restore_min_valid_days: 1
 proxy_cert_expiry_threshold_days: 30
 
 # GeoIP2 country blocking (opt-in). When enabled, the role builds
