@@ -9,6 +9,7 @@ set -e
 
 SNAPSHOT_DIR="{{ snapshots_dir }}"
 ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
+SNAPSHOT_ROLLUP_DIR="$SNAPSHOT_DIR/rollup"
 SNAPSHOTS_DEVICE="{{ disk_config.snapshots_disk }}"
 LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
 
@@ -21,14 +22,19 @@ log "=== Starting rollup snapshot ==="
 # Stop the rollup service
 log "Stopping rollup service..."
 sudo systemctl stop rollup
+sync
 
 # Rsync rollup data to snapshots disk, ensuring rollup restarts regardless of outcome
-log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_DIR..."
-if ! rsync -a --fsync --delete --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_DIR/rollup/"; then
+log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_ROLLUP_DIR..."
+if ! rsync -a --fsync --delete --inplace --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_ROLLUP_DIR/"; then
     log "ERROR: Rsync failed!"
     log "Restarting rollup service..."
     sudo systemctl start rollup
-    log "Rollup restarted. Exiting due to rsync failure."
+    log "Rollup restarted. Wiping invalid snapshot mirror at $SNAPSHOT_ROLLUP_DIR..."
+    if ! find "$SNAPSHOT_ROLLUP_DIR" -mindepth 1 -xdev -delete; then
+        log "WARNING: Failed to fully wipe invalid snapshot mirror at $SNAPSHOT_ROLLUP_DIR"
+    fi
+    log "Exiting due to rsync failure."
     exit 1
 fi
 sync
