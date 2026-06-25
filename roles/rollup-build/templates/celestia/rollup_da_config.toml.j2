@@ -11,3 +11,9 @@ request_timeout_secs = {{ celestia_request_timeout }}
 {% if celestia_tx_priority %}
 tx_priority = "{{ celestia_tx_priority }}"
 {% endif %}
+{% if celestia_verify_on_fetch_mode %}
+verify_on_fetch_mode = "{{ celestia_verify_on_fetch_mode }}"
+{% endif %}
+{% if celestia_compression %}
+compression = "{{ celestia_compression }}"
+{% endif %}

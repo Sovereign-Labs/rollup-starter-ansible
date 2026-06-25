@@ -15,6 +15,12 @@ da_rollup_address: ""
 celestia_request_timeout: 31
 # Can be Low, Medium, High. By default rely on Default value in CelestiaConfig
 celestia_tx_priority: ""
+# Verify fetched blocks against the DA header. Can be off, log_error, return_error.
+# Leave empty to rely on the Default value in CelestiaConfig.
+celestia_verify_on_fetch_mode: ""
+# Compress batch blobs before submission. Can be off, lz4.
+# Leave empty to rely on the Default value in CelestiaConfig.
+celestia_compression: ""
 
 # [NOTE: Length cannot change - must be exactly 10 characters]
 rollup_batch_namespace: "sov-b-dev8"
