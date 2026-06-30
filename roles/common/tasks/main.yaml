@@ -15,6 +15,9 @@
 - name: chrony
   include_tasks: chrony.yaml
 
+- name: configure local DNS cache (serve-stale)
+  include_tasks: resolved.yaml
+
 - name: migrate legacy sysctl entries off /etc/sysctl.conf
   include_tasks: migrate_sysctl.yaml
 
