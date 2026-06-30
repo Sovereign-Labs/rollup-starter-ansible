@@ -167,6 +167,13 @@ da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
 # Signer private key (SENSITIVE - handle securely)
 signer_private_key: ""
 
+# Optional Celestia DA tuning (omit to use the SDK defaults)
+# Verify fetched blocks against the DA header: off | log_error | return_error
+# celestia_verify_on_fetch_mode: "off"
+# Compress batch blobs before submission: off | lz4
+# (keep off until every node/prover on the network can read compression envelopes)
+# celestia_compression: "off"
+
 # ============================================================================
 # CONSTANTS.TOML OVERRIDES (optional)
 # ============================================================================

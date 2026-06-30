@@ -20,3 +20,16 @@
       - 'celestia_rpc_url' must be set in vars/celestia_secrets.yaml
       - 'celestia_grpc_url' must be set in vars/celestia_secrets.yaml
       - 'da_rollup_address' must be a valid Celestia address (starts with 'celestia1')
+
+- name: Validate optional Celestia DA tuning parameters
+  when: data_availability_role == 'celestia'
+  assert:
+    that:
+      - celestia_verify_on_fetch_mode | default('') in ['', 'off', 'log_error', 'return_error']
+      - celestia_compression | default('') in ['', 'off', 'lz4']
+    fail_msg: >-
+      Invalid optional Celestia DA tuning parameter:
+      celestia_verify_on_fetch_mode must be one of off, log_error, return_error
+      (or empty to use the SDK default);
+      celestia_compression must be one of off, lz4 (or empty to use the SDK default).
+    quiet: true
