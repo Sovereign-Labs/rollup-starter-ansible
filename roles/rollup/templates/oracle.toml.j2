@@ -1,0 +1,14 @@
+# Managed by Ansible -- do not edit by hand.
+# Price oracle configuration for the rollup node. Passed to the rollup binary
+# via --oracle-config-path (see rollup-manager.sh). Rendered from the oracle_*
+# variables in the rollup role.
+[oracle]
+enabled = {{ oracle_enabled | bool | lower }}
+require_sources = {{ oracle_require_sources | bool | lower }}
+{% for source in oracle_sources %}
+
+[[oracle.source]]
+name = "{{ source.name }}"
+socket_address = "{{ source.socket_address }}"
+transport = "{{ source.transport | default('tcp') }}"
+{% endfor %}

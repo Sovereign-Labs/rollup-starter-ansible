@@ -12,4 +12,15 @@ export RUST_BACKTRACE=full
 /home/sovereign/{{ rollup_manager_bin }} \
   --config {{ rollup_manager_config_path }} \
   --checkpoint-file {{ rollup_manager_checkpoint_path }} \
-  -- --genesis-path {{ genesis_folder }}/genesis.json
+  -- --genesis-path {{ genesis_folder }}/genesis.json{{ ' \\' if oracle_enabled | bool else '' }}
+{% if oracle_enabled | bool %}
+  --oracle-config-path {{ oracle_config_path }}
+{% else %}
+# Price oracle is disabled (oracle_enabled: false). The --oracle-config-path
+# flag is intentionally not passed, because rollup binaries that predate oracle
+# support reject the unknown argument and fail to start. To enable it manually
+# for debugging against an oracle-capable rollup: add a trailing "\" to the
+# --genesis-path line above, uncomment the flag below, then restart the service
+# (sudo systemctl restart rollup).
+#  --oracle-config-path {{ oracle_config_path }}
+{% endif %}

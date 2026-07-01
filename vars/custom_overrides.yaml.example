@@ -101,6 +101,26 @@
 # rollup_leader_election_heartbeat_interval_millis: 100
 
 # ============================================
+# Price Oracle (optional)
+# ============================================
+# When enabled, the rollup connects to the configured oracle source(s) for price
+# feeds and is started with --oracle-config-path. NOTE: the deployed rollup must
+# support the price oracle -- enabling this against a binary that predates oracle
+# support makes it reject the unknown argument and fail to start. When disabled
+# the flag is left commented-out in rollup-manager.sh for manual debugging.
+
+# oracle_enabled: false
+# Block startup until all sources connect (only applies when oracle_enabled).
+# oracle_require_sources: false
+# At least one source is required when oracle_enabled is true.
+# oracle_sources:
+#   - name: "chainlink-1"
+#     socket_address: "127.0.0.1:9801"
+#   - name: "chainlink-2"
+#     socket_address: "127.0.0.1:9802"
+#     transport: "tcp"   # optional, currently only "tcp" (the default)
+
+# ============================================
 # Data Availability - Mock DA
 # ============================================
 

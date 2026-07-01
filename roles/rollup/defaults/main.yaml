@@ -56,6 +56,33 @@ custom_rust_log: ""
 # - full: Full telemetry via SOV_OTEL_ENABLED
 opentelemetry_mode: "logs"
 
+# Price oracle integration
+# When oracle_enabled is true, the rollup connects to the configured oracle
+# source(s) to receive price feeds, and the rollup is started with
+# --oracle-config-path. The oracle config is always rendered to
+# oracle_config_path (even when disabled) so the file stays available for
+# inspection/debugging, but the flag is only passed when enabled -- rollup
+# binaries without oracle support reject the unknown argument.
+oracle_enabled: false
+# When true, the rollup blocks startup until every configured source connects
+# (and fails to start if they don't within the rollup's timeout). Only takes
+# effect when oracle_enabled is true.
+oracle_require_sources: false
+# Node-level path for the rendered oracle config.
+oracle_config_path: "/home/sovereign/oracle.toml"
+# Oracle price-feed sources. Each entry:
+#   - name:           unique identifier for the source (required)
+#     socket_address: "host:port" the oracle client connects to (required)
+#     transport:      connection transport, currently only "tcp" (optional, default "tcp")
+# At least one source is required when oracle_enabled is true.
+# Example:
+#   oracle_sources:
+#     - name: "chainlink-1"
+#       socket_address: "127.0.0.1:9801"
+#     - name: "chainlink-2"
+#       socket_address: "127.0.0.1:9802"
+oracle_sources: []
+
 # Wipe rollup data directory on deployment (use with caution)
 wipe: false
 
