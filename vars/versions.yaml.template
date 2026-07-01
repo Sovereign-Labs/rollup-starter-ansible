@@ -8,6 +8,7 @@
 # - start_height: Block height where this version starts (null for first version)
 # - stop_height: Block height where this version stops (null for last/current version)
 # - migration_path: Optional path to migration script/binary to run before this version
+# - build_db_migration: Optional; build and run this version's generated rollup-db-migration binary
 
 rollup_versions:
   # First version (genesis)
@@ -17,6 +18,7 @@ rollup_versions:
     start_height: null                   # Must be null for first version
     stop_height: 100                     # Height where this version stops
     migration_path: null                 # No migration for first version
+    build_db_migration: false
 
   # Subsequent version (hard fork)
   - version_id: "v2"
@@ -24,4 +26,5 @@ rollup_versions:
     vars_file: "v2/overrides.yaml"      # Override vars for this version
     start_height: 101                    # Must be stop_height + 1 of previous
     stop_height: null                    # null for last/current version
-    migration_path: "migrations/v1_to_v2.sh"  # Optional migration script
+    migration_path: null                 # Optional custom migration script/binary
+    build_db_migration: true             # Build generated rollup-db-migration for this transition

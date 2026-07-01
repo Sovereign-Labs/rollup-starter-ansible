@@ -18,6 +18,11 @@ rollup_branch: "main"
 rollup_crate: "rollup"
 # Output binary name (used in destination path)
 rollup_bin: "rollup"
+# DB migration binary. Built and installed alongside the rollup binary only
+# when explicitly requested with build_db_migration=true.
+build_db_migration: false
+# Cargo `--bin` target name and output binary name (they match).
+rollup_db_migration_bin: "rollup-db-migration"
 # Can be `risc0`, `sp1`, or `mock_zkvm`
 zkvm_role: "mock_zkvm"
 # Debug or release build?
@@ -71,6 +76,8 @@ rollup_genesis_verifier_init_bond: 200000
 rollup_genesis_challenger_min_bond: [1000, 1000]
 # ZK genesis
 rollup_genesis_proving_penalty: [10, 10]
+
+rollup_genesis_state_version: 1
 
 # 10GB, in bytes
 rollup_state_cache_size: 10000000000

@@ -18,10 +18,10 @@ All variables are defined in [`roles/rollup/defaults/main.yaml`](./roles/rollup/
 This repository supports **two deployment modes**:
 
 ### 1. Traditional Push Mode (SSH-based)
+
 Deploy to remote servers via SSH from your local machine. Ideal for:
 - Development and testing
 - Manual deployments
-- Non-AWS environments (Hetzner, bare metal)
 
 **Quick start**: See deployment examples below ⬇️
 

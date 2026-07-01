@@ -5,6 +5,8 @@
   set_fact:
     version_output_dir: "{{ versions_output_dir }}/{{ version.version_id }}"
     version_genesis_folder: "{{ genesis_folder if version_index == 0 else '' }}"
+    version_build_db_migration: "{{ version.build_db_migration | default(false) | bool }}"
+    version_db_migration_bin: "{{ version.rollup_db_migration_bin | default(rollup_db_migration_bin) }}"
 
 - name: Create version output directory
   ansible.builtin.file:
@@ -81,9 +83,28 @@
       {% if result.stat.exists %}-e @/tmp/build_{{ result.item }} {% endif %}
       {% endfor %}
 
+# Per-version overrides come either inline (version.vars, written to a temp
+# file here) or from a file in the config repo checkout (version.vars_file).
+# Inline vars keep the whole version spec expressible as plain variables, so
+# it can be passed end-to-end (e.g. from CDK) without a config repo.
+- name: Write inline version vars for build subprocess
+  ansible.builtin.copy:
+    content: "{{ version['vars'] | to_nice_yaml }}"
+    dest: "/tmp/build_version_vars_{{ version.version_id }}.yaml"
+    mode: '0600'
+  become: true
+  when: version['vars'] is defined and version['vars'] | length > 0
+
 - name: Build override vars argument
   set_fact:
-    override_vars_arg: "{{ '-e @' + config_checkout_dir + '/' + version.vars_file if (version.vars_file is defined and version.vars_file | length > 0) else '' }}"
+    override_vars_arg: >-
+      {{
+        '-e @/tmp/build_version_vars_' + version.version_id + '.yaml'
+        if (version['vars'] is defined and version['vars'] | length > 0)
+        else ('-e @' + config_checkout_dir + '/' + version.vars_file
+              if (version.vars_file is defined and version.vars_file | length > 0)
+              else '')
+      }}
 
 # Derived here in the parent's `switches` context because the sub-playbook is
 # launched with `-e switches=b`, which would make the same expression in
@@ -115,6 +136,8 @@
       -e rollup_http_host={{ rollup_http_bind_host | quote }}
       -e rollup_http_port={{ rollup_http_port }}
       -e rollup_storage_dir={{ rollup_storage_dir }}
+      -e build_db_migration={{ version_build_db_migration | lower }}
+      -e rollup_db_migration_bin={{ version_db_migration_bin | quote }}
 
 - name: Display build command for version {{ version.version_id }}
   debug:

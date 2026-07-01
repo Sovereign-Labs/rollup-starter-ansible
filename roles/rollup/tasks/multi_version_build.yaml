@@ -2,28 +2,56 @@
 # Multi-version build orchestration
 #
 # Version spec precedence:
-# 1. rollup_config_repo defined → load versions.yaml from repo
-# 2. version_spec passed directly (e.g., -e @versions.yaml) → use that
-# 3. Neither → synthesize single-version default
+# 1. version_spec passed directly (e.g. -e @versions.yaml) → use as-is.
+#    If rollup_config_repo is set, it is still checked out so that per-version
+#    vars_file entries resolve against a fresh checkout (not a stale one).
+# 2. versions.yaml present in the config repo checkout → multi-version build.
+#    The config repo defaults to the rollup repo (rollup_repo) at the rollup
+#    ref (rollup_commit_hash, else rollup_branch), so a deployment opts into a
+#    hard fork just by pointing its rollup branch/commit at a ref that carries
+#    a versions.yaml — no dedicated config-repo parameter is needed.
+#    rollup_config_repo / rollup_config_repo_branch still override when set.
+# 3. Otherwise → synthesize a single-version default.
 
 # --- Load or synthesize version spec ---
 
-- name: Checkout rollup-config repo
+- name: Resolve effective config repo and ref
+  set_fact:
+    effective_config_repo: "{{ rollup_config_repo if (rollup_config_repo | default('') | length > 0) else rollup_repo }}"
+    effective_config_ref: "{{ rollup_config_repo_branch if (rollup_config_repo | default('') | length > 0) else (rollup_commit_hash if (rollup_commit_hash | default('') | length > 0) else rollup_branch) }}"
+  when: version_spec is not defined or (rollup_config_repo | default('') | length > 0)
+
+- name: Checkout config repo (defaults to the rollup repo at the rollup ref)
   become: true
   become_user: ubuntu
   git:
-    repo: "{{ rollup_config_repo }}"
+    repo: "{{ effective_config_repo }}"
     dest: "{{ config_checkout_dir }}"
-    version: "{{ rollup_config_repo_branch }}"
+    version: "{{ effective_config_ref }}"
     accept_hostkey: yes
     force: yes
-  when: rollup_config_repo is defined and rollup_config_repo | length > 0
+  when: version_spec is not defined or (rollup_config_repo | default('') | length > 0)
 
-- name: Load versions.yaml from config repo
-  include_vars:
-    file: "{{ config_checkout_dir }}/versions.yaml"
-    name: version_spec
-  when: rollup_config_repo is defined and rollup_config_repo | length > 0
+- name: Check for versions.yaml in the config repo checkout
+  ansible.builtin.stat:
+    path: "{{ config_checkout_dir }}/versions.yaml"
+  register: versions_yaml_stat
+  become: true
+  when: version_spec is not defined
+
+# slurp reads the file on the remote host, where the git task above cloned it
+# (in push mode it does not exist on the controller).
+- name: Read versions.yaml from config repo checkout (multi-version mode)
+  ansible.builtin.slurp:
+    src: "{{ config_checkout_dir }}/versions.yaml"
+  register: versions_yaml_raw
+  become: true
+  when: version_spec is not defined and versions_yaml_stat.stat.exists
+
+- name: Parse versions.yaml into version_spec
+  set_fact:
+    version_spec: "{{ versions_yaml_raw.content | b64decode | from_yaml }}"
+  when: version_spec is not defined and versions_yaml_stat.stat.exists
 
 - name: Detect current ansible repo commit
   ansible.builtin.command:
@@ -43,7 +71,44 @@
           start_height: null
           stop_height: null
           migration_path: null
-  when: (rollup_config_repo is not defined or rollup_config_repo | length == 0) and version_spec is not defined
+  when: version_spec is not defined
+
+- name: Validate migration settings
+  assert:
+    that:
+      - not (
+          (version.build_db_migration | default(false) | bool) and
+          (version.migration_path is defined and version.migration_path is not none and version.migration_path | string | length > 0)
+        )
+    fail_msg: >-
+      Version {{ version.version_id }} cannot set both build_db_migration=true
+      and migration_path. build_db_migration uses the generated
+      rollup-db-migration binary path automatically.
+    quiet: true
+  loop: "{{ version_spec.rollup_versions }}"
+  loop_control:
+    loop_var: version
+
+- name: Validate version vars settings
+  assert:
+    that:
+      - not (
+          (version['vars'] is defined and version['vars'] | length > 0) and
+          (version.vars_file is defined and version.vars_file | length > 0)
+        )
+      # effective_config_repo is set exactly when the checkout above ran.
+      - >-
+        (version.vars_file is not defined or version.vars_file | length == 0)
+        or (effective_config_repo | default('') | length > 0)
+    fail_msg: >-
+      Version {{ version.version_id }}: set either inline `vars` or `vars_file`
+      (not both). `vars_file` resolves relative to the config repo checkout,
+      which a directly-passed version_spec skips — set rollup_config_repo or
+      use inline `vars` instead.
+    quiet: true
+  loop: "{{ version_spec.rollup_versions }}"
+  loop_control:
+    loop_var: version
 
 # --- Clone ansible repo and build versions ---
 
