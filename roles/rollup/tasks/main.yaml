@@ -3,6 +3,11 @@
 - name: Backup node detection and validation
   import_tasks: backup_node.yaml
 
+# Render/validate the price oracle config early so a misconfiguration fails
+# before the (long) rollup build rather than after it.
+- name: configure price oracle
+  import_tasks: oracle.yaml
+
 - name: tune kernel for rollup workload
   include_tasks: system_tuner.yaml
 

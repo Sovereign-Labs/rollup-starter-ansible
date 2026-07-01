@@ -1,0 +1,40 @@
+---
+# Price oracle integration.
+#
+# The oracle config is always rendered to oracle_config_path (even when disabled,
+# as enabled = false) so operators have a single, live file to inspect or edit.
+# The matching --oracle-config-path flag is only passed to the rollup when
+# oracle_enabled is true; when disabled it is left commented-out in
+# rollup-manager.sh, because rollup binaries that predate oracle support reject
+# the unknown argument and fail to start.
+
+- name: Validate oracle sources are configured when the oracle is enabled
+  ansible.builtin.assert:
+    that:
+      - oracle_sources | length > 0
+    fail_msg: >-
+      oracle_enabled is true but oracle_sources is empty. Configure at least one
+      source, or set oracle_enabled: false.
+    quiet: true
+  when: oracle_enabled | bool
+
+- name: Validate each oracle source defines a name and socket_address
+  ansible.builtin.assert:
+    that:
+      - item.name is defined and (item.name | string | length > 0)
+      - item.socket_address is defined and (item.socket_address | string | length > 0)
+    fail_msg: "Each oracle source must define a non-empty 'name' and 'socket_address' (got: {{ item }})."
+    quiet: true
+  loop: "{{ oracle_sources }}"
+  loop_control:
+    label: "{{ item.name | default('<unnamed>') }}"
+
+- name: Render oracle.toml
+  become: true
+  become_user: sovereign
+  ansible.builtin.template:
+    src: "oracle.toml.j2"
+    dest: "{{ oracle_config_path }}"
+    owner: sovereign
+    group: sovereign
+    mode: "0644"
