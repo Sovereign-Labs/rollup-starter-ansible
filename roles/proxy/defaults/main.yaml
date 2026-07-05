@@ -71,9 +71,13 @@ proxy_vts_status_port: 8080
 # links and breaks `certbot renew`. `tar` preserves them. The object lives at
 # the bucket root and is shared with ubuntu-evm-starter-script (same key).
 # The instance needs only s3:GetObject + s3:PutObject on the bucket (no List/
-# Delete — single fixed key, overwritten in place). Snap path is hardcoded
-# because certbot renewal hooks don't reliably include /snap/bin in PATH.
-proxy_aws_cli_bin: "/snap/bin/aws"
+# Delete — single fixed key, overwritten in place). An absolute path is used
+# because certbot renewal hooks run with a limited PATH. The default is where
+# the official AWS installer puts the CLI; the role installs it there when no
+# binary exists at this path (hosts provisioned by the CDK user-data already
+# have it). Hosts that predate this and still use the snap CLI can override
+# with proxy_aws_cli_bin: "/snap/bin/aws".
+proxy_aws_cli_bin: "/usr/local/bin/aws"
 proxy_cert_s3_bucket: ""
 proxy_cert_s3_region: ""
 proxy_cert_s3_key: "letsencrypt.tar.gz"

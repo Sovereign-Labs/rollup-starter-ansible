@@ -165,14 +165,55 @@
     mode: '0755'
   when: proxy_ssl_enabled | bool
 
-- name: Install AWS CLI via snap (for S3 cert sync)
-  become: true
-  command: snap install aws-cli --classic
-  args:
-    creates: /snap/bin/aws
+- name: Check for AWS CLI (for S3 cert sync)
+  stat:
+    path: "{{ proxy_aws_cli_bin }}"
+  register: proxy_aws_cli_stat
   when:
     - proxy_ssl_enabled | bool
     - proxy_cert_s3_bucket | length > 0
+
+# The Ubuntu 24.04 archive has no awscli deb, and the Snap Store rate-limits by
+# public IP (bursts of instance launches behind one NAT IP hit "too many
+# requests"), so install from the official AWS-hosted installer instead.
+# Skipped when a CLI already exists at proxy_aws_cli_bin (e.g. installed by the
+# CDK user-data before ansible runs).
+- name: Install AWS CLI v2 from the official installer (for S3 cert sync)
+  become: true
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+    - not (proxy_aws_cli_stat.stat.exists | default(false))
+  block:
+    - name: Ensure unzip is installed
+      apt:
+        name: unzip
+        state: present
+
+    - name: Download AWS CLI v2 installer
+      get_url:
+        url: "https://awscli.amazonaws.com/awscli-exe-linux-{{ ansible_architecture }}.zip"
+        dest: /tmp/awscliv2.zip
+        mode: '0644'
+
+    - name: Unpack AWS CLI v2 installer
+      unarchive:
+        src: /tmp/awscliv2.zip
+        dest: /tmp
+        remote_src: true
+
+    - name: Run AWS CLI v2 installer
+      command: /tmp/aws/install
+      args:
+        creates: /usr/local/bin/aws
+
+    - name: Clean up AWS CLI installer files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/awscliv2.zip
+        - /tmp/aws
 
 - name: Create OpenResty conf.d directory
   become: true
