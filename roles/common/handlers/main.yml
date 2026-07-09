@@ -20,3 +20,9 @@
   systemd:
     name: alloy
     state: restarted
+
+- name: restart systemd-resolved
+  become: true
+  systemd:
+    name: systemd-resolved
+    state: restarted

@@ -1,0 +1,51 @@
+---
+# Enable a local caching DNS resolver with serve-stale by tuning the already-present
+# systemd-resolved (stub at 127.0.0.53, Cache=yes default).
+#
+# Why: rollup nodes reach the remote Celestia RPC/gRPC endpoint by hostname. The WebSocket
+# RPC client re-resolves that hostname with a blocking getaddrinfo on every (re)connect;
+# during a DNS disruption that call can hang and stall a worker. serve-stale returns the
+# last-known address instantly even when the upstream resolver is unreachable.
+#
+# Defense-in-depth only: does NOT fix the ~1-min runtime freeze during Celestia outages
+# (that is a separate code-level logging fix in the rollup repo).
+
+- name: check whether /etc/resolv.conf is the systemd-resolved stub
+  stat:
+    path: /etc/resolv.conf
+  register: resolv_conf_stat
+  become: true
+
+- name: warn if getaddrinfo bypasses the systemd-resolved cache
+  debug:
+    msg: >-
+      /etc/resolv.conf does not resolve to /run/systemd/resolve/stub-resolv.conf
+      (found: {{ resolv_conf_stat.stat.lnk_source | default('not a symlink') }}).
+      getaddrinfo will bypass systemd-resolved, so DNS caching + serve-stale is a
+      no-op on this host. Fix resolv.conf management to benefit.
+  when: resolv_conf_stat.stat.lnk_source | default('') != '/run/systemd/resolve/stub-resolv.conf'
+
+- name: create systemd-resolved config directory
+  file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: configure systemd-resolved caching + serve-stale
+  copy:
+    content: |
+      # Managed by Ansible (common role) — local DNS cache + serve-stale.
+      # serve-stale returns the last-known answer when the upstream resolver is
+      # unreachable, so the rollup's blocking getaddrinfo never hangs.
+      [Resolve]
+      Cache=yes
+      StaleRetentionSec=86400
+    dest: /etc/systemd/resolved.conf.d/10-cache.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: restart systemd-resolved
