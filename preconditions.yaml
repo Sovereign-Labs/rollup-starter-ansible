@@ -1,6 +1,14 @@
 ---
-# Preconditions - Display configuration info
-# Note: DA configuration variables are now loaded by the rollup role
+# Preconditions - validate config early and display info
+# Note: DA configuration variables are loaded by load_vars.yaml / the rollup role
+
+# Fail fast: validate Celestia config in the OUTER play (switches has 'r'),
+# before the per-version build subprocesses run. Without this, incomplete
+# Celestia config (e.g. a missing da_rollup_address in vars/celestia_secrets.yaml)
+# only surfaces deep inside an async build via this same validate_da.yaml.
+- name: Validate DA configuration early
+  import_tasks: roles/rollup-build/tasks/validate_da.yaml
+  when: "'r' in switches"
 
 - name: Display DA configuration
   debug:
