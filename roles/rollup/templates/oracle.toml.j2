@@ -9,6 +9,6 @@ require_sources = {{ oracle_require_sources | bool | lower }}
 
 [[oracle.source]]
 name = "{{ source.name }}"
-socket_address = "{{ source.socket_address }}"
-transport = "{{ source.transport | default('tcp') }}"
+provider = "{{ source.provider }}"
+address = "{{ source.address }}"
 {% endfor %}

@@ -115,10 +115,11 @@
 # At least one source is required when oracle_enabled is true.
 # oracle_sources:
 #   - name: "chainlink-1"
-#     socket_address: "127.0.0.1:9801"
-#   - name: "chainlink-2"
-#     socket_address: "127.0.0.1:9802"
-#     transport: "tcp"   # optional, currently only "tcp" (the default)
+#     provider: "chainlink"
+#     address: "127.0.0.1:9801"
+#   - name: "stork-1"
+#     provider: "stork"
+#     address: "127.0.0.1:9804"
 
 # ============================================
 # Data Availability - Mock DA

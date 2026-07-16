@@ -71,16 +71,18 @@ oracle_require_sources: false
 # Node-level path for the rendered oracle config.
 oracle_config_path: "/home/sovereign/oracle.toml"
 # Oracle price-feed sources. Each entry:
-#   - name:           unique identifier for the source (required)
-#     socket_address: "host:port" the oracle client connects to (required)
-#     transport:      connection transport, currently only "tcp" (optional, default "tcp")
+#   - name:     unique identifier for the source (required)
+#     provider: expected ingester provider id, e.g. "stork" or "chainlink" (required)
+#     address:  "host:port" the oracle client connects to (required)
 # At least one source is required when oracle_enabled is true.
 # Example:
 #   oracle_sources:
 #     - name: "chainlink-1"
-#       socket_address: "127.0.0.1:9801"
-#     - name: "chainlink-2"
-#       socket_address: "127.0.0.1:9802"
+#       provider: "chainlink"
+#       address: "127.0.0.1:9801"
+#     - name: "stork-1"
+#       provider: "stork"
+#       address: "127.0.0.1:9804"
 oracle_sources: []
 
 # Wipe rollup data directory on deployment (use with caution)

@@ -18,12 +18,18 @@
     quiet: true
   when: oracle_enabled | bool
 
-- name: Validate each oracle source defines a name and socket_address
+- name: Validate each oracle source defines a name, provider, and address
   ansible.builtin.assert:
     that:
       - item.name is defined and (item.name | string | length > 0)
-      - item.socket_address is defined and (item.socket_address | string | length > 0)
-    fail_msg: "Each oracle source must define a non-empty 'name' and 'socket_address' (got: {{ item }})."
+      - item.provider is defined and (item.provider | string | length > 0)
+      - item.address is defined and (item.address | string | length > 0)
+      - item.transport is not defined
+      - item.socket_address is not defined
+    fail_msg: >-
+      Each oracle source must define non-empty 'name', 'provider', and 'address'
+      fields. Legacy 'transport' and 'socket_address' fields are not supported
+      (got: {{ item }}).
     quiet: true
   loop: "{{ oracle_sources }}"
   loop_control:
