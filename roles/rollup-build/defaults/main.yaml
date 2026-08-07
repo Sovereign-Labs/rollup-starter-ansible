@@ -26,6 +26,10 @@ debug: false
 # Mock DA storage path (only used when data_availability_role=mock_da and mock_da_external_url is not set)
 da_store: "/mnt/da"
 
+# Verify fetched Celestia blocks against the DA header. Can be off, log_error,
+# or return_error. Set to an empty string to rely on the SDK default.
+celestia_verify_on_fetch_mode: "return_error"
+
 # Genesis configuration.
 # For testing it locally, create path/to/your/vars.yaml with variables you want to check and run:
 #   ansible localhost -m template \
