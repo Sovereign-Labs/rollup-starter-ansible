@@ -4,6 +4,35 @@
 
 local _M = {}
 
+local function read_request_body()
+    ngx.req.read_body()
+
+    local body = ngx.req.get_body_data()
+    if body then
+        return body
+    end
+
+    local body_file = ngx.req.get_body_file()
+    if not body_file then
+        return nil
+    end
+
+    local file, open_err = io.open(body_file, "rb")
+    if not file then
+        ngx.log(ngx.ERR, "failed to open buffered request body: ", open_err)
+        return nil
+    end
+
+    local file_body, read_err = file:read("*a")
+    file:close()
+    if not file_body then
+        ngx.log(ngx.ERR, "failed to read buffered request body: ", read_err)
+        return nil
+    end
+
+    return file_body
+end
+
 local function pick_backend(use_leader, backend_cache)
     if use_leader then
         return backend_cache:get("leader")
@@ -36,8 +65,7 @@ function _M.select(path)
         use_leader = true
     elseif path == "/rpc" and method == "POST" then
         -- Inspect the JSON-RPC body for leader-required methods.
-        ngx.req.read_body()
-        local body = ngx.req.get_body_data()
+        local body = read_request_body()
         if body then
             local rpc_method = body:match('"method"%s*:%s*"([^"]+)"')
             if rpc_method == "eth_sendRawTransaction"
@@ -46,6 +74,8 @@ function _M.select(path)
                 use_leader = true
             end
         end
+        -- Keep uninspectable requests on the normal read-routing path rather
+        -- than explicitly selecting the leader for an unknown method.
     end
 
     ngx.var.backend = pick_backend(use_leader, backend_cache)
