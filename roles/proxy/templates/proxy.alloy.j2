@@ -1,12 +1,13 @@
 // Proxy (OpenResty/nginx) log collection
 
-// nginx access log parsing
+// nginx JSON access log parsing
 loki.process "nginx_access" {
   forward_to = [loki.process.add_hostname.receiver]
 
-  // Parse nginx combined log format
-  stage.regex {
-    expression = `^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]*)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)" "(?P<http_x_forwarded_for>[^"]*)" rt=(?P<request_time>\S+) backend=(?P<upstream_addr>\S+)`
+  stage.json {
+    expressions = {
+      status = "status",
+    }
   }
 
   stage.labels {
@@ -68,18 +69,21 @@ local.file_match "certbot" {
 
 // Read nginx access logs
 loki.source.file "nginx_access" {
-  targets    = local.file_match.nginx_access.targets
-  forward_to = [loki.process.nginx_access.receiver]
+  targets       = local.file_match.nginx_access.targets
+  forward_to    = [loki.process.nginx_access.receiver]
+  tail_from_end = true
 }
 
 // Read nginx error logs
 loki.source.file "nginx_error" {
-  targets    = local.file_match.nginx_error.targets
-  forward_to = [loki.process.nginx_error.receiver]
+  targets       = local.file_match.nginx_error.targets
+  forward_to    = [loki.process.nginx_error.receiver]
+  tail_from_end = true
 }
 
 // Read certbot logs
 loki.source.file "certbot" {
-  targets    = local.file_match.certbot.targets
-  forward_to = [loki.process.certbot.receiver]
+  targets       = local.file_match.certbot.targets
+  forward_to    = [loki.process.certbot.receiver]
+  tail_from_end = true
 }
