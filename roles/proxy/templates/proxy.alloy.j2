@@ -21,6 +21,14 @@ loki.process "nginx_access" {
 loki.process "nginx_error" {
   forward_to = [loki.process.add_hostname.receiver]
 
+  // nginx error messages contain the original request URI rather than the
+  // access-log-safe $logged_request_uri. Redact API keys before parsing or
+  // forwarding the line.
+  stage.replace {
+    expression = `/rpc/([^/?#\s"]+)`
+    replace    = "[redacted]"
+  }
+
   stage.regex {
     expression = `^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<pid>\d+)#(?P<tid>\d+): (?P<message>.*)$`
   }

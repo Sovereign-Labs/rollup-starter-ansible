@@ -1,10 +1,22 @@
 {%- set _all_domains = proxy_public_domains + proxy_unlimited_domains %}
 {%- set _public_domains = proxy_public_domains if (proxy_public_domains | length > 0) else ['_'] %}
+{%- macro initialize_log_variables() %}
+        # Defaults for requests that finish before proxy location processing.
+        set $backend '';
+        set $rpc_method "-";
+        set $rpc_id "-";
+        set $rpc_body_source "-";
+        set $rpc_body_bytes "-";
+        set $rpc_raw_tx_bytes "-";
+        set $routing_class "-";
+        set $routing_reason "-";
+{%- endmacro %}
 {%- macro ssl_server(domains, include_path) %}
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
         http2 on;
         server_name {{ domains | join(' ') }};
+{{ initialize_log_variables() }}
 
         ssl_certificate     {{ proxy_letsencrypt_live_dir }}/fullchain.pem;
         ssl_certificate_key {{ proxy_letsencrypt_live_dir }}/privkey.pem;
@@ -46,6 +58,7 @@ http {
 {% if proxy_vts_enabled | bool %}
     server {
         listen 127.0.0.1:{{ proxy_vts_status_port }};
+{{ initialize_log_variables() }}
         location /vts_status {
             vhost_traffic_status_display;
             vhost_traffic_status_display_format json;
@@ -58,6 +71,7 @@ http {
     server {
         listen {{ proxy_listen_port }};
         server_name {{ _all_domains | join(' ') }};
+{{ initialize_log_variables() }}
 
         location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
         location /nginx_status { stub_status on; access_log off; allow 127.0.0.1; deny all; }
@@ -83,6 +97,7 @@ http {
     server {
         listen {{ proxy_listen_port }};
         server_name {{ _public_domains | join(' ') }};
+{{ initialize_log_variables() }}
 
         location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
         location /nginx_status { stub_status on; access_log off; allow 127.0.0.1; deny all; }
@@ -96,6 +111,7 @@ http {
     server {
         listen {{ proxy_listen_port }};
         server_name {{ proxy_unlimited_domains | join(' ') }};
+{{ initialize_log_variables() }}
 
         location /health { access_log off; default_type text/plain; return 200 "healthy\n"; }
         location /.well-known/acme-challenge/ { root {{ proxy_certbot_webroot }}; }
@@ -105,8 +121,8 @@ http {
 {% endif %}
 {% endif %}
 
-    # The Lua-populated variables are declared in the proxy location includes,
-    # so this format must be defined after those includes are parsed.
+    # The Lua-populated variables must be declared before this format is parsed;
+    # server defaults cover requests that return before location processing.
     log_format main escape=json '{'
                     '"timestamp":"$time_iso8601",'
                     '"request_id":"$request_id",'
