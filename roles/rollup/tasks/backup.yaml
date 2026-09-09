@@ -1,3 +1,15 @@
+- name: create snapshot lock file
+  become: true
+  ansible.builtin.file:
+    path: "/home/ubuntu/.rollup-snapshot.lock"
+    state: touch
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+    access_time: preserve
+    modification_time: preserve
+  when: is_backup_node
+
 - name: render snapshot-rollup-data.sh script
   become: true
   become_user: ubuntu

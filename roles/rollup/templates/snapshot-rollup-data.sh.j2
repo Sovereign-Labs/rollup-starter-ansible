@@ -5,7 +5,7 @@
 # and then triggers an EBS snapshot of the snapshots disk.
 # Intended to run hourly via cron on backup nodes.
 #
-set -e
+set -Ee -o pipefail
 
 SNAPSHOT_DIR="{{ snapshots_dir }}"
 ROLLUP_DATA_DIR="{{ rollup_storage_dir }}"
@@ -13,112 +13,205 @@ SNAPSHOT_ROLLUP_DIR="$SNAPSHOT_DIR/rollup"
 SNAPSHOTS_DEVICE="{{ disk_config.snapshots_disk }}"
 LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
 
+# Capture command output too: cron may discard stderr when no MTA is installed.
+# Keep the logger alive during interruption so cleanup can still report errors.
+exec > >(trap '' HUP INT TERM; sudo tee -a "$LOGFILE") 2>&1
+
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | sudo tee -a "$LOGFILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1"
 }
+
+ROLLUP_RESTART_NEEDED=false
+SNAPSHOT_REMOUNT_NEEDED=false
+
+cleanup() {
+    local status=$?
+    trap - EXIT ERR
+    trap '' HUP INT TERM
+    set +e
+
+    if "$ROLLUP_RESTART_NEEDED"; then
+        log "Cleanup: restarting rollup service..."
+        if ! sudo systemctl start rollup; then
+            log "ERROR: Cleanup could not restart rollup service!"
+            status=1
+        fi
+    fi
+
+    if "$SNAPSHOT_REMOUNT_NEEDED" && ! mountpoint -q "$SNAPSHOT_DIR"; then
+        log "Cleanup: remounting snapshot directory..."
+        if ! sudo mount "$SNAPSHOT_DIR"; then
+            log "ERROR: Cleanup could not remount $SNAPSHOT_DIR!"
+            status=1
+        fi
+    fi
+
+    if [ "$status" -ne 0 ]; then
+        log "=== Snapshot failed (exit $status) ==="
+    fi
+    exit "$status"
+}
+
+trap 'log "ERROR: line $LINENO: $BASH_COMMAND (exit $?)" >&2' ERR
+trap cleanup EXIT
+trap 'log "ERROR: Received SIGHUP"; exit 129' HUP
+trap 'log "ERROR: Received SIGINT"; exit 130' INT
+trap 'log "ERROR: Received SIGTERM"; exit 143' TERM
+
+# Ansible creates this stable lock file beside the installed script. Open it
+# read-only so both ubuntu's cron and a manual sudo invocation can use it.
+LOCKFILE="$(dirname -- "$(readlink -f -- "$0")")/.rollup-snapshot.lock"
+exec 9< "$LOCKFILE"
+if flock -n -E 75 9; then
+    :
+else
+    status=$?
+    if [ "$status" -eq 75 ]; then
+        log "Skipping snapshot: another snapshot run holds the lock."
+        exit 0
+    fi
+    log "ERROR: Could not acquire snapshot lock (exit $status)."
+    exit "$status"
+fi
 
 log "=== Starting rollup snapshot ==="
 
-# Stop the rollup service
+# Refuse to copy into an unmounted directory (which would fill the root disk),
+# or to snapshot a device other than the one receiving the copy.
+if ! MOUNTED_DEVICE=$(findmnt -nro SOURCE --mountpoint "$SNAPSHOT_DIR"); then
+    log "ERROR: $SNAPSHOT_DIR is not a mount point."
+    exit 1
+fi
+MOUNTED_DEVICE=$(readlink -f -- "$MOUNTED_DEVICE")
+EXPECTED_DEVICE=$(readlink -f -- "$SNAPSHOTS_DEVICE")
+if [ "$MOUNTED_DEVICE" != "$EXPECTED_DEVICE" ]; then
+    log "ERROR: $SNAPSHOT_DIR is mounted from $MOUNTED_DEVICE, expected $EXPECTED_DEVICE."
+    exit 1
+fi
+
+# The NVMe serial identifies the EBS volume (without the dash after "vol").
+SERIAL=$(sudo nvme id-ctrl -v "$SNAPSHOTS_DEVICE" | awk '/^sn[[:space:]]*:/ {print $3}')
+if [[ ! "$SERIAL" =~ ^vol[0-9a-f]+$ ]]; then
+    log "ERROR: Could not determine EBS volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
+    exit 1
+fi
+VOLUME_ID="vol-${SERIAL:3}"
+
+# Set recovery flags before state-changing commands, including commands that
+# might change state and then fail or be interrupted. Leave an inactive rollup
+# inactive, rather than starting a service this invocation did not stop.
+if sudo systemctl is-active --quiet rollup; then
+    ROLLUP_RESTART_NEEDED=true
+else
+    status=$?
+    if [ "$status" -ne 3 ]; then
+        log "ERROR: Could not determine rollup service state (exit $status)."
+        exit "$status"
+    fi
+fi
+# Always issue stop, even for an inactive service, to cancel any pending
+# automatic restart before copying the database.
 log "Stopping rollup service..."
 sudo systemctl stop rollup
 sync
 
 # Rsync rollup data to snapshots disk, ensuring rollup restarts regardless of outcome
 log "Syncing $ROLLUP_DATA_DIR to $SNAPSHOT_ROLLUP_DIR..."
-if ! rsync -a --fsync --delete --inplace --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_ROLLUP_DIR/"; then
-    log "ERROR: Rsync failed!"
-    log "Restarting rollup service..."
-    sudo systemctl start rollup
-    log "Rollup restarted. Wiping invalid snapshot mirror at $SNAPSHOT_ROLLUP_DIR..."
+if rsync -a --fsync --delete --inplace --exclude='lost+found' "$ROLLUP_DATA_DIR/" "$SNAPSHOT_ROLLUP_DIR/"; then
+    :
+else
+    status=$?
+    log "ERROR: Rsync failed (exit $status)!"
+    if "$ROLLUP_RESTART_NEEDED"; then
+        log "Restarting rollup service..."
+        sudo systemctl start rollup
+        ROLLUP_RESTART_NEEDED=false
+    fi
+    log "Wiping invalid snapshot mirror at $SNAPSHOT_ROLLUP_DIR..."
     if ! find "$SNAPSHOT_ROLLUP_DIR" -mindepth 1 -xdev -delete; then
         log "WARNING: Failed to fully wipe invalid snapshot mirror at $SNAPSHOT_ROLLUP_DIR"
     fi
     log "Exiting due to rsync failure."
-    exit 1
+    exit "$status"
 fi
 sync
 log "Sync complete."
 
 # Restart the rollup service
-log "Starting rollup service..."
-sudo systemctl start rollup
+if "$ROLLUP_RESTART_NEEDED"; then
+    log "Starting rollup service..."
+    sudo systemctl start rollup
+    ROLLUP_RESTART_NEEDED=false
+fi
 
-log "Rollup restarted. Creating EBS snapshot..."
+log "Creating EBS snapshot..."
 
 # Get AWS region from instance metadata (IMDSv2)
 IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
 AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
 INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
 
-# Get volume ID from NVMe device serial number
-# The serial number is the volume ID without the dash (e.g., "vol0abc123" -> "vol-0abc123")
-SERIAL=$(sudo nvme id-ctrl -v "$SNAPSHOTS_DEVICE" 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
-if [[ "$SERIAL" =~ ^vol ]]; then
-    # Insert dash after "vol" to get proper volume ID format
-    VOLUME_ID="vol-${SERIAL:3}"
-    log "Snapshots disk volume ID: $VOLUME_ID. Unmounting it from $SNAPSHOT_DIR..."
-    sudo umount "$SNAPSHOT_DIR"
-    log "Triggering AWS snapshot"
+log "Snapshots disk volume ID: $VOLUME_ID. Unmounting it from $SNAPSHOT_DIR..."
+SNAPSHOT_REMOUNT_NEEDED=true
+sudo umount "$SNAPSHOT_DIR"
+log "Triggering AWS snapshot"
 
-    # Create EBS snapshot with descriptive tags
-    TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-    SNAPSHOT_ID=$(aws ec2 create-snapshot \
-        --region "$AWS_REGION" \
-        --volume-id "$VOLUME_ID" \
-        --description "Rollup backup snapshot from $INSTANCE_ID at $TIMESTAMP" \
-        --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=rollup-backup-$INSTANCE_ID},{Key=InstanceId,Value=$INSTANCE_ID},{Key=CreatedAt,Value=$TIMESTAMP},{Key=AutomatedBackup,Value=true}]" \
-        --query 'SnapshotId' \
-        --output text)
+# Create EBS snapshot with descriptive tags
+TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+SNAPSHOT_ID=$(aws ec2 create-snapshot \
+    --region "$AWS_REGION" \
+    --volume-id "$VOLUME_ID" \
+    --description "Rollup backup snapshot from $INSTANCE_ID at $TIMESTAMP" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=rollup-backup-$INSTANCE_ID},{Key=InstanceId,Value=$INSTANCE_ID},{Key=CreatedAt,Value=$TIMESTAMP},{Key=AutomatedBackup,Value=true}]" \
+    --query 'SnapshotId' \
+    --output text)
 
-    log "EBS snapshot initiated: $SNAPSHOT_ID"
+log "EBS snapshot initiated: $SNAPSHOT_ID"
 
-    # --- Retention policy: keep snapshots at ~0h, ~6h, ~1d, ~1w, ~1mo ---
-    log "Applying snapshot retention policy..."
-    NOW=$(date +%s)
-    # Target ages in seconds
-    TARGETS="0 21600 86400 604800 2592000"
+# --- Retention policy: keep snapshots at ~0h, ~6h, ~1d, ~1w, ~1mo ---
+log "Applying snapshot retention policy..."
+NOW=$(date +%s)
+# Target ages in seconds
+TARGETS="0 21600 86400 604800 2592000"
 
-    # List all completed automated backup snapshots for this volume, as "snapshot_id\tstart_time"
-    SNAP_LIST=$(aws ec2 describe-snapshots \
-        --region "$AWS_REGION" \
-        --filters "Name=volume-id,Values=$VOLUME_ID" "Name=tag:AutomatedBackup,Values=true" "Name=status,Values=completed" \
-        --query 'Snapshots[*].[SnapshotId,StartTime]' \
-        --output text)
+# List all completed automated backup snapshots for this volume, as "snapshot_id\tstart_time"
+SNAP_LIST=$(aws ec2 describe-snapshots \
+    --region "$AWS_REGION" \
+    --filters "Name=volume-id,Values=$VOLUME_ID" "Name=tag:AutomatedBackup,Values=true" "Name=status,Values=completed" \
+    --query 'Snapshots[*].[SnapshotId,StartTime]' \
+    --output text)
 
-    if [ -n "$SNAP_LIST" ]; then
-        KEEP_IDS=""
-        for TARGET_AGE in $TARGETS; do
-            BEST_ID=""
-            BEST_DIFF=999999999
-            while IFS=$'\t' read -r sid stime; do
-                SNAP_EPOCH=$(date -d "$stime" +%s 2>/dev/null) || continue
-                AGE=$((NOW - SNAP_EPOCH))
-                DIFF=$((AGE - TARGET_AGE))
-                [ "$DIFF" -lt 0 ] && DIFF=$((-DIFF))
-                if [ "$DIFF" -lt "$BEST_DIFF" ]; then
-                    BEST_DIFF=$DIFF
-                    BEST_ID=$sid
-                fi
-            done <<< "$SNAP_LIST"
-            [ -n "$BEST_ID" ] && KEEP_IDS="$KEEP_IDS $BEST_ID"
-        done
-
-        # Delete snapshots not in the keep list
+if [ -n "$SNAP_LIST" ]; then
+    KEEP_IDS=""
+    for TARGET_AGE in $TARGETS; do
+        BEST_ID=""
+        BEST_DIFF=999999999
         while IFS=$'\t' read -r sid stime; do
-            if ! echo "$KEEP_IDS" | grep -qw "$sid"; then
-                log "Deleting old snapshot $sid ($stime)"
-                aws ec2 delete-snapshot --region "$AWS_REGION" --snapshot-id "$sid" || \
-                    log "WARNING: Failed to delete snapshot $sid"
+            SNAP_EPOCH=$(date -d "$stime" +%s 2>/dev/null) || continue
+            AGE=$((NOW - SNAP_EPOCH))
+            DIFF=$((AGE - TARGET_AGE))
+            [ "$DIFF" -lt 0 ] && DIFF=$((-DIFF))
+            if [ "$DIFF" -lt "$BEST_DIFF" ]; then
+                BEST_DIFF=$DIFF
+                BEST_ID=$sid
             fi
         done <<< "$SNAP_LIST"
-        log "Retention policy applied. Kept:$KEEP_IDS"
-    fi
+        [ -n "$BEST_ID" ] && KEEP_IDS="$KEEP_IDS $BEST_ID"
+    done
 
-    sudo mount "$SNAPSHOT_DIR"
-    log "Remounted snapshot directory."
-else
-    log "ERROR: Could not determine volume ID from device $SNAPSHOTS_DEVICE (serial: $SERIAL)"
+    # Delete snapshots not in the keep list
+    while IFS=$'\t' read -r sid stime; do
+        if ! echo "$KEEP_IDS" | grep -qw "$sid"; then
+            log "Deleting old snapshot $sid ($stime)"
+            aws ec2 delete-snapshot --region "$AWS_REGION" --snapshot-id "$sid" || \
+                log "WARNING: Failed to delete snapshot $sid"
+        fi
+    done <<< "$SNAP_LIST"
+    log "Retention policy applied. Kept:$KEEP_IDS"
 fi
+
+sudo mount "$SNAPSHOT_DIR"
+SNAPSHOT_REMOUNT_NEEDED=false
+log "Remounted snapshot directory."
 
 log "=== Snapshot complete ==="
