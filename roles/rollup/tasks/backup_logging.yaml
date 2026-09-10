@@ -1,0 +1,55 @@
+---
+# Common installs Alloy when Loki credentials are configured. This drop-in
+# reuses its existing writer and host/environment/deployment labels.
+- name: check for alloy installation
+  ansible.builtin.stat:
+    path: /etc/alloy
+  register: snapshot_alloy_directory
+
+- name: configure backup log shipping
+  when:
+    - is_backup_node | bool
+    - grafana_loki_token | default('') | length > 0
+  block:
+    - name: require alloy for backup log shipping
+      ansible.builtin.assert:
+        that: snapshot_alloy_directory.stat.isdir | default(false)
+        fail_msg: "Run the common role with grafana_loki_token configured before enabling backup log shipping."
+
+    - name: allow alloy to read snapshot logs
+      become: true
+      ansible.builtin.file:
+        path: "{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
+        state: touch
+        owner: ubuntu
+        group: alloy
+        mode: "0640"
+        access_time: preserve
+        modification_time: preserve
+
+    - name: deploy snapshot alloy configuration
+      become: true
+      ansible.builtin.template:
+        src: rollup-backup.alloy.j2
+        dest: /etc/alloy/rollup-backup.alloy
+        owner: alloy
+        group: alloy
+        mode: "0644"
+      register: snapshot_alloy_config
+
+- name: remove snapshot log shipping when disabled
+  become: true
+  ansible.builtin.file:
+    path: /etc/alloy/rollup-backup.alloy
+    state: absent
+  when:
+    - snapshot_alloy_directory.stat.isdir | default(false)
+    - not (is_backup_node | bool) or grafana_loki_token | default('') | length == 0
+  register: snapshot_alloy_removed
+
+- name: reload alloy when snapshot log configuration changes
+  become: true
+  ansible.builtin.systemd:
+    name: alloy
+    state: reloaded
+  when: (snapshot_alloy_config.changed | default(false)) or (snapshot_alloy_removed.changed | default(false))

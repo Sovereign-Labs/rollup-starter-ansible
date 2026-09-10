@@ -1,0 +1,30 @@
+// Snapshot script output, including command stderr. Reuse the common Loki
+// pipeline so these logs have the same deployment and host labels as rollup logs.
+loki.source.file "rollup_snapshot" {
+  targets = [{
+    __path__ = {{ ((rollup_log_dir | default('/var/log')) ~ '/rollup-snapshot.log') | tojson }},
+    job      = "rollup-snapshot",
+  }]
+  forward_to = [loki.process.rollup_snapshot_logs.receiver]
+}
+
+loki.process "rollup_snapshot_logs" {
+  forward_to = [loki.process.add_hostname.receiver]
+
+  // Preserve event time: replaying old logs must not make old backups look
+  // fresh. Command stderr without a timestamp keeps its ingestion timestamp.
+  stage.regex {
+    expression = "^(?P<timestamp>[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) "
+  }
+  stage.timestamp {
+    source            = "timestamp"
+    format            = "2006-01-02 15:04:05"
+    location          = "UTC"
+    action_on_failure = "skip"
+  }
+  // On initial installation, import the recent history needed by the alert,
+  // without sending months of old entries to Loki. Positions persist normally.
+  stage.drop {
+    older_than = "2h"
+  }
+}

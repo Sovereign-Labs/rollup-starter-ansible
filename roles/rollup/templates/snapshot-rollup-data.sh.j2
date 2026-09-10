@@ -18,7 +18,7 @@ LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-snapshot.log"
 exec > >(trap '' HUP INT TERM; sudo tee -a "$LOGFILE") 2>&1
 
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1"
+    echo "$(date -u '+%Y-%m-%d %H:%M:%S') $1"
 }
 
 ROLLUP_RESTART_NEEDED=false
@@ -97,6 +97,36 @@ if [[ ! "$SERIAL" =~ ^vol[0-9a-f]+$ ]]; then
 fi
 VOLUME_ID="vol-${SERIAL:3}"
 
+# Get AWS region and instance ID before checking previous snapshot attempts.
+IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+
+# Check asynchronously created snapshots on the next hourly run; never wait for
+# uploads. Sort the UTC timestamps locally so CLI text pagination cannot hide
+# newer snapshots. A newer completed backup supersedes older failed attempts.
+log "Checking previous EBS snapshot health..."
+if SNAPSHOT_HEALTH_LIST=$(aws ec2 describe-snapshots \
+    --region "$AWS_REGION" --owner-ids self \
+    --filters "Name=volume-id,Values=$VOLUME_ID" "Name=tag:AutomatedBackup,Values=true" \
+    --query 'Snapshots[*].[StartTime,State,SnapshotId]' --output text | sort -r -k1,1); then
+    HEALTH_CHECK_NOW=$(date +%s)
+    while IFS=$'\t' read -r stime state sid; do
+        [ -n "$sid" ] || continue
+        [ "$state" = completed ] && break
+        if ! SNAP_EPOCH=$(date -d "$stime" +%s); then
+            log "WARNING: EBS snapshot health: could not parse start time for $sid ($stime)"
+            continue
+        fi
+        AGE=$((HEALTH_CHECK_NOW - SNAP_EPOCH))
+        if [ "$state" = error ] || [ "$AGE" -ge 10800 ]; then
+            log "WARNING: EBS snapshot health: $sid is $state (age ${AGE}s; started $stime)"
+        fi
+    done <<< "$SNAPSHOT_HEALTH_LIST"
+else
+    log "WARNING: EBS snapshot health: could not inspect previous snapshots for $VOLUME_ID"
+fi
+
 # Set recovery flags before state-changing commands, including commands that
 # might change state and then fail or be interrupted. Leave an inactive rollup
 # inactive, rather than starting a service this invocation did not stop.
@@ -145,11 +175,6 @@ if "$ROLLUP_RESTART_NEEDED"; then
 fi
 
 log "Creating EBS snapshot..."
-
-# Get AWS region from instance metadata (IMDSv2)
-IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
-AWS_REGION=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
-INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
 
 log "Snapshots disk volume ID: $VOLUME_ID. Unmounting it from $SNAPSHOT_DIR..."
 SNAPSHOT_REMOUNT_NEEDED=true

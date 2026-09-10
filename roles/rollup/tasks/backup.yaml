@@ -35,3 +35,6 @@
     state: absent
     user: "ubuntu"
   when: not is_backup_node
+
+- name: configure snapshot log collection
+  ansible.builtin.include_tasks: backup_logging.yaml
