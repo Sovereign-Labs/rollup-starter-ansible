@@ -16,6 +16,20 @@
       and re-run the common role on this host, or disable proxy_enable_logs_export.
   when: not _alloy_dir.stat.exists
 
+# Certbot creates this directory as root:root 0700, preventing Alloy from
+# reaching the readable log files inside. Certbot preserves an existing
+# directory's permissions, so this also survives subsequent renewal runs.
+- name: Allow Alloy to read the Certbot log directory
+  ansible.builtin.file:
+    path: /var/log/letsencrypt
+    state: directory
+    owner: root
+    group: alloy
+    mode: '0750'
+  become: true
+  when: proxy_ssl_enabled | bool
+  notify: restart alloy
+
 - name: Deploy proxy alloy config
   ansible.builtin.template:
     src: proxy.alloy.j2
