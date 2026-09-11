@@ -1,5 +1,5 @@
 ---
-- name: restart telegraf
+- name: restart rollup telegraf
   become: true
   systemd:
     name: telegraf

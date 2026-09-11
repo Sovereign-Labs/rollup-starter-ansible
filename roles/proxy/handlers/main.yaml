@@ -28,13 +28,13 @@
     name: openresty
     state: restarted
 
-- name: restart telegraf
+- name: restart proxy telegraf
   become: true
   ansible.builtin.systemd:
     name: telegraf
     state: restarted
 
-- name: restart alloy
+- name: restart proxy alloy
   become: true
   ansible.builtin.systemd:
     name: alloy

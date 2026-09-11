@@ -39,7 +39,7 @@
     name: "telegraf={{ telegraf_version }}"
     state: present
   become: true
-  notify: restart telegraf
+  notify: restart common telegraf
 
 - name: configure telegraf service
   ansible.builtin.template:
@@ -49,7 +49,7 @@
     group: telegraf
     mode: '0644'
   become: true
-  notify: restart telegraf
+  notify: restart common telegraf
 
 - name: create telegraf.d directory for drop-in configs
   ansible.builtin.file:
@@ -82,7 +82,7 @@
   become: true
   no_log: true
   diff: false
-  notify: restart telegraf
+  notify: restart common telegraf
 
 - name: remove disabled OTEL metrics output
   ansible.builtin.file:
@@ -90,7 +90,7 @@
     state: absent
   when: otel_metrics_endpoint | length == 0
   become: true
-  notify: restart telegraf
+  notify: restart common telegraf
 
 - name: start and enable telegraf service
   systemd:

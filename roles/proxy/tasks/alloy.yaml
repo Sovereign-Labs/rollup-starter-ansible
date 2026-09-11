@@ -28,7 +28,7 @@
     mode: '0750'
   become: true
   when: proxy_ssl_enabled | bool
-  notify: restart alloy
+  notify: restart proxy alloy
 
 - name: Deploy proxy alloy config
   ansible.builtin.template:
@@ -38,4 +38,4 @@
     group: alloy
     mode: '0644'
   become: true
-  notify: restart alloy
+  notify: restart proxy alloy

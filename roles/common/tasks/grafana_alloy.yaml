@@ -37,6 +37,7 @@
     group: alloy
     mode: "0644"
   become: true
+  notify: restart common alloy
 
 - name: configure alloy environment file
   ansible.builtin.template:
@@ -46,6 +47,7 @@
     group: alloy
     mode: "0644"
   become: true
+  notify: restart common alloy
 
 - name: start and enable alloy service
   systemd:

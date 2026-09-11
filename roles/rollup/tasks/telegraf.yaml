@@ -9,4 +9,4 @@
     group: telegraf
     mode: '0644'
   become: true
-  notify: restart telegraf
+  notify: restart rollup telegraf
