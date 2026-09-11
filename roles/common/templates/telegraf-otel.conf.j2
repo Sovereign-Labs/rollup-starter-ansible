@@ -9,3 +9,4 @@
   [outputs.opentelemetry.attributes]
     "service.name" = {{ otel_service_name | to_json }}
     "service.instance.id" = {{ otel_service_instance_id | to_json }}
+    "host.name" = {{ otel_service_instance_id | to_json }}
