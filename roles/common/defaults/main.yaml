@@ -130,6 +130,8 @@ max_open_files: 1000000
 # custom_host_label: "soak-benchmark-aws-2025-q1"
 
 # Telegraf configuration
+# Exact InfluxData apt package version; update deliberately after validation.
+telegraf_version: "1.40.0-1"
 # Local UDP/TCP socket_listener port that accepts influx-line metrics from
 # rollup, node-discovery and other producers on the same host.
 telegraf_port: 8094
@@ -147,6 +149,16 @@ influxdb_bucket: "sov-dev"
 influxdb_secondary_outputs: []
 influxdb_secondary_tokens: {}
 
+# Additional OTLP/HTTP metrics output. An empty endpoint disables it.
+# CDK supplies the token from Secrets Manager via protected runtime variables.
+otel_metrics_endpoint: ""
+otel_token: ""
+otel_service_name: "relay-chain"
+otel_service_instance_id: "{{ effective_hostname }}"
+otel_encoding_type: "protobuf"
+otel_compression: "gzip"
+otel_timeout: "10s"
+
 # Loki configuration
 grafana_loki_url: "https://loki.sov-obs.xyz/loki/api/v1/push"
 grafana_loki_username: "sov-logger"
@@ -159,4 +171,3 @@ grafana_tempo_username: "sov-logger"
 # Automatically set based on whether grafana_loki_token or grafana_tempo_token are configured
 # This is used by the rollup role to determine if telemetry should be enabled
 opentelemetry_available: "{{ (grafana_loki_token | default('') | length > 0) or (grafana_tempo_token | default('') | length > 0) }}"
-

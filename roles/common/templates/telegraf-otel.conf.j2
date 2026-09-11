@@ -1,0 +1,11 @@
+# Additional metrics destination; existing InfluxDB outputs remain configured.
+[[outputs.opentelemetry]]
+  service_address = {{ otel_metrics_endpoint | to_json }}
+  encoding_type = {{ otel_encoding_type | to_json }}
+  compression = {{ otel_compression | to_json }}
+  timeout = {{ otel_timeout | to_json }}
+  token = {{ otel_token | to_json }}
+
+  [outputs.opentelemetry.attributes]
+    "service.name" = {{ otel_service_name | to_json }}
+    "service.instance.id" = {{ otel_service_instance_id | to_json }}

@@ -34,11 +34,12 @@
     update_cache: yes
   become: true
 
-- name: install telegraf package
+- name: install pinned telegraf package
   ansible.builtin.apt:
-    name: telegraf
+    name: "telegraf={{ telegraf_version }}"
     state: present
   become: true
+  notify: restart telegraf
 
 - name: configure telegraf service
   ansible.builtin.template:
@@ -48,6 +49,7 @@
     group: telegraf
     mode: '0644'
   become: true
+  notify: restart telegraf
 
 - name: create telegraf.d directory for drop-in configs
   ansible.builtin.file:
@@ -57,6 +59,38 @@
     group: telegraf
     mode: '0755'
   become: true
+
+- name: validate additional OTEL output settings
+  ansible.builtin.assert:
+    that:
+      - otel_metrics_endpoint is match('^https?://[^\s]+$')
+      - otel_token | length > 0
+      - otel_service_name | length > 0
+      - otel_service_instance_id | length > 0
+    fail_msg: "An OTEL endpoint requires a token, service name, and instance ID."
+  when: otel_metrics_endpoint | length > 0
+  no_log: true
+
+- name: configure additional OTEL metrics output
+  ansible.builtin.template:
+    src: telegraf-otel.conf.j2
+    dest: /etc/telegraf/telegraf.d/otel.conf
+    owner: root
+    group: telegraf
+    mode: '0640'
+  when: otel_metrics_endpoint | length > 0
+  become: true
+  no_log: true
+  diff: false
+  notify: restart telegraf
+
+- name: remove disabled OTEL metrics output
+  ansible.builtin.file:
+    path: /etc/telegraf/telegraf.d/otel.conf
+    state: absent
+  when: otel_metrics_endpoint | length == 0
+  become: true
+  notify: restart telegraf
 
 - name: start and enable telegraf service
   systemd:
