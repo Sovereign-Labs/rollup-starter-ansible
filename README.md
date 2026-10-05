@@ -83,6 +83,58 @@ All configuration is organized in role-based defaults and secret files:
 #### 1. Common Infrastructure
 **File:** [`roles/common/defaults/main.yaml`](roles/common/defaults/main.yaml)
 
+For instances with one local NVMe, such as `i8g.2xlarge`, use:
+
+```yaml
+disk_profile: aws_single_nvme_ebs_logs
+```
+
+This mounts the first instance-store NVMe at `/mnt/rollup` without RAID and a
+separate EBS volume at `/mnt/logs`, including the persistent system journal.
+Attach that EBS volume as **`/dev/sdg` in the EC2 block-device mapping**; its Linux
+name is discovered from NVMe controller metadata, so enumeration order does not
+matter. A missing, ambiguous, partitioned, or root EBS device fails discovery
+before disk formatting. The root EBS volume remains separate. A 64 GiB gp3 logs
+volume is a reasonable starting size for the Relay trial.
+
+The profile does not require a snapshot-mirror EBS volume and does not enable
+snapshot scheduling. Use `rollup_sequencer_kind: standard` and
+`is_backup_node: false` for a replica that only follows the chain. A manually
+installed stop/sleep/restart cron job works independently of `is_backup_node`.
+Setting that flag to `true` installs the real snapshot script and cron job,
+which require a separate configured snapshot volume to run successfully.
+
+For a real backup node with one local NVMe, use:
+
+```yaml
+disk_profile: aws_ebs_backup_node_single_nvme
+rollup_sequencer_kind: standard
+is_backup_node: true
+```
+
+This adds an independent snapshot-mirror EBS volume attached as **`/dev/sdf`**,
+mounted at `/mnt/snapshots`, and enables the usual hourly snapshot script/cron.
+The profile name also enables `is_backup_node` automatically when it is unset.
+Size the mirror for the state data it must hold; it is separate from both root
+and the small logs volume. The existing CDK snapshot-volume lookup uses `/dev/sdf`.
+
+All EBS profiles use the same attachment-name resolver. The older
+`aws_ebs_backup_node` and `aws_ebs_backup_node_raid_0` profiles now explicitly
+require snapshots at `/dev/sdf`, matching CDK; their NVMe assignments are unchanged.
+The new profiles explicitly select logs at `/dev/sdg`. These names are EC2
+attachment identifiers, not guaranteed Linux device paths on Ubuntu/Nitro.
+The resolver translates them to the current NVMe paths; mounts use filesystem
+UUIDs. Instance-store NVMe discovery still uses the device model.
+
+Custom auto-discovery profiles that used `ebs_serial_prefix` must instead specify
+`snapshots_ebs_device_name` with the actual EC2 attachment name and retain
+`snapshots_disk_from_ebs: true`. Manual profiles can still use literal Linux paths.
+To verify EBS discovery locally without accessing disks:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_ebs_disk_discovery.py'
+```
+
 #### 2. Rollup Configuration
 **File:** [`roles/rollup/defaults/main.yaml`](roles/rollup/defaults/main.yaml)
 
@@ -155,6 +207,41 @@ influxdb_secondary_outputs:
     org: "my-org"
     bucket: "prod-metrics"
 ```
+
+#### Additional OTEL metrics output
+
+Telegraf is pinned to apt package `1.40.0-1` (`telegraf_version`). Running the
+common role upgrades an older installation to that version. Changes to the
+package or configuration notify the Telegraf restart handler.
+Telemetry restart handlers have names specific to each role, so disabled roles
+cannot override and suppress another role's Telegraf or Alloy restart.
+
+The optional OTLP/HTTP output is independent of the existing InfluxDB outputs
+and Alloy log/trace exporters. Configure these non-secret values:
+
+```yaml
+otel_metrics_endpoint: "https://otel.relay.link/v1/metrics"
+otel_service_name: "relay-chain"
+otel_service_instance_id: "unique-node-id"
+```
+
+Supply `otel_token` through protected runtime variables or monitoring secrets.
+For CDK deployments, `OtelTokenSecretName` selects the Secrets Manager secret
+(mainnet: `Relay/OTLP`), with JSON key `token`. The renderer sets
+`otel_service_instance_id` to `<prefix>-<primary|secondary|backup>_<EC2 ID>`.
+`OtelServiceInstancePrefix` selects the prefix (mainnet: `relay-chain-prod`);
+empty uses `OtelServiceName`. For example: `relay-chain-prod-backup_i-0123456789abcdef0`.
+The token
+is written only to the separate `root:telegraf`, mode `0640` drop-in
+`/etc/telegraf/telegraf.d/otel.conf`; Ansible suppresses its output and diffs.
+Defaults are protobuf encoding, gzip compression, and a 10-second timeout.
+Setting `otel_metrics_endpoint` to an empty string removes this drop-in.
+
+Publish the Ansible changes to the branch selected by CDK before applying them.
+Apply to the backup node first; check `telegraf --version`,
+`systemctl status telegraf`, and `journalctl -u telegraf --since '10 minutes ago'`.
+Verify fresh metrics in both destinations and continued logs in Grafana before
+applying to the other nodes. Logs are sent by Alloy, not Telegraf.
 
 ### How to Override Variables
 

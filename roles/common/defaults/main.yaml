@@ -10,6 +10,8 @@
 #   - aws_ebs_backup_node: NVMe for rollup/logs + EBS for snapshots
 #   - aws_ebs_backup_node_raid_0: RAID-0 for rollup + EBS for snapshots
 #   - aws_simple: Single disk for rollup, separate logs disk
+#   - aws_single_nvme_ebs_logs: Single instance-store NVMe for rollup, EBS for logs
+#   - aws_ebs_backup_node_single_nvme: Single NVMe + separate EBS logs and snapshots
 #   - raid_manual: RAID-1 for rollup (2 disks), explicit paths
 #   - hetzner: Single disk for rollup, logs on root volume
 #   - none: Skip disk setup (use existing mounts or root volume)
@@ -53,7 +55,7 @@ disk_profiles:
   aws_ebs_backup_node:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
-    ebs_serial_prefix: "vol"
+    snapshots_ebs_device_name: "/dev/sdf"
     use_raid: false
     rollup_disk_index: 0
     logs_disk_index: 1
@@ -65,7 +67,7 @@ disk_profiles:
   aws_ebs_backup_node_raid_0:
     auto_discover: true
     disk_model: "Amazon EC2 NVMe Instance Storage"
-    ebs_serial_prefix: "vol"
+    snapshots_ebs_device_name: "/dev/sdf"
     use_raid: true
     raid_level: 0
     raid_disk_count: 2
@@ -82,6 +84,32 @@ disk_profiles:
     rollup_disk_index: 0
     logs_disk_index: 1
     da_disk_index: null
+
+  # AWS: One instance-store NVMe for state and a separate EBS volume for logs.
+  # Attach the logs volume as /dev/sdg in EC2 (the Linux NVMe name can vary).
+  # No snapshot mirror or backup cron; usable with preferred or standard nodes.
+  aws_single_nvme_ebs_logs:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    use_raid: false
+    rollup_disk_index: 0
+    logs_disk_index: null
+    logs_ebs_device_name: "/dev/sdg"
+    da_disk_index: null
+
+  # AWS: One instance-store NVMe for state; independent EBS logs and mirror.
+  # EC2 attachment names: /dev/sdg → logs, /dev/sdf → /mnt/snapshots.
+  # Requires a standard sequencer; enables the usual hourly snapshot cron.
+  aws_ebs_backup_node_single_nvme:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    use_raid: false
+    rollup_disk_index: 0
+    logs_disk_index: null
+    logs_ebs_device_name: "/dev/sdg"
+    da_disk_index: null
+    snapshots_ebs_device_name: "/dev/sdf"
+    snapshots_disk_from_ebs: true
 
   raid_manual:
     use_raid: true

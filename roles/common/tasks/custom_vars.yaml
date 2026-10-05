@@ -22,9 +22,9 @@
       raid_level: "{{ disk_profile_raw.raid_level | default(1) }}"
       raid_disks: "{{ discovered_instance_store_disks[:disk_profile_raw.raid_disk_count | int] }}"
       rollup_disk: ""
-      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      logs_disk: "{{ discovered_ebs_disks.logs if disk_profile_raw.logs_ebs_device_name is defined else (discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '') }}"
       da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
-      snapshots_disk: "{{ discovered_ebs_disk if disk_profile_raw.snapshots_disk_from_ebs | default(false) else '' }}"
+      snapshots_disk: "{{ discovered_ebs_disks.snapshots if disk_profile_raw.snapshots_disk_from_ebs | default(false) else '' }}"
   when:
     - disk_profile_raw.auto_discover | default(false)
     - disk_profile_raw.use_raid | default(false)
@@ -37,9 +37,9 @@
       raid_level: null
       raid_disks: []
       rollup_disk: "{{ discovered_instance_store_disks[disk_profile_raw.rollup_disk_index | int] if disk_profile_raw.rollup_disk_index is not none else '' }}"
-      logs_disk: "{{ discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '' }}"
+      logs_disk: "{{ discovered_ebs_disks.logs if disk_profile_raw.logs_ebs_device_name is defined else (discovered_instance_store_disks[disk_profile_raw.logs_disk_index | int] if disk_profile_raw.logs_disk_index is not none else '') }}"
       da_disk: "{{ discovered_instance_store_disks[disk_profile_raw.da_disk_index | int] if disk_profile_raw.da_disk_index is not none else '' }}"
-      snapshots_disk: "{{ discovered_ebs_disk if disk_profile_raw.snapshots_disk_from_ebs | default(false) else '' }}"
+      snapshots_disk: "{{ discovered_ebs_disks.snapshots if disk_profile_raw.snapshots_disk_from_ebs | default(false) else '' }}"
   when:
     - disk_profile_raw.auto_discover | default(false)
     - not (disk_profile_raw.use_raid | default(false))
