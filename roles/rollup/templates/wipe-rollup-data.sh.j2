@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Wipe Rollup Data Script
-# This script removes all rollup state, logs, and resets the sequencer database.
+# This script removes all rollup state and logs.
 # Run this manually to fully reset the rollup node.
 #
 set -e
@@ -28,24 +28,15 @@ rm -rf {{ da_store }}/*
 
 {% if rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0 %}
 echo ""
-echo "Cleaning sequencer PostgreSQL database (external)..."
-psql -v ON_ERROR_STOP=1 '{{ rollup_sequencer_postgres_connection_string }}' <<'EOF'
-DO $$
-DECLARE r RECORD;
-BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
-    END LOOP;
-END $$;
-EOF
-{% else %}
-echo ""
-echo "Cleaning sequencer PostgreSQL database (local)..."
-sudo -u postgres psql -v ON_ERROR_STOP=1 -d {{ postgres_db_name }} <<EOF
+echo "WARNING: The sequencer PostgreSQL database has NOT been wiped."
+echo "If you need to reset it manually (with the rollup service stopped), run:"
+cat <<'EOF'
+
+psql -v ON_ERROR_STOP=1 "$CONNECTION_STRING" <<'SQL'
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO {{ postgres_db_user }};
-GRANT ALL ON SCHEMA public TO public;
+SQL
+
 EOF
 {% endif %}
 
