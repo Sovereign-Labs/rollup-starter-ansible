@@ -81,6 +81,9 @@ proxy_aws_cli_bin: "/usr/local/bin/aws"
 proxy_cert_s3_bucket: ""
 proxy_cert_s3_region: ""
 proxy_cert_s3_key: "letsencrypt.tar.gz"
+# Uploads the tarball; refuses if the existing archive covers domains this
+# host's certificates do not (used by the play and the renewal hook).
+proxy_cert_upload_script: "/usr/local/bin/upload-letsencrypt-to-s3.sh"
 # Minimum validity required for a restored backup during replacement boot.
 # Renewal is a daily cron on the traffic-owning proxy; a replacement may not be
 # able to complete HTTP-01 until after the EIP shifts, so this is intentionally
