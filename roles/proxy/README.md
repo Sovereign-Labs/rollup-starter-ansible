@@ -45,6 +45,14 @@ A **single** multi-SAN Let's Encrypt cert covers
 
 - `proxy_unlimited_domains` and `proxy_api_keys` are both empty or both non-empty.
 - The two lists do not overlap (nginx would silently drop one server block).
+- `proxy_sealed_blocks_only_api_keys` is a subset of `proxy_api_keys`.
+
+Requests made with a key in `proxy_sealed_blocks_only_api_keys` get the
+`x-sov-sealed-blocks-only: true` header, so the rollup's EVM RPC serves them
+only sealed blocks (no synthetic blocks for the in-progress batch). Use it for
+indexers such as Blockscout, which would otherwise see a reorg on every
+transaction. For WebSocket clients the header is set on the upgrade request and
+applies to the whole connection.
 
 ### Pitfalls
 

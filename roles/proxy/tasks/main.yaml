@@ -8,6 +8,7 @@
       - rollup_http_port is defined and rollup_http_port | string | length > 0
       - (proxy_unlimited_domains | length > 0) == (proxy_api_keys | length > 0)
       - (proxy_public_domains | intersect(proxy_unlimited_domains)) | length == 0
+      - (proxy_sealed_blocks_only_api_keys | difference(proxy_api_keys)) | length == 0
     fail_msg: >-
       Proxy role requires:
       proxy_rollup_leader_ip set;
@@ -15,7 +16,8 @@
       proxy_unlimited_domains and proxy_api_keys must be both empty or both non-empty
       (unlimited-domain hosts only serve /rpc/<api_key>, so one without the other is a misconfig);
       proxy_public_domains and proxy_unlimited_domains must not overlap
-      (nginx silently drops duplicate server_name blocks, bypassing API-key auth).
+      (nginx silently drops duplicate server_name blocks, bypassing API-key auth);
+      every proxy_sealed_blocks_only_api_keys entry must also be in proxy_api_keys.
 
 - name: Validate SSL inputs
   assert:

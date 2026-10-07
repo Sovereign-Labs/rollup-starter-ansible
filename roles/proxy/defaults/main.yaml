@@ -42,6 +42,11 @@ proxy_cloudflare_real_ip: false
 # unlimited-list hostname; other paths return 401. Bi-implication with
 # proxy_unlimited_domains is asserted at play start.
 proxy_api_keys: []
+# Subset of proxy_api_keys whose requests get the `x-sov-sealed-blocks-only: true`
+# header, so the rollup's EVM RPC hides synthetic (in-progress batch) blocks from
+# them. Intended for indexers such as Blockscout. Also applies to WebSocket
+# connections, since the header is set on the upgrade request.
+proxy_sealed_blocks_only_api_keys: []
 
 # Timeouts
 proxy_websocket_timeout: "3600s"
