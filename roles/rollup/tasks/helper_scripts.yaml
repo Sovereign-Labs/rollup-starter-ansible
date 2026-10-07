@@ -1,10 +1,8 @@
-- name: render wipe-rollup-data.sh helper script
+- name: remove retired wipe-rollup-data.sh helper script
   become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "wipe-rollup-data.sh.j2"
-    dest: "/home/ubuntu/wipe-rollup-data.sh"
-    mode: "0755"
+  ansible.builtin.file:
+    path: "/home/ubuntu/wipe-rollup-data.sh"
+    state: absent
 
 - name: render make-leader.sh helper script
   become: true

@@ -61,9 +61,6 @@ rollup_sequencer_kind: "preferred"
 # false = release build (slower compile, optimized binary)
 debug: true
 
-# Wipe existing rollup data (DANGEROUS - use with caution)
-wipe: false
-
 # Rollup ports
 rollup_http_port: 12346
 # Optional override for the rollup bind host.

@@ -85,9 +85,6 @@ oracle_config_path: "/home/sovereign/oracle.toml"
 #       address: "127.0.0.1:9804"
 oracle_sources: []
 
-# Wipe rollup data directory on deployment (use with caution)
-wipe: false
-
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"
 
