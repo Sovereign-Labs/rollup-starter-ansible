@@ -1,11 +1,11 @@
 ---
-- name: restart alloy
+- name: restart hyperlane alloy
   become: true
   systemd:
     name: alloy
     state: restarted
 
-- name: restart telegraf
+- name: restart hyperlane telegraf
   become: true
   systemd:
     name: telegraf

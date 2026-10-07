@@ -8,7 +8,11 @@ kernel_hashtable_buckets = 1024000 # Hashtable buckets for kernel db. 4GB
 user_hashtable_buckets = {{ rollup_state_user_hashtable_buckets }}
 user_preallocate_ht = {{ rollup_state_user_preallocate_ht | lower }}
 kernel_commit_concurrency = 2
-pruner_versions_to_keep = 100
+
+# [storage.pruner.once_at_startup]
+# versions_to_keep = 20
+# max_batch_size = 300000
+# compact_after = false # If true, compact the pruned column families afterward to reclaim disk (heavy)
 
 [runner]
 da_polling_interval_ms = 2000

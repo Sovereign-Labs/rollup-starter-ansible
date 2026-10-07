@@ -9,4 +9,4 @@
     group: alloy
     mode: '0644'
   become: true
-  notify: restart alloy
+  notify: restart hyperlane alloy

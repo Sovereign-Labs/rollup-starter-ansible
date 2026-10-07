@@ -1,10 +1,24 @@
 # Shared proxy_pass headers + timeouts for upstream rollup nodes.
 # Included from conf.d/proxy-location.conf and conf.d/secure-rpc-locations.conf.
 
+# Variables populated by backend-select.lua and emitted by the access log.
+set $rpc_method "-";
+set $rpc_id "-";
+set $rpc_body_source "-";
+set $rpc_body_bytes "-";
+set $rpc_raw_tx_bytes "-";
+set $routing_class "-";
+set $routing_reason "-";
+
 proxy_set_header Host $host;
 proxy_set_header X-Real-IP $remote_addr;
 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Request-ID $request_id;
+
+header_filter_by_lua_block {
+    ngx.header["X-Request-ID"] = ngx.var.request_id
+}
 
 # WebSocket support
 proxy_set_header Upgrade $http_upgrade;

@@ -88,7 +88,6 @@
 # Network
 [[inputs.net]]
   interfaces = ["*"]
-  ignore_protocol_stats = true
 [[inputs.netstat]]
 
 # Misc
@@ -96,7 +95,7 @@
   pattern = "rollup"
   pid_finder = "native"
   # Collect all available metrics
-  fieldpass = ["*"]
+  fieldinclude = ["*"]
 # Telegraf self-monitoring
 [[inputs.internal]]
 

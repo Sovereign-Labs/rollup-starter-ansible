@@ -1,13 +1,14 @@
 ---
-# Auto-discover disks by model name pattern and/or EBS serial prefix
+# Auto-discover instance store by model; resolve EBS by EC2 attachment name.
 # - disk_model: Matches lsblk MODEL column (e.g., "Amazon EC2 NVMe Instance Storage")
-# - ebs_serial_prefix: Matches NVMe serial number prefix (e.g., "vol" for EBS volumes)
+# - logs_ebs_device_name / snapshots_ebs_device_name: Explicit EC2 block mappings
 
 - name: display discovery parameters
   debug:
     msg:
       - "Disk model pattern: '{{ disk_profile_raw.disk_model | default('N/A') }}'"
-      - "EBS serial prefix: '{{ disk_profile_raw.ebs_serial_prefix | default('N/A') }}'"
+      - "Logs EBS attachment: '{{ disk_profile_raw.logs_ebs_device_name | default('N/A') }}'"
+      - "Snapshots EBS attachment: '{{ disk_profile_raw.snapshots_ebs_device_name | default('N/A') }}'"
 
 - name: discover instance store disks by model
   shell: |
@@ -20,9 +21,16 @@
   set_fact:
     discovered_instance_store_disks: "{{ disk_discovery.stdout_lines | default([]) }}"
 
-- name: initialize discovered_ebs_disk
+- name: initialize discovered EBS disks
   set_fact:
-    discovered_ebs_disk: ""
+    discovered_ebs_disks: {}
+
+- name: require an explicit snapshot attachment
+  ansible.builtin.assert:
+    that:
+      - disk_profile_raw.snapshots_ebs_device_name is defined
+    fail_msg: "Set snapshots_ebs_device_name to the EC2 attachment name (normally /dev/sdf); EBS serial-prefix discovery is no longer used."
+  when: disk_profile_raw.snapshots_disk_from_ebs | default(false)
 
 - name: install nvme-cli for EBS detection
   apt:
@@ -30,39 +38,43 @@
     state: present
     update_cache: true
   become: true
-  when: disk_profile_raw.ebs_serial_prefix is defined
+  when: disk_profile_raw.snapshots_ebs_device_name is defined or disk_profile_raw.logs_ebs_device_name is defined
 
-- name: discover EBS disks by serial prefix
-  shell: |
-    for dev in $(lsblk -d -o NAME -n | grep '^nvme'); do
-      # Skip disks with partitions (likely root volume)
-      if lsblk -n "/dev/$dev" | grep -q ' part '; then
-        continue
-      fi
-      serial=$(nvme id-ctrl -v "/dev/$dev" 2>/dev/null | grep -i "^sn" | awk '{print $3}' | tr -d ' ')
-      case "$serial" in
-        {{ disk_profile_raw.ebs_serial_prefix }}*)
-          echo "/dev/$dev"
-          exit 0
-          ;;
-      esac
-    done
+# Resolve the EC2 attachment name from NVMe controller metadata. Enumeration
+# order is not stable and the first non-root EBS disk might be a snapshot mirror.
+- name: discover EBS disks by attachment name
+  ansible.builtin.script: "discover_ebs_disk.py {{ disk_profile_raw[item + '_ebs_device_name'] | quote }}"
+  args:
+    executable: /usr/bin/python3
+  loop: [logs, snapshots]
   register: ebs_discovery
   changed_when: false
   become: true
-  when: disk_profile_raw.ebs_serial_prefix is defined
+  when: disk_profile_raw[item + '_ebs_device_name'] is defined
 
-- name: set discovered EBS disk
+- name: set discovered EBS disks
   set_fact:
-    discovered_ebs_disk: "{{ ebs_discovery.stdout | default('') }}"
-  when: disk_profile_raw.ebs_serial_prefix is defined
+    discovered_ebs_disks: "{{ discovered_ebs_disks | combine({item.item: item.stdout | trim}) }}"
+  loop: "{{ ebs_discovery.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: not (item.skipped | default(false))
 
 - name: display discovered disks
   debug:
     msg:
       - "===== Disk Discovery Results ====="
       - "Instance store disks ({{ discovered_instance_store_disks | length }}): {{ discovered_instance_store_disks | join(', ') or 'none' }}"
-      - "EBS disk: {{ discovered_ebs_disk | default('N/A') }}"
+      - "EBS disks by purpose: {{ discovered_ebs_disks }}"
+
+- name: require separate EBS volumes for logs and snapshots
+  ansible.builtin.assert:
+    that:
+      - discovered_ebs_disks.logs != discovered_ebs_disks.snapshots
+    fail_msg: "Logs and snapshots must not use the same EBS volume."
+  when:
+    - discovered_ebs_disks.logs is defined
+    - discovered_ebs_disks.snapshots is defined
 
 - name: validate sufficient disks for RAID
   fail:
@@ -103,15 +115,6 @@
     - disk_profile_raw.da_disk_index is defined
     - disk_profile_raw.da_disk_index is not none
     - discovered_instance_store_disks | length <= disk_profile_raw.da_disk_index | int
-
-- name: validate EBS disk for snapshots
-  fail:
-    msg: >
-      Snapshots disk requires an EBS volume but none was found.
-      Ensure an EBS volume with serial prefix '{{ disk_profile_raw.ebs_serial_prefix }}' is attached.
-  when:
-    - disk_profile_raw.snapshots_disk_from_ebs | default(false)
-    - (discovered_ebs_disk | default('')) == ''
 
 - name: validate snapshots requires standard sequencer
   fail:

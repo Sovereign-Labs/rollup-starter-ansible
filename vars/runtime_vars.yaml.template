@@ -73,6 +73,33 @@ rollup_http_port: 12346
 # Genesis addresses
 
 # ============================================================================
+# PRICE ORACLE (optional)
+# ============================================================================
+# When enabled, the rollup connects to the configured oracle source(s) to
+# receive price feeds. The config is rendered to oracle_config_path and the
+# rollup is started with --oracle-config-path. Leave disabled (the default) for
+# a node without oracle support.
+#
+# NOTE: the deployed rollup must support the price oracle -- not all versions
+# do. Enabling this passes --oracle-config-path, which a rollup binary that
+# predates oracle support will reject (unknown argument -> fails to start). Only
+# enable against a rollup_commit_hash/rollup_branch built with oracle support.
+# When disabled the flag is left commented-out in rollup-manager.sh for manual
+# enabling during debugging.
+# oracle_enabled: false
+# Block rollup startup until every source connects (fails if they don't within
+# the rollup's timeout). Only applies when oracle_enabled is true.
+# oracle_require_sources: false
+# At least one source is required when oracle_enabled is true.
+# oracle_sources:
+#   - name: "chainlink-1"
+#     provider: "chainlink"
+#     address: "127.0.0.1:9801"
+#   - name: "stork-1"
+#     provider: "stork"
+#     address: "127.0.0.1:9804"
+
+# ============================================================================
 # PROXY CONFIGURATION (optional, activate with "p" in switches)
 # ============================================================================
 
@@ -167,8 +194,9 @@ da_rollup_address: "celestia1jk6xx55wum73al8f2mp54x92uggqws8ksnjus2"
 # Signer private key (SENSITIVE - handle securely)
 signer_private_key: ""
 
-# Optional Celestia DA tuning (omit to use the SDK defaults)
-# Verify fetched blocks against the DA header: off | log_error | return_error
+# Optional Celestia DA tuning
+# Verify fetched blocks against the DA header: off | log_error | return_error.
+# Defaults to return_error; set to "" to use the SDK default.
 # celestia_verify_on_fetch_mode: "off"
 # Compress batch blobs before submission: off | lz4
 # (keep off until every node/prover on the network can read compression envelopes)
