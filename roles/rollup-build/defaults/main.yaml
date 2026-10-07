@@ -122,8 +122,10 @@ rollup_http_port: 12346
 rollup_sequencer_kind: "preferred"
 # Node Role "Leader" or "Replica".
 rollup_node_role: "Leader"
-# For replication testing. Should be set by the deployer
-rollup_node_id: "node1"
+# Unique ID of this node in the shared sequencer Postgres DB. Nodes sharing an
+# ID all pass the leader checks (split-brain). No default: the rollup role
+# generates and persists one, and standalone builds must pass it explicitly.
+# rollup_node_id: "my-node"
 
 # Optional PostgreSQL connection string for sequencer
 # rollup_sequencer_postgres_connection_string: "postgresql://user:pass@host/db"

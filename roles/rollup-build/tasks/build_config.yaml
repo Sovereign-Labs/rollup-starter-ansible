@@ -25,6 +25,17 @@
         else ('127.0.0.1' if 'p' in (switches | default('')) else '0.0.0.0')
       }}
 
+- name: require node ID for the sequencer DB
+  assert:
+    that: rollup_node_id is defined and rollup_node_id | string | length > 0
+    fail_msg: >-
+      rollup_node_id is required with a sequencer Postgres DB. The rollup role
+      generates one; for standalone builds pass -e rollup_node_id=<unique id>.
+    quiet: true
+  when:
+    - rollup_sequencer_kind == 'preferred'
+    - rollup_sequencer_postgres_connection_string is defined and rollup_sequencer_postgres_connection_string | length > 0
+
 - name: render rollup_config.toml
   become: true
   become_user: sovereign
