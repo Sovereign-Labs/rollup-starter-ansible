@@ -120,8 +120,9 @@ rollup_http_port: 12346
 
 # Sequencer type: "preferred" or "standard"
 rollup_sequencer_kind: "preferred"
-# Node Role "Leader" or "Replica".
-rollup_node_role: "Leader"
+# Node role: "DbElected", "Replica" or "ReplicaNoLeaderSync". "Leader" is
+# rejected by preconditions.yaml, as it bypasses leader election.
+rollup_node_role: "DbElected"
 # Unique ID of this node in the shared sequencer Postgres DB. Nodes sharing an
 # ID all pass the leader checks (split-brain). No default: the rollup role
 # generates and persists one, and standalone builds must pass it explicitly.
