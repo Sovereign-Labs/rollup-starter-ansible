@@ -4,13 +4,11 @@
     path: "/home/ubuntu/wipe-rollup-data.sh"
     state: absent
 
-- name: render make-leader.sh helper script
+- name: remove retired make-leader.sh helper script
   become: true
-  become_user: ubuntu
-  ansible.builtin.template:
-    src: "make-leader.sh.j2"
-    dest: "/home/ubuntu/make-leader.sh"
-    mode: "0755"
+  ansible.builtin.file:
+    path: "/home/ubuntu/make-leader.sh"
+    state: absent
 
 - name: render restore-from-snapshot.sh helper script
   become: true
