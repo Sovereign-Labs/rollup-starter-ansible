@@ -22,11 +22,6 @@
     state: stopped
   become: true
 
-- name: wipe rollup data using helper script
-  ansible.builtin.command: /home/ubuntu/wipe-rollup-data.sh
-  become: true
-  when: wipe | bool
-
 - name: reload systemd to recognize rollup service
   ansible.builtin.systemd:
     daemon_reload: yes

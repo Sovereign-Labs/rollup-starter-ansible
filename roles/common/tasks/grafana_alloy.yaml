@@ -52,6 +52,6 @@
 - name: start and enable alloy service
   systemd:
     name: alloy
-    state: "{{ 'restarted' if wipe | bool else 'started' }}"
+    state: started
     enabled: yes
   become: true

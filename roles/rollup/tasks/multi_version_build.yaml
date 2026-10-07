@@ -57,6 +57,9 @@
     accept_hostkey: yes
     force: yes
 
+- name: Resolve node ID
+  include_tasks: node_id.yaml
+
 - name: Build each rollup version
   include_tasks: build_single_version.yaml
   loop: "{{ version_spec.rollup_versions }}"

@@ -3,7 +3,6 @@
   hosts: all
   vars:
     switches: "cr"  # Default: run all roles (common, rollup)
-    wipe: false
     data_availability_role: "mock_da"  # Default DA role (overridden by inventory or -e)
   pre_tasks:
     - name: Set default runtime_vars_file if not provided

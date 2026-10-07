@@ -15,6 +15,7 @@ LOGFILE="{{ rollup_log_dir | default('/var/log') }}/rollup-restore.log"
 CREATED_VOLUME=false
 VOLUME_ID=""
 AWS_REGION=""
+INSTANCE_ID=""
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" | sudo tee -a "$LOGFILE"
@@ -31,9 +32,20 @@ cleanup() {
     if mountpoint -q "$TEMP_MOUNT" 2>/dev/null; then
         sudo umount "$TEMP_MOUNT" || true
     fi
-    # Detach and optionally delete volume
+    # Never touch a volume attached to another instance (e.g. a volume ID that
+    # failed validation because it is in use elsewhere).
+    ATTACHED_TO="None"
     if [ -n "$VOLUME_ID" ] && [ -n "$AWS_REGION" ]; then
-        aws ec2 detach-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID" --force 2>/dev/null || true
+        ATTACHED_TO=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].Attachments[0].InstanceId' --output text 2>/dev/null || echo "None")
+        if [ "$ATTACHED_TO" != "None" ] && [ "$ATTACHED_TO" != "$INSTANCE_ID" ]; then
+            log "Volume $VOLUME_ID is attached to $ATTACHED_TO, not this instance; leaving it alone"
+        fi
+    fi
+    # Detach and optionally delete volume
+    if [ -n "$VOLUME_ID" ] && [ -n "$AWS_REGION" ] && { [ "$ATTACHED_TO" = "None" ] || [ "$ATTACHED_TO" = "$INSTANCE_ID" ]; }; then
+        if [ "$ATTACHED_TO" = "$INSTANCE_ID" ]; then
+            aws ec2 detach-volume --region "$AWS_REGION" --volume-id "$VOLUME_ID" --force 2>/dev/null || true
+        fi
         # Wait for detachment
         for i in {1..30}; do
             STATE=$(aws ec2 describe-volumes --region "$AWS_REGION" --volume-ids "$VOLUME_ID" --query 'Volumes[0].State' --output text 2>/dev/null || echo "deleted")

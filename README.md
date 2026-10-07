@@ -148,7 +148,6 @@ python3 -m unittest discover -s tests -p 'test_ebs_disk_discovery.py'
 - `debug` - Build in debug mode (default: false) for faster iteration
 - `rollup_http_port` - API port (default: 12346)
 - `rollup_http_host` - Optional bind host override; defaults to `127.0.0.1` with the proxy role and `0.0.0.0` without it
-- `wipe` - Wipe data on deployment (default: false)
 
 **Secrets (override in `vars/celestia_secrets.yaml`):**
 - `celestia_grpc_auth_token`

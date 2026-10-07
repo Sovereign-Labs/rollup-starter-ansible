@@ -405,18 +405,20 @@
     - proxy_ssl_enabled | bool
     - proxy_require_https_ready | bool
 
+- name: Install Let's Encrypt S3 upload script
+  become: true
+  template:
+    src: upload-letsencrypt-to-s3.sh.j2
+    dest: "{{ proxy_cert_upload_script }}"
+    mode: '0755'
+  when:
+    - proxy_ssl_enabled | bool
+    - proxy_cert_s3_bucket | length > 0
+
+# Refuses to overwrite an archive covering domains this host's cert does not.
 - name: Back up current Let's Encrypt state to S3 (tarball preserves symlinks)
   become: true
-  shell: |
-    set -euo pipefail
-    tarball="$(mktemp /tmp/proxy-letsencrypt-backup.XXXXXX.tar.gz)"
-    trap 'rm -f "$tarball"' EXIT
-    tar czf "$tarball" --exclude='*.log' -C /etc letsencrypt
-    {{ proxy_aws_cli_bin }} s3 cp "$tarball" \
-      "s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_key }}" \
-      --region {{ proxy_cert_s3_region }} --quiet
-  args:
-    executable: /bin/bash
+  command: "{{ proxy_cert_upload_script }}"
   # Best-effort S3 side effect, not host state -> changed_when: false. The
   # tightened `when` skips the upload on steady-state re-runs (cert restored /
   # already fresh and certbot was a no-op) so we don't re-tar+upload an

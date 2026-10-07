@@ -115,6 +115,8 @@
       -e rollup_http_host={{ rollup_http_bind_host | quote }}
       -e rollup_http_port={{ rollup_http_port }}
       -e rollup_storage_dir={{ rollup_storage_dir }}
+      -e rollup_node_id={{ rollup_node_id | quote }}
+      -e rollup_node_role={{ rollup_node_role | default('DbElected') | quote }}
 
 - name: Display build command for version {{ version.version_id }}
   debug:

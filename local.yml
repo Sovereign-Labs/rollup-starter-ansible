@@ -10,7 +10,6 @@
   vars:
     # Default switches - can be overridden via runtime_vars.yaml or command line
     switches: "cr"  # Default: run all roles (common, rollup)
-    wipe: false
 
   pre_tasks:
     - name: Set default runtime_vars_file if not provided

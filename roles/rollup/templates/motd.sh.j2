@@ -7,8 +7,6 @@ Data Availability Role:  "{{ data_availability_role }}"
 ZKVM Role:               "{{ zkvm_role }}"
 Config:                   sudo vim {{ versions_output_dir }}/{{ last_version_id }}/rollup_config.toml
 Rollup executable script: /home/sovereign/rollup-manager.sh
-Wiping rollup data:       sudo /home/ubuntu/wipe-rollup-data.sh
-Make leader:              sudo /home/ubuntu/make-leader.sh
 Status:                   sudo systemctl status rollup
 Restart rollup:           sudo systemctl restart rollup
 Logs (follow):            sudo journalctl -u rollup -f

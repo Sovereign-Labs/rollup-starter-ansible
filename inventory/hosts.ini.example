@@ -24,9 +24,9 @@ rollup_commit_hash=main
 # Host-specific variables override group vars
 # This allows mixed configurations in the same environment
 [staging]
-rollup-staging-01 ansible_host=54.81.181.200 rollup_node_role=Leader data_availability_role=mock_da
+rollup-staging-01 ansible_host=54.81.181.200 rollup_node_role=DbElected data_availability_role=mock_da
 rollup-staging-02 ansible_host=54.81.181.201 rollup_node_role=Replica data_availability_role=mock_da
-rollup-staging-03 ansible_host=54.81.181.202 rollup_node_role=Leader data_availability_role=celestia
+rollup-staging-03 ansible_host=54.81.181.202 rollup_node_role=DbElected data_availability_role=celestia
 rollup-staging-04 ansible_host=54.81.181.203 rollup_node_role=Replica data_availability_role=celestia
 
 [staging:vars]

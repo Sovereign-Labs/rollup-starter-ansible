@@ -7,3 +7,13 @@
     msg: "Using {{ data_availability_role }} DA"
   run_once: true
   when: "'r' in switches"
+
+# A configured Leader produces batches without winning the DB leader election,
+# so it can split-brain with DbElected nodes sharing the sequencer Postgres DB.
+- name: Forbid the Leader node role
+  assert:
+    that: rollup_node_role | default('DbElected') != 'Leader'
+    fail_msg: >-
+      rollup_node_role "Leader" bypasses leader election and risks split-brain
+      with other nodes sharing the sequencer DB. Use "DbElected" (or "Replica").
+  when: "'r' in switches"

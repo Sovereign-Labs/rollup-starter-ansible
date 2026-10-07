@@ -1,0 +1,48 @@
+#!/bin/bash
+# Managed by Ansible (roles/proxy). Archives /etc/letsencrypt to a tarball
+# (preserves the live/ -> archive/ symlinks that `aws s3 sync` would break) and
+# uploads it to S3. Other proxies restore from this archive, so refuse to
+# upload if the existing archive covers domains this host's certificates do
+# not: overwriting it would take TLS down for those domains on replacement.
+set -euo pipefail
+
+AWS='{{ proxy_aws_cli_bin }}'
+S3_URI='s3://{{ proxy_cert_s3_bucket }}/{{ proxy_cert_s3_key }}'
+REGION='{{ proxy_cert_s3_region }}'
+
+workdir="$(mktemp -d /tmp/letsencrypt-upload.XXXXXX)"
+trap 'rm -rf "$workdir"' EXIT
+
+# Print the DNS names covered by the certificates under <dir>/live, sorted.
+cert_domains() {
+  local cert
+  for cert in "$1"/live/*/cert.pem; do
+    [ -e "$cert" ] || continue
+    openssl x509 -in "$cert" -noout -ext subjectAltName \
+      | tr ',' '\n' | sed -n 's/^ *DNS://p'
+  done | sort -u
+}
+
+if "$AWS" s3 cp "$S3_URI" "$workdir/existing.tar.gz" --region "$REGION" --quiet 2>"$workdir/cp.err"; then
+  mkdir "$workdir/existing"
+  tar xzf "$workdir/existing.tar.gz" -C "$workdir/existing"
+  missing="$(comm -23 <(cert_domains "$workdir/existing/letsencrypt") <(cert_domains /etc/letsencrypt))"
+  if [ -n "$missing" ]; then
+    echo "ERROR: $S3_URI covers domains this host's certificates do not:" >&2
+    echo "$missing" | sed 's/^/  /' >&2
+    echo "Not uploading, as that would break TLS for proxies restoring from it." >&2
+    echo "If those domains were removed on purpose, delete the S3 object and re-run." >&2
+    exit 1
+  fi
+# Without s3:ListBucket, a missing key returns 403 rather than 404.
+elif grep -qE '\((403|404)\)' "$workdir/cp.err"; then
+  echo "No existing certificate archive at $S3_URI"
+else
+  cat "$workdir/cp.err" >&2
+  echo "ERROR: Could not download $S3_URI to compare domains; not uploading." >&2
+  exit 1
+fi
+
+tar czf "$workdir/upload.tar.gz" --exclude='*.log' -C /etc letsencrypt
+"$AWS" s3 cp "$workdir/upload.tar.gz" "$S3_URI" --region "$REGION" --quiet
+echo "Uploaded /etc/letsencrypt to $S3_URI"

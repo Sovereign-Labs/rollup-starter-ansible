@@ -1,0 +1,27 @@
+---
+# Resolve rollup_node_id: if not set, generate a random ID once and persist it
+# on the host. Passed to every version build, including builds from older
+# pinned ansible commits that would otherwise use their own default.
+
+- name: generate persistent random node ID (if missing)
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ rollup_node_id_file }}"
+    content: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_lowercase', 'digits'], length=16) }}\n"
+    force: false
+    owner: sovereign
+    group: sovereign
+    mode: '0644'
+  when: rollup_node_id is not defined
+
+- name: read persistent node ID
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ rollup_node_id_file }}"
+  register: rollup_node_id_slurp
+  when: rollup_node_id is not defined
+
+- name: set node ID from persistent file
+  set_fact:
+    rollup_node_id: "{{ rollup_node_id_slurp.content | b64decode | trim }}"
+  when: rollup_node_id is not defined

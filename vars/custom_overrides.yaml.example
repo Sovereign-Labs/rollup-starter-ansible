@@ -61,9 +61,6 @@
 # Ports
 # rollup_http_port: 12346
 
-# Wipe data on deployment (DANGEROUS!)
-# wipe: false
-
 # ============================================
 # Rate Limiter (Preferred Sequencer Only)
 # ============================================
