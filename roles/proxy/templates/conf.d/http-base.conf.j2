@@ -90,6 +90,15 @@ map $request_uri $valid_api_key {
 {% endfor %}
     default 0;
 }
+
+# Value of the x-sov-sealed-blocks-only header sent upstream: forced for
+# proxy_sealed_blocks_only_api_keys, otherwise whatever the client sent (empty = not sent).
+map $request_uri $sealed_blocks_only {
+{% for key in proxy_sealed_blocks_only_api_keys %}
+    ~^/rpc/{{ key }}(/|\?|$) "true";
+{% endfor %}
+    default $http_x_sov_sealed_blocks_only;
+}
 {% endif %}
 
 {% if proxy_rate_limit_enabled | bool %}

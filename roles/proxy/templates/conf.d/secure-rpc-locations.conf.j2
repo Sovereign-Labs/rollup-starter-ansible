@@ -41,6 +41,9 @@ location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
 
     proxy_pass http://$backend;
     include conf.d/proxy-headers.conf;
+    # Hide synthetic blocks from proxy_sealed_blocks_only_api_keys clients (e.g.
+    # Blockscout). Other clients' own header, if any, is passed through unchanged.
+    proxy_set_header X-Sov-Sealed-Blocks-Only $sealed_blocks_only;
 }
 
 # Anything else on a secure domain is rejected.

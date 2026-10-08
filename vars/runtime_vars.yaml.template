@@ -156,6 +156,10 @@ rollup_http_port: 12346
 # proxy_api_keys:
 #   - "abc123_key_1"
 #   - "def456_key_2"
+# Subset of proxy_api_keys that only see sealed blocks from the EVM RPC (the
+# proxy adds the x-sov-sealed-blocks-only header). Use for Blockscout's key.
+# proxy_sealed_blocks_only_api_keys:
+#   - "def456_key_2"
 
 # GeoIP2 country blocking. When enabled, the role builds
 # ngx_http_geoip2_module from source against the matching OpenResty, seeds
