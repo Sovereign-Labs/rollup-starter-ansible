@@ -16,8 +16,8 @@ kernel_commit_concurrency = 2
 
 [runner]
 da_polling_interval_ms = 2000
-concurrent_sync_tasks = 2
-pre_fetched_blocks_capacity = 4
+concurrent_sync_tasks = 16
+pre_fetched_blocks_capacity = 64
 
 [runner.http_config]
 bind_host = "{{ rollup_http_bind_host }}"
