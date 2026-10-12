@@ -26,6 +26,9 @@ bind_port = {{ rollup_http_port }}
 {% if _rollup_public_domains | length > 0 %}
 public_address = "{{ 'https' if (proxy_ssl_enabled | default(false) | bool) else 'http' }}://{{ _rollup_public_domains | first }}"
 {% endif %}
+{% if rollup_max_rpc_response_body_size | string | length > 0 %}
+max_rpc_response_body_size = {{ rollup_max_rpc_response_body_size }}
+{% endif %}
 
 [monitoring]
 telegraf_address = "127.0.0.1:{{ telegraf_port | default(8094, true) }}"

@@ -117,6 +117,10 @@ rollup_rate_limiter_ip_limits: []
 # public otherwise.
 rollup_http_host: ""
 rollup_http_port: 12346
+# Maximum size in bytes of a single JSON-RPC response. Leave empty to use the
+# SDK default (10 MiB). Requires an SDK version that supports
+# `max_rpc_response_body_size`.
+rollup_max_rpc_response_body_size: ""
 
 # Sequencer type: "preferred" or "standard"
 rollup_sequencer_kind: "preferred"
