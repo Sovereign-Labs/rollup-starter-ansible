@@ -34,7 +34,8 @@ location ~ ^/rpc/([a-zA-Z0-9_-]+)/?$ {
 
         -- Valid key — pick a backend. Pass "/rpc" explicitly since the
         -- rewrite below hasn't run yet in the access phase ordering.
-        require("backend-select").select("/rpc")
+        -- API-key clients are trusted, so their WebSockets go to the leader.
+        require("backend-select").select("/rpc", true)
     }
 
     rewrite ^ /rpc break;

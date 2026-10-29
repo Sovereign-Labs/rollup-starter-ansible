@@ -124,4 +124,12 @@ map "$ip_exempt:$host_exempt" $rate_limit_key {
 }
 
 limit_req_zone $rate_limit_key zone=global_limit:10m rate={{ proxy_rate_limit_rate }};
+
+# Per-IP concurrent WebSocket cap; empty key (non-WebSocket or exempt) is not counted.
+map $http_upgrade $websocket_conn_key {
+    ~*^websocket$ $rate_limit_key;
+    default       "";
+}
+
+limit_conn_zone $websocket_conn_key zone=websocket_conn_limit:10m;
 {% endif %}

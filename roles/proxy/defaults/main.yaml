@@ -30,6 +30,9 @@ proxy_rate_limit_enabled: true
 proxy_rate_limit_rate: "100r/s"
 proxy_rate_limit_burst: 50
 proxy_rate_limit_exempt_ips: []
+# Max concurrent WebSocket connections per client IP on proxy_public_domains.
+# Same exemptions as the rate limit.
+proxy_websocket_conn_limit: 10
 
 # DNS resolver (empty = system default; set "169.254.169.253" on AWS)
 proxy_dns_resolver: ""

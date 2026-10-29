@@ -6,6 +6,10 @@ location / {
 {% if proxy_rate_limit_enabled | bool %}
     limit_req zone=global_limit burst={{ proxy_rate_limit_burst }} nodelay;
     limit_req_status 429;
+    # limit_req only meters the upgrade request, so also cap concurrent
+    # WebSockets per IP (non-WebSocket requests have an empty key).
+    limit_conn websocket_conn_limit {{ proxy_websocket_conn_limit }};
+    limit_conn_status 429;
 {% endif %}
 
     # Bare `/` is the JSON-RPC endpoint for standard ETH clients; route it

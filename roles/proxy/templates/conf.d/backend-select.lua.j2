@@ -87,7 +87,11 @@ local function pick_backend(use_leader, backend_cache)
         or "{{ proxy_rollup_follower_ip | default(proxy_rollup_leader_ip, true) }}:{{ rollup_http_port }}"
 end
 
-function _M.select(path)
+-- websocket_to_leader: pin WebSocket upgrades to the leader. Only the
+-- API-key-protected locations set this, so trusted clients keep consistent
+-- subscriptions and can submit transactions over the socket. Public sockets
+-- go to a follower, which rejects transaction submissions.
+function _M.select(path, websocket_to_leader)
     local method = ngx.var.request_method
     local backend_cache = ngx.shared.backend_cache
     local use_leader = false
@@ -99,7 +103,6 @@ function _M.select(path)
     ngx.var.rpc_body_bytes = "-"
     ngx.var.rpc_raw_tx_bytes = "-"
 
-    -- WebSocket upgrades go to the leader for consistency.
     local is_websocket = ngx.var.http_upgrade
         and ngx.var.http_upgrade:lower() == "websocket"
 
@@ -111,7 +114,7 @@ function _M.select(path)
         use_leader = true
         routing_reason = "leader_health_check"
     elseif is_websocket then
-        use_leader = true
+        use_leader = websocket_to_leader == true
         routing_reason = "websocket"
     elseif path == "/rpc" and method == "POST" then
         -- Inspect the JSON-RPC body for leader-required methods.

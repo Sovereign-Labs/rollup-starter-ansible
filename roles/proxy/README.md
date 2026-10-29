@@ -25,9 +25,16 @@ Implemented in `templates/conf.d/backend-select.lua.j2` (required from
 |---|---|
 | `POST /sequencer/txs` | leader |
 | `GET /sequencer/ready` | leader |
-| WebSocket upgrades | leader |
+| WebSocket upgrades on `proxy_unlimited_domains` | leader |
 | `POST /rpc` (or `POST /`, rewritten to `/rpc`) with `eth_sendRawTransaction*` | leader |
-| Everything else | follower → leader → static fallback |
+| Everything else, including WebSocket upgrades on `proxy_public_domains` | follower → leader → static fallback |
+
+Public WebSockets go to a follower so anonymous clients cannot send unrouted
+reads to the leader over a socket. The follower rejects transaction
+submissions, so public clients must submit transactions over HTTP. Subscriptions
+may also lag slightly behind the leader's transaction responses. API-key
+WebSockets stay on the leader, so trusted clients can submit over the socket and
+get consistent subscriptions.
 
 ## Domains
 
@@ -80,6 +87,8 @@ See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the full list
 - `proxy_rollup_follower_ip` — optional; defaults to leader.
 - `proxy_cloudflare_real_ip` — trust `CF-Connecting-IP` from CF edge CIDRs.
 - `proxy_rate_limit_*` — global rate limit knobs.
+- `proxy_websocket_conn_limit` — max concurrent public WebSockets per client IP
+  (default 10; applied only when `proxy_rate_limit_enabled`).
 - `proxy_cert_s3_bucket` + `proxy_cert_s3_region` — optional S3 cert backup
   (tarball at the bucket root, key `proxy_cert_s3_key`).
 - `proxy_require_https_ready` — when SSL is on, fail the play if no valid cert
