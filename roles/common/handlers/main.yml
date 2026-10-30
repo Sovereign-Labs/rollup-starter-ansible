@@ -3,6 +3,12 @@
   become: true
   command: update-initramfs -u
 
+- name: reload nftables
+  become: true
+  systemd:
+    name: nftables
+    state: reloaded
+
 - name: restart journald
   become: true
   systemd:
