@@ -1,0 +1,25 @@
+---
+- name: make sure nftables is installed
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+    pkg:
+      - nftables
+
+- name: deploy nftables ruleset
+  become: true
+  ansible.builtin.copy:
+    src: nftables.conf
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0755'
+    validate: nft -c -f %s
+  notify: reload nftables
+
+- name: enable and start nftables
+  become: true
+  ansible.builtin.systemd:
+    name: nftables
+    state: started
+    enabled: yes

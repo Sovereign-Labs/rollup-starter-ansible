@@ -9,6 +9,9 @@
 - name: install dependencies
   include_tasks: deps.yaml
 
+- name: host firewall
+  include_tasks: nftables.yaml
+
 - name: disable rsyslog
   include_tasks: rsyslog.yaml
 
