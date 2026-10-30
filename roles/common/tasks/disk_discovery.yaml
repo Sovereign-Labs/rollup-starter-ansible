@@ -38,7 +38,7 @@
     state: present
     update_cache: true
   become: true
-  when: disk_profile_raw.snapshots_ebs_device_name is defined or disk_profile_raw.logs_ebs_device_name is defined
+  when: disk_profile_raw.snapshots_ebs_device_name is defined or disk_profile_raw.logs_ebs_device_name is defined or disk_profile_raw.db_disks is defined
 
 # Resolve the EC2 attachment name from NVMe controller metadata. Enumeration
 # order is not stable and the first non-root EBS disk might be a snapshot mirror.
