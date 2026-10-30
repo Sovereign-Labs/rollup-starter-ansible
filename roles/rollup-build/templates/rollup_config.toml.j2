@@ -2,6 +2,11 @@
 
 [storage]
 path = "{{ rollup_storage_dir }}"
+{% for _db in ['live_db_path', 'ledger_db_path', 'user_nomt_db_path'] %}
+{% if lookup('vars', 'rollup_' ~ _db, default='') | length > 0 %}
+{{ _db }} = "{{ lookup('vars', 'rollup_' ~ _db) }}"
+{% endif %}
+{% endfor %}
 state_cache_size = {{ rollup_state_cache_size }}
 user_commit_concurrency = {{ rollup_state_user_commit_concurrency }}
 kernel_hashtable_buckets = 1024000 # Hashtable buckets for kernel db. 4GB
