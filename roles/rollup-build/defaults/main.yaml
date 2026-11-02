@@ -75,6 +75,8 @@ rollup_genesis_verifier_init_bond: 200000
 rollup_genesis_challenger_min_bond: [1000, 1000]
 # ZK genesis
 rollup_genesis_proving_penalty: [10, 10]
+# Must match STATE_VERSION in the rollup-starter constants.toml being deployed (post multisig fork SDK: 1).
+rollup_genesis_state_version: 1
 
 # 10GB, in bytes
 rollup_state_cache_size: 10000000000
