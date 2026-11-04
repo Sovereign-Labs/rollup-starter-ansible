@@ -24,6 +24,10 @@
 - name: set CPU governor
   include_tasks: cpu_governor.yaml
 
+- name: per-database disks
+  include_tasks: db_disks.yaml
+  when: disk_profile_raw.db_disks is defined
+
 - name: folders
   include_tasks: dirs.yaml
 

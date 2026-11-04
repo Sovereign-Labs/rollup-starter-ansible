@@ -47,7 +47,8 @@
     {% if rollup_genesis_bank_disable_gas_token %}"admin": "{{ rollup_sequencer_address }}",{% endif %}
     "inner_code_commitment": {{ rollup_genesis_inner_code_commitment | to_json }},
     "outer_code_commitment": {{ rollup_genesis_outer_code_commitment | to_json }},
-    "genesis_da_height": {{ genesis_da_height }}
+    "genesis_da_height": {{ genesis_da_height }},
+    "state_version": {{ rollup_genesis_state_version }}
   },
   "paymaster": {
     "payers": [

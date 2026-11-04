@@ -111,6 +111,23 @@ disk_profiles:
     snapshots_ebs_device_name: "/dev/sdf"
     snapshots_disk_from_ebs: true
 
+  # AWS: One disk per database (see db_disks.yaml); 3rd NVMe → logs.
+  # NVMe 0 → live state db, NVMe 1 → user NOMT, EBS /dev/sdh → ledger,
+  # EBS /dev/sdi → rollup_storage_dir (kernel NOMT, accessory, blob sender, rest).
+  # Set rollup_live_db_path / rollup_user_nomt_db_path / rollup_ledger_db_path to dirs under these mounts.
+  aws_split_dbs:
+    auto_discover: true
+    disk_model: "Amazon EC2 NVMe Instance Storage"
+    use_raid: false
+    rollup_disk_index: null
+    logs_disk_index: 2
+    da_disk_index: null
+    db_disks:
+      - { path: "/mnt/live-db", disk_index: 0 }
+      - { path: "/mnt/user-nomt", disk_index: 1 }
+      - { path: "/mnt/ledger", ebs_device_name: "/dev/sdh" }
+      - { path: "{{ rollup_storage_dir }}", ebs_device_name: "/dev/sdi" }
+
   raid_manual:
     use_raid: true
     raid_level: 1

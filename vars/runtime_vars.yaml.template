@@ -237,6 +237,10 @@ signer_private_key: ""
 
 # Storage directories
 # rollup_storage_dir: "/mnt/rollup"
+# Optional exact DB directories (e.g. to put them on separate disks). Unset = under rollup_storage_dir.
+# rollup_live_db_path: "/mnt/fast/state-db"
+# rollup_ledger_db_path: "/mnt/ledger/ledger"
+# rollup_user_nomt_db_path: "/mnt/nomt/user_nomt_db"
 # rollup_log_dir: "/mnt/logs"
 
 # ============================================================================

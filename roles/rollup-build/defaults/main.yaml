@@ -75,12 +75,18 @@ rollup_genesis_verifier_init_bond: 200000
 rollup_genesis_challenger_min_bond: [1000, 1000]
 # ZK genesis
 rollup_genesis_proving_penalty: [10, 10]
+# Must match STATE_VERSION in the rollup-starter constants.toml being deployed (post multisig fork SDK: 1).
+rollup_genesis_state_version: 1
 
 # 10GB, in bytes
 rollup_state_cache_size: 10000000000
 rollup_state_user_commit_concurrency: 6
 rollup_state_user_hashtable_buckets: 64_000_000
 rollup_state_user_preallocate_ht: true
+# Optional exact DB directories (e.g. to put them on separate disks). Unset = under rollup_storage_dir.
+# rollup_live_db_path: "/mnt/fast/state-db"       # default: {{ rollup_storage_dir }}/state-db
+# rollup_ledger_db_path: "/mnt/ledger/ledger"     # default: {{ rollup_storage_dir }}/ledger
+# rollup_user_nomt_db_path: "/mnt/nomt/user_nomt_db" # default: {{ rollup_storage_dir }}/user_nomt_db
 # This is for particular instance.
 # Currently it goes to genesis as a single preferred sequencer. TODO: follow up: support for different sequencer at genesis
 rollup_sequencer_address: "0xA6edfca3AA985Dd3CC728BFFB700933a986aC085"

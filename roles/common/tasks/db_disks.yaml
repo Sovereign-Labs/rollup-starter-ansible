@@ -1,0 +1,67 @@
+---
+# Mount one disk per rollup database (disk profile key `db_disks`).
+# Separate from disks.yaml because it must run before dirs.yaml, so the DB
+# directories are created on the mounted filesystems, not under them.
+
+# shortcut: disks.yaml reformat unmounts rollup_storage_dir and never remounts it here; add reformat support if needed.
+- name: refuse reformat with db_disks
+  ansible.builtin.assert:
+    that: not (reformat_disks | default(false) | bool)
+    fail_msg: "reformat_disks is not supported with db_disks profiles."
+
+- name: discover db EBS disks by attachment name
+  ansible.builtin.script: "discover_ebs_disk.py {{ item.ebs_device_name | quote }}"
+  args:
+    executable: /usr/bin/python3
+  loop: "{{ disk_profile_raw.db_disks | selectattr('ebs_device_name', 'defined') | list }}"
+  register: db_ebs_discovery
+  changed_when: false
+  become: true
+
+- name: resolve db disk devices
+  set_fact:
+    db_disk_devices: >-
+      {{ db_disk_devices | default({}) | combine({item.path:
+           discovered_instance_store_disks[item.disk_index] if item.disk_index is defined
+           else (db_ebs_discovery.results | selectattr('item.path', 'equalto', item.path) | first).stdout | trim}) }}
+  loop: "{{ disk_profile_raw.db_disks }}"
+
+- name: display db disk devices
+  debug:
+    var: db_disk_devices
+
+- name: format db disks
+  filesystem:
+    fstype: ext4
+    dev: "{{ item.value }}"
+  loop: "{{ db_disk_devices | dict2items }}"
+  become: true
+
+- name: get db disk UUIDs
+  command: blkid -s UUID -o value {{ item.value }}
+  loop: "{{ db_disk_devices | dict2items }}"
+  register: db_disk_uuids
+  changed_when: false
+  become: true
+
+- name: mount db disks
+  mount:
+    path: "{{ item.item.key }}"
+    src: "UUID={{ item.stdout }}"
+    fstype: ext4
+    opts: "defaults,noatime"
+    passno: "2"
+    state: mounted
+  loop: "{{ db_disk_uuids.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  become: true
+
+- name: set db disk ownership
+  file:
+    path: "{{ item.key }}"
+    state: directory
+    owner: sovereign
+    group: sovereign
+  loop: "{{ db_disk_devices | dict2items }}"
+  become: true
