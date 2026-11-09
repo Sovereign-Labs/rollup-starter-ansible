@@ -4,11 +4,19 @@
 geoip2 {{ proxy_geoip_mmdb_path }} {
     auto_reload 5m;
     $geoip2_data_country_iso_code country iso_code;
+    $geoip2_data_city_geoname_id city geoname_id;
 }
-map $geoip2_data_country_iso_code $geoip_country_blocked {
+# Allowed cities (GeoNames IDs) override the country blacklist.
+map $geoip2_data_city_geoname_id $geoip_city_allowed {
+    default 0;
+{% for id in proxy_geoip_allowed_cities %}
+    "{{ id }}" 1;
+{% endfor %}
+}
+map "$geoip_city_allowed:$geoip2_data_country_iso_code" $geoip_blocked {
     default 0;
 {% for c in proxy_geoip_blocked_countries %}
-    "{{ c }}" 1;
+    "0:{{ c }}" 1;
 {% endfor %}
 }
 {% endif %}

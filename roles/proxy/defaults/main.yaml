@@ -100,15 +100,20 @@ proxy_cert_restore_min_valid_days: 1
 proxy_cert_expiry_threshold_days: 30
 
 # GeoIP2 country blocking (opt-in). When enabled, the role builds
-# ngx_http_geoip2_module as a dynamic .so, seeds the GeoLite2-Country mmdb,
-# and installs a daily cron refresh. Every server block 403s blocked countries.
+# ngx_http_geoip2_module as a dynamic .so, seeds the GeoLite2-City mmdb,
+# and installs a daily cron refresh. Every server block 403s blocked countries,
+# except requests geolocated to a city in proxy_geoip_allowed_cities.
 proxy_geoip_enabled: false
 proxy_geoip_account_id: ""
 proxy_geoip_license_key: ""
 proxy_geoip_blocked_countries: []   # ISO 3166-1 alpha-2 codes, e.g. ["CH"]
+# GeoNames IDs of cities exempt from the country block (e.g. 2657896 = Zurich).
+# IDs rather than names: names are ambiguous and locale-dependent. Look one up
+# with `mmdblookup -f <mmdb> -i <ip> city geoname_id` or on geonames.org.
+proxy_geoip_allowed_cities: []
 proxy_geoip_module_repo: "https://github.com/leev/ngx_http_geoip2_module.git"
 proxy_geoip_module_version: "3.4"
-proxy_geoip_mmdb_path: "/usr/share/GeoIP/GeoLite2-Country.mmdb"
+proxy_geoip_mmdb_path: "/usr/share/GeoIP/GeoLite2-City.mmdb"
 
 # Dynamic backend discovery (node-discovery Rust service). When enabled, the
 # service subscribes to Postgres for cluster topology and writes Lua to

@@ -3,7 +3,7 @@
 # and conf.d/backend-select.lua.
 
 {% if proxy_geoip_enabled | bool %}
-if ($geoip_country_blocked) { return 403; }
+if ($geoip_blocked) { return 403; }
 {% endif %}
 
 # Unlimited-domain hosts are rate-exempt by Host (http-base.conf); failed

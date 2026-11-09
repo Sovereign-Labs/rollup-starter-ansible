@@ -98,7 +98,8 @@ See `defaults/main.yaml` and `vars/runtime_vars.yaml.template` for the full list
 - `proxy_vts_enabled` — opt in to per-vhost / per-upstream metrics (~5–10 min
   source build on first deploy).
 - `proxy_geoip_enabled` — opt in to GeoIP2 country blocking; requires
-  MaxMind credentials and `proxy_geoip_blocked_countries`.
+  MaxMind credentials and `proxy_geoip_blocked_countries`. Cities listed in
+  `proxy_geoip_allowed_cities` (GeoNames IDs) are exempt from the country block.
 
 ## Required collections
 

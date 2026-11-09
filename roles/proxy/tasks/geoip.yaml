@@ -1,6 +1,6 @@
 ---
-# GeoIP2 country blocking: builds ngx_http_geoip2_module as a dynamic .so,
-# seeds the GeoLite2-Country mmdb, and installs a daily refresh cron.
+# GeoIP2 country blocking (with per-city whitelist): builds ngx_http_geoip2_module as a dynamic .so,
+# seeds the GeoLite2-City mmdb, and installs a daily refresh cron.
 
 - name: Validate GeoIP inputs
   assert:
@@ -8,10 +8,12 @@
       - proxy_geoip_account_id | length > 0
       - proxy_geoip_license_key | length > 0
       - (proxy_geoip_blocked_countries | reject('match', '^[A-Z]{2}$') | list) | length == 0
+      - (proxy_geoip_allowed_cities | map('string') | reject('match', '^[0-9]+$') | list) | length == 0
     fail_msg: >-
       proxy_geoip_enabled requires proxy_geoip_account_id and
-      proxy_geoip_license_key, and proxy_geoip_blocked_countries entries must
-      be 2-letter uppercase ISO 3166-1 alpha-2 codes.
+      proxy_geoip_license_key, proxy_geoip_blocked_countries entries must
+      be 2-letter uppercase ISO 3166-1 alpha-2 codes, and
+      proxy_geoip_allowed_cities entries must be numeric GeoNames IDs.
 
 - name: Build geoip2 dynamic module
   include_tasks: _build_dynamic_module.yaml
@@ -42,28 +44,28 @@
 
 # Only seed in-role if missing; daily refresh is owned by the cron helper, so
 # rerunning Ansible does not burn MaxMind's free-tier daily download quota.
-- name: Seed MaxMind GeoLite2-Country mmdb
+- name: Seed MaxMind GeoLite2-City mmdb
   when: not _mmdb_stat.stat.exists
   become: true
   block:
-    - name: Download GeoLite2-Country.tar.gz
+    - name: Download GeoLite2-City.tar.gz
       get_url:
-        url: "https://download.maxmind.com/geoip/databases/GeoLite2-Country/download?suffix=tar.gz"
+        url: "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz"
         url_username: "{{ proxy_geoip_account_id }}"
         url_password: "{{ proxy_geoip_license_key }}"
-        dest: /tmp/GeoLite2-Country.tar.gz
+        dest: /tmp/GeoLite2-City.tar.gz
         mode: '0600'
 
-    - name: Extract GeoLite2-Country.tar.gz
+    - name: Extract GeoLite2-City.tar.gz
       unarchive:
-        src: /tmp/GeoLite2-Country.tar.gz
+        src: /tmp/GeoLite2-City.tar.gz
         dest: /tmp/
         remote_src: yes
 
     - name: Locate extracted mmdb
       find:
         paths: /tmp
-        patterns: GeoLite2-Country.mmdb
+        patterns: GeoLite2-City.mmdb
         recurse: yes
       register: _mmdb_extracted
 
@@ -76,12 +78,12 @@
         group: root
         remote_src: yes
 
-    - name: Clean up extracted GeoLite2-Country files in /tmp
+    - name: Clean up extracted GeoLite2-City files in /tmp
       file:
         path: "{{ item }}"
         state: absent
       loop:
-        - /tmp/GeoLite2-Country.tar.gz
+        - /tmp/GeoLite2-City.tar.gz
         - "{{ _mmdb_extracted.files[0].path | dirname }}"
 
 # Templated bash (same precedent as templates/s3-upload-hook.sh.j2). Mode 0700

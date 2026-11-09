@@ -165,13 +165,17 @@ rollup_http_port: 12346
 
 # GeoIP2 country blocking. When enabled, the role builds
 # ngx_http_geoip2_module from source against the matching OpenResty, seeds
-# the GeoLite2-Country mmdb from MaxMind, and installs a daily refresh
+# the GeoLite2-City mmdb from MaxMind, and installs a daily refresh
 # helper. Applies to every server block (proxy_public_domains AND
-# proxy_unlimited_domains).
+# proxy_unlimited_domains). proxy_geoip_allowed_cities exempts specific
+# cities inside blocked countries.
 # proxy_geoip_enabled: true
 # proxy_geoip_account_id: "12345"
 # proxy_geoip_license_key: "abcdef..."
 # proxy_geoip_blocked_countries: ["CH", "CN"]
+# Cities (GeoNames IDs) exempt from the country block:
+# proxy_geoip_allowed_cities:
+#   - 2657896   # Zurich, CH
 
 # ============================================================================
 # CELESTIA DA CONFIGURATION (required if data_availability_role=celestia)
