@@ -14,7 +14,9 @@
 {%- macro ssl_server(domains, include_path) %}
     server {
         listen {{ proxy_listen_port_ssl }} ssl;
-        http2 on;
+        # HTTP/2 is disabled as a mitigation for NGINX2Root (CVE-2026-123007,
+        # CVE-2026-123633). Re-enable only after OpenResty is on a fixed nginx core.
+        http2 off;
         server_name {{ domains | join(' ') }};
 {{ initialize_log_variables() }}
 
